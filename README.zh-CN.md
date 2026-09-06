@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/assets/facade-logo.svg" alt="Facade" width="360">
+  <img src="docs/assets/facade-logo-readme.svg" alt="Facade" width="380">
 </p>
 
-<p align="center"><strong>为人类和 Agent 设计的软件发布页。</strong></p>
+<p align="center"><strong>面向用户与 Agent 的软件发布页。</strong></p>
 
 <p align="center">
   <a href="README.md">English</a> · 简体中文
@@ -19,7 +19,7 @@ Facade 处于 v0.1 实施规划阶段。仓库目前包含产品基线、实施�
 - 为单个选定的公开 GitHub Release 生成静态下载页。
 - 为 macOS、Windows 和 Linux 的 Release 附件提供直连下载。
 - 归一化附件元数据：操作系统、架构、格式、用途、兼容条件、证据来源和选择理由。
-- 以同一份 `ReleasePageManifest` 生成人类页面及三个 Agent 入口：`manifest.json`、`install.md`、`llms.txt`。
+- 以同一份 `ReleasePageManifest` 生成面向用户的页面及三个 Agent 入口：`manifest.json`、`install.md`、`llms.txt`。
 - 提供 `facade init`、`facade inspect`、`facade build` 命令。
 - 为独立发布和既有 CI 流水线提供 GitHub Action 模板，并部署至 GitHub Pages。
 
@@ -42,7 +42,7 @@ Classifier -> 覆盖规则 -> 选择器 -> ReleasePageManifest
                    |
      +-------------+-------------+
      |                           |
-人类界面渲染器                  Agent 发布器
+用户界面渲染器                  Agent 发布器
 HTML / CSS / JS     manifest.json / install.md / llms.txt
      |                           |
      +-------------+-------------+
