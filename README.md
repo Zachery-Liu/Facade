@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/facade-logo.svg" alt="Facade" width="360">
+  <img src="docs/assets/facade-logo-readme.svg" alt="Facade" width="380">
 </p>
 
 <p align="center"><strong>Software releases for humans and agents.</strong></p>
