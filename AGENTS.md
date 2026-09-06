@@ -1,3 +1,11 @@
+# Project Instructions
+
+## Git delivery
+
+- When the user asks to commit (including “提交”), create Conventional Commits for the requested work and push the resulting branch to its configured remote.
+- Do not push only when the user explicitly says not to push (for example, “不要推送” or “不推送”).
+- Never include unrelated or unrecognized working-tree changes in a commit.
+
 <!-- TRELLIS:START -->
 # Trellis Instructions
 
