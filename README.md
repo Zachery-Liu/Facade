@@ -109,6 +109,7 @@ marketplace, and an MCP/Agent server.
 
 - [Product baseline](docs/facade_product_plan.md) — product scope, architecture,
   contracts, UX, Action behavior, and acceptance criteria.
+- [Quality gates](docs/quality-gates.md) — CI checks and `main` merge-rule setup.
 - [Implementation plan](docs/implementation_plan.md) — dependency-ordered work
   packages, verification matrix, and release gates.
 - [Trellis workflow](.trellis/workflow.md) — project task lifecycle and AI
