@@ -2,6 +2,8 @@
 
 > Software releases for humans and agents.
 
+[简体中文](README.zh-CN.md) | English
+
 Facade turns a GitHub Release into a static, maintainable download page and a
 shared set of machine-readable installation metadata. It keeps installers on
 GitHub Releases: Facade normalizes and presents distribution facts, but never
@@ -114,4 +116,4 @@ marketplace, and an MCP/Agent server.
 
 ## License
 
-License selection is pending before the first public release.
+Licensed under the [GNU Affero General Public License v3.0](LICENSE).
