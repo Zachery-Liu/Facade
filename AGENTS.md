@@ -6,6 +6,12 @@
 - Do not push only when the user explicitly says not to push (for example, “不要推送” or “不推送”).
 - Never include unrelated or unrecognized working-tree changes in a commit.
 
+## Branch workflow
+
+- Start each independent new feature or Trellis task on a dedicated branch created from its approved base branch. Do not implement independent feature work directly on main.
+- A CI fix, review change, rebase, or documentation correction for an unmerged pull request is part of that pull request's workstream, even if Trellis records it as a follow-up task. Keep that work on the existing pull request branch; do not create a child branch unless the user explicitly requests one or the scope is independent.
+- If no relevant pull request is open, use a dedicated branch for the new work.
+
 ## Terminal recovery
 
 - If Codex reports `setup refresh had errors`, do not infer that this repository or Trellis is unreadable or uninitialized.
