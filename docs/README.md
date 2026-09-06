@@ -1,21 +1,22 @@
-# Facade 开发文档
+# Facade Development Documentation
 
-Facade 的开发、产品设计和实施文档目前以**简体中文**为主要维护语言。
+Facade's development, product-design, and implementation documentation is currently maintained **primarily in Simplified Chinese**.
 
-这样做是为了让当前维护者能够更高效、准确地记录产品决策、架构约束、实施计划和工程规则，并减少在快速迭代阶段维护多语言版本所带来的语义漂移。
+This is intentional. During the project's rapid development phase, keeping the primary design and planning record in one language makes it easier for the current maintainer to capture product decisions, architectural constraints, implementation plans, and engineering rules accurately without creating unnecessary translation drift.
 
-面向最终用户和外部贡献者的稳定文档不受此约定限制。随着项目成熟，README、使用指南、CLI 文档、配置文档和其他公开文档可以按需要提供英文及其他语言版本。
+This convention applies to internal development documentation, not to stable end-user or contributor-facing documentation. As Facade matures, user-facing guides, CLI documentation, configuration references, and other public documentation may be provided in English and additional languages as needed.
 
-## 当前文档
+## Current documents
 
-- [`facade_product_plan.md`](./facade_product_plan.md) — 产品规划、架构基线和核心行为约束。
-- [`implementation_plan.md`](./implementation_plan.md) — v0.1 实施计划、工作拆解和验收要求。
-- [`quality-gates.md`](./quality-gates.md) — CI、覆盖率、Ruleset 和合并质量门禁。
+- [`facade_product_plan.md`](./facade_product_plan.md) — product planning, architectural baseline, and core behavioral constraints. Primarily maintained in Simplified Chinese.
+- [`implementation_plan.md`](./implementation_plan.md) — v0.1 implementation plan, work breakdown, and acceptance requirements. Primarily maintained in Simplified Chinese.
+- [`quality-gates.md`](./quality-gates.md) — CI, coverage, Ruleset, and merge quality gates. English version.
+- [`quality-gates.zh-CN.md`](./quality-gates.zh-CN.md) — Simplified Chinese translation of the quality-gates document.
 
-## 语言约定
+## Language convention
 
-`docs/` 下的开发文档默认以简体中文编写，并将中文版本视为当前开发阶段的主要来源。
+Unless a document explicitly states otherwise, development documents under `docs/` are maintained primarily in Simplified Chinese and the Chinese version is the primary source during the current development phase.
 
-如果未来为某篇开发文档提供英文翻译，应明确标注其翻译关系，并避免在两个语言版本中分别维护不同的产品或架构决策。必要时，应以实际标记为主要维护版本的文档为准。
+When translations are added, the relationship between the primary document and its translation should be stated explicitly. Product or architecture decisions should not be maintained independently in different language versions.
 
-代码、API 名称、配置字段、命令、协议名称以及其他技术标识符保持其原始英文形式，不强制翻译。
+Code, API names, configuration fields, commands, protocol names, and other technical identifiers should remain in their original English form.
