@@ -1,8 +1,10 @@
 # GitHub Quality Gates
 
-Facade treats `main` as the releasable branch. Feature work should start from `main` on a dedicated branch and be merged through a Pull Request; do not push feature changes directly to `main`. **Until the GitHub Ruleset is actually enabled, this is a repository convention rather than a GitHub-enforced rule.**
+[简体中文](./quality-gates.zh-CN.md)
 
-The repository's GitHub Actions provide the following checks:
+Facade treats `main` as the releasable branch. Feature work should start from `main` on a dedicated branch and be merged through a Pull Request; do not push feature changes directly to `main`.
+
+The repository's `main quality gate` GitHub Ruleset is **active** and enforced on `refs/heads/main`. The repository's GitHub Actions provide the following required checks:
 
 | Workflow | Check | What failure means |
 | --- | --- | --- |
@@ -28,17 +30,31 @@ The repository's GitHub Actions provide the following checks:
 
 These thresholds are an anti-regression baseline, not an arbitrary long-term target. Any PR that raises a threshold must include enough tests in the same PR to satisfy the new baseline.
 
-## Enable the `main` Ruleset
+## Current `main` Ruleset
 
-A GitHub Ruleset is a repository setting and cannot be enabled by an ordinary git commit. The import template is versioned at [`../.github/rulesets/main-quality-gate.json`](../.github/rulesets/main-quality-gate.json). After pushing the branch, opening a PR, and allowing every workflow to run at least once, a repository administrator should configure GitHub as follows:
+The active `main quality gate` Ruleset enforces the following repository policy:
+
+- Pull Requests are required before merging into `main`.
+- Review conversations must be resolved before merge.
+- The required approval count is `0`, which is appropriate while the repository has a solo maintainer; increase it when regular collaborators are added.
+- Linear history is required and the repository permits squash merge only.
+- Branch deletion and non-fast-forward updates, including force pushes, are blocked.
+- Required status checks use the eight check names listed above and must pass against an up-to-date branch.
+- Repository owner `Zachery-Liu` may bypass the Ruleset only through a Pull Request, for exceptional recovery cases rather than routine development.
+
+The intended Ruleset configuration is versioned at [`../.github/rulesets/main-quality-gate.json`](../.github/rulesets/main-quality-gate.json). If the live repository settings are changed intentionally, update the versioned template and this document in the same change so the repository does not drift from its documented policy.
+
+## Restore or recreate the Ruleset
+
+The Ruleset is already active. The following procedure is only for rebuilding it after deletion, repository migration, or accidental configuration loss:
 
 1. Open **Settings → Rules → Rulesets → New ruleset → Import a ruleset** and select `.github/rulesets/main-quality-gate.json`.
-2. Name it `main quality gate`, target the `main` branch, and set its status to **Active**.
-3. The template enables **Require a pull request before merging**, requires conversation resolution, permits squash merge only, and blocks deletion and force pushes. The approval count is `0`, which is appropriate for a solo maintainer; increase it to `1` when collaborators are added.
-4. Enable **Require status checks to pass** and require the branch to be up to date, then select all eight checks listed above from the names GitHub actually displays. Use the names produced by the first workflow run rather than typing status-check names manually.
-5. The template enables **Block force pushes**. Repository owner `Zachery-Liu` may bypass only through a Pull Request for emergency recovery; routine changes should still go through the normal PR flow.
+2. Confirm the imported Ruleset is named `main quality gate`, targets `main`, and has status **Active**.
+3. Verify Pull Request enforcement, conversation resolution, linear history, squash-only merging, deletion protection, and non-fast-forward protection.
+4. Verify all eight required status checks listed above are present and that the strict up-to-date policy is enabled.
+5. Verify the owner bypass remains limited to Pull Requests.
 
-Do not configure required status checks before the workflows have run at least once. GitHub only lists check names that have appeared recently.
+If GitHub does not offer a required check name during reconstruction, run the corresponding workflow once and then select the exact check name produced by GitHub.
 
 ## Local equivalent checks
 
@@ -53,5 +69,3 @@ pnpm coverage
 ```
 
 CodeQL and Dependency Review run on GitHub for Pull Requests. They do not read project secrets, and each workflow requests only the minimum permissions required for its task.
-
-[简体中文](./quality-gates.zh-CN.md)
