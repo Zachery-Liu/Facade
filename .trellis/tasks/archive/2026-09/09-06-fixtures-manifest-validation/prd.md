@@ -22,7 +22,11 @@ Establish offline release fixtures and a shared validation boundary for Facade c
 
 - GitHub API loading, asset classification heuristics, CLI commands, rendering outputs, Action deployment.
 
-## Scope reconciliation`n`nT01 initially added a provisional Manifest and render slice to establish tooling examples. T02 owns the contract validation and fixtures from this point; the reviewed schema and semantic tests are its authoritative continuation.`n`n## Technical Notes
+## Scope reconciliation
+
+T01 initially added a provisional Manifest and render slice to establish tooling examples. T02 owns the contract validation and fixtures from this point; the reviewed schema and semantic tests are its authoritative continuation.
+
+## Technical Notes
 
 - Product plan: `docs/implementation_plan.md` T02 and `docs/facade_product_plan.md` sections 5 and 9.
 - Build on the T01 Zod and test setup.
