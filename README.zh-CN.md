@@ -87,8 +87,9 @@ v0.1 明确不包含私有仓库、数据库、账号、支付、下载代理/CD
 
 ## 文档
 
+- [开发文档说明](docs/README.md)：`docs/` 下开发与设计文档的语言约定和索引（英文）。
 - [产品基线](docs/facade_product_plan.md)：产品范围、架构、契约、交互、Action 行为与验收标准。
-- [质量门禁](docs/quality-gates.md)：CI 检查与 `main` 合并规则配置。
+- [质量门禁](docs/quality-gates.zh-CN.md)：CI 检查与当前启用的 `main` 合并规则配置。
 - [实施计划](docs/implementation_plan.md)：按依赖排序的任务包、验证矩阵和发布门槛。
 - [Trellis 工作流](.trellis/workflow.md)：项目任务生命周期与 AI 协作流程。
 
