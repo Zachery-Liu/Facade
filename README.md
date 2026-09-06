@@ -1,8 +1,14 @@
-# Facade
+<p align="center">
+  <img src="docs/assets/facade-mark.svg" alt="Facade logo" width="112" height="112">
+</p>
 
-> Software releases for humans and agents.
+<h1 align="center">Facade</h1>
 
-[简体中文](README.zh-CN.md) | English
+<p align="center"><strong>Software releases for humans and agents.</strong></p>
+
+<p align="center">
+  <a href="README.zh-CN.md">简体中文</a> · English
+</p>
 
 Facade turns a GitHub Release into a static, maintainable download page and a
 shared set of machine-readable installation metadata. It keeps installers on

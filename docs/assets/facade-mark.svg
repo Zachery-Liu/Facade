@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Facade mark</title>
+  <desc id="desc">A geometric doorway and layered facade forming an abstract F.</desc>
+  <path fill="#BFDBFE" d="M18 34 42 22v84L18 94z"/>
+  <path fill="#38BDF8" d="M32 28 56 18v92L32 98z"/>
+  <path fill="#0F172A" d="M46 18h64v22H70v16h31v21H70v33H46z"/>
+  <path fill="#0EA5E9" d="M70 77h20v33H70z"/>
+</svg>
