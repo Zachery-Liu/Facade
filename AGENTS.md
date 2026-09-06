@@ -5,6 +5,7 @@
 - When the user asks to commit (including “提交”), create Conventional Commits for the requested work and push the resulting branch to its configured remote.
 - Do not push only when the user explicitly says not to push (for example, “不要推送” or “不推送”).
 - Never include unrelated or unrecognized working-tree changes in a commit.
+- Start every new feature or Trellis task on a dedicated branch created from its approved base branch. Make each feature's changes only on its dedicated branch; do not implement new feature work directly on main or reuse another feature's branch.
 
 ## Terminal recovery
 
