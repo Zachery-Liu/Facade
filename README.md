@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="docs/assets/facade-mark.svg" alt="Facade logo" width="112" height="112">
+  <img src="docs/assets/facade-logo.svg" alt="Facade" width="360">
 </p>
-
-<h1 align="center">Facade</h1>
 
 <p align="center"><strong>Software releases for humans and agents.</strong></p>
 
