@@ -1,54 +1,18 @@
-# Directory Structure
+# Backend Directory Structure
 
-> How backend code is organized in this project.
+## Observed initial layout
 
----
+The primary package is `packages/facade`. Its source currently follows the product-plan boundaries:
 
-## Overview
-
-<!--
-Document your project's backend directory structure here.
-
-Questions to answer:
-- How are modules/packages organized?
-- Where does business logic live?
-- Where are API endpoints defined?
-- How are utilities and helpers organized?
--->
-
-(To be filled by the team)
-
----
-
-## Directory Layout
-
-```
-<!-- Replace with your actual structure -->
-src/
-├── ...
-└── ...
+```text
+packages/facade/src/
+├── cli/                 # commander entry and program construction
+├── core/                # pure selection-state logic
+├── manifest/            # Zod runtime contract and derived types
+├── runtime/             # shared error and diagnostics boundaries
+└── themes/product/      # SSR product-theme implementation
 ```
 
----
+Examples: `src/cli/index.ts` is the executable boundary, `src/core/selection-state.ts` is dependency-free domain logic, and `src/manifest/release-page-manifest.ts` owns the shared runtime contract. Tests mirror behavior in `test/`.
 
-## Module Organization
-
-<!-- How should new features/modules be organized? -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- File and folder naming rules -->
-
-(To be filled by the team)
-
----
-
-## Examples
-
-<!-- Link to well-organized modules as examples -->
-
-(To be filled by the team)
+Add `config/`, `source/github/`, `classifier/`, `agent-interface/`, and Action code only when their documented work packages begin. Keep `core/` free of network, environment, and HTML concerns.

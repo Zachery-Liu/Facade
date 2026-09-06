@@ -1,51 +1,9 @@
-# Logging Guidelines
+# Backend Logging Guidelines
 
-> How logging is done in this project.
+## Observed pattern
 
----
+`src/runtime/logger.ts` emits one JSON line per event through an injected sink. The logger accepts `info`, `warn`, and `error`; `test/runtime-diagnostics.test.ts` verifies that undefined context fields are omitted.
 
-## Overview
+Use stable, non-sensitive fields such as repository, tag, asset ID, configuration field, and output-relative path. `src/runtime/logger.ts` is intentionally a formatting boundary; callers decide the sink.
 
-<!--
-Document your project's logging conventions here.
-
-Questions to answer:
-- What logging library do you use?
-- What are the log levels and when to use each?
-- What should be logged?
-- What should NOT be logged (PII, secrets)?
--->
-
-(To be filled by the team)
-
----
-
-## Log Levels
-
-<!-- When to use each level: debug, info, warn, error -->
-
-(To be filled by the team)
-
----
-
-## Structured Logging
-
-<!-- Log format, required fields -->
-
-(To be filled by the team)
-
----
-
-## What to Log
-
-<!-- Important events to log -->
-
-(To be filled by the team)
-
----
-
-## What NOT to Log
-
-<!-- Sensitive data, PII, secrets -->
-
-(To be filled by the team)
+Never log tokens, authorization headers, raw environment values, absolute workstation paths, download contents, or unbounded responses.

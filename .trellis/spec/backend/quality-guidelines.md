@@ -1,51 +1,9 @@
-# Quality Guidelines
+# Backend Quality Guidelines
 
-> Code quality standards for backend development.
+## Observed checks
 
----
+The root workspace exposes `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `pnpm test`. `packages/facade/tsconfig.json` enables strict TypeScript; `packages/facade/eslint.config.mjs` applies TypeScript-aware linting.
 
-## Overview
+Tests are offline and behavior-focused: `test/cli-help.test.ts` runs the built artifact, `test/release-page.test.tsx` covers schema/selection/SSR, and `test/runtime-diagnostics.test.ts` covers error/logging behavior.
 
-<!--
-Document your project's quality standards here.
-
-Questions to answer:
-- What patterns are forbidden?
-- What linting rules do you enforce?
-- What are your testing requirements?
-- What code review standards apply?
--->
-
-(To be filled by the team)
-
----
-
-## Forbidden Patterns
-
-<!-- Patterns that should never be used and why -->
-
-(To be filled by the team)
-
----
-
-## Required Patterns
-
-<!-- Patterns that must always be used -->
-
-(To be filled by the team)
-
----
-
-## Testing Requirements
-
-<!-- What level of testing is expected -->
-
-(To be filled by the team)
-
----
-
-## Code Review Checklist
-
-<!-- What reviewers should check -->
-
-(To be filled by the team)
+Keep domain logic deterministic and typed. Do not use `any`, unchecked assertions, network calls in unit tests, or nondeterministic output ordering.

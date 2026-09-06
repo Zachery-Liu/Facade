@@ -1,54 +1,15 @@
-# Directory Structure
+# Frontend Directory Structure
 
-> How frontend code is organized in this project.
+## Observed initial layout
 
----
+The Product Theme lives in `packages/facade/src/themes/product/`:
 
-## Overview
-
-<!--
-Document your project's frontend directory structure here.
-
-Questions to answer:
-- Where do components live?
-- How are features/modules organized?
-- Where are shared utilities?
-- How are assets organized?
--->
-
-(To be filled by the team)
-
----
-
-## Directory Layout
-
-```
-<!-- Replace with your actual structure -->
-src/
-├── ...
-└── ...
+```text
+themes/product/
+├── components/  # AssetCard, AssetList, ReleasePage
+└── hooks/       # useCopyFeedback, useSelectionInput
 ```
 
----
+`ReleasePage` composes the page, `AssetList` maps normalized assets, and `AssetCard` owns the download link. Shared contract and selection imports remain outside the theme in `manifest/` and `core/`.
 
-## Module Organization
-
-<!-- How should new features be organized? -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- File and folder naming rules -->
-
-(To be filled by the team)
-
----
-
-## Examples
-
-<!-- Link to well-organized modules as examples -->
-
-(To be filled by the team)
+Keep a component, its local props type, and narrow helpers together. Do not duplicate manifest validation or selection policy in a theme component.

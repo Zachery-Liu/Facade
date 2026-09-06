@@ -1,59 +1,9 @@
 # Component Guidelines
 
-> How components are built in this project.
+## Observed pattern
 
----
+Components are typed Preact functions with local prop aliases. `AssetCard` accepts one normalized `ManifestAsset`; `AssetList` composes cards; `ReleasePage` composes semantic page content. All three are in `src/themes/product/components/` and render through `test/release-page.test.tsx`.
 
-## Overview
+Use semantic elements and native download links: `AssetCard` renders an `<a>` and `ReleasePage` renders `<main>`/`<h1>`. Pass normalized manifest data, never raw source API objects.
 
-<!--
-Document your project's component conventions here.
-
-Questions to answer:
-- What component patterns do you use?
-- How are props defined?
-- How do you handle composition?
-- What accessibility standards apply?
--->
-
-(To be filled by the team)
-
----
-
-## Component Structure
-
-<!-- Standard structure of a component file -->
-
-(To be filled by the team)
-
----
-
-## Props Conventions
-
-<!-- How props should be defined and typed -->
-
-(To be filled by the team)
-
----
-
-## Styling Patterns
-
-<!-- How styles are applied (CSS modules, styled-components, Tailwind, etc.) -->
-
-(To be filled by the team)
-
----
-
-## Accessibility
-
-<!-- A11y requirements and patterns -->
-
-(To be filled by the team)
-
----
-
-## Common Mistakes
-
-<!-- Component-related mistakes your team has made -->
-
-(To be filled by the team)
+Do not hide manual choices or state uncertainty in presentation code, and do not render untrusted Markdown as raw HTML.

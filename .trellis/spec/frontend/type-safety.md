@@ -1,51 +1,9 @@
-# Type Safety
+# Frontend Type Safety
 
-> Type safety patterns in this project.
+## Observed pattern
 
----
+`src/manifest/release-page-manifest.ts` defines Zod schemas and derives `ManifestAsset` / `ReleasePageManifest` types with `z.infer`. `test/release-page.test.tsx` validates fixture data through the runtime schema before rendering; components import the derived types.
 
-## Overview
+During the pre-release validation phase, `schemaVersion` is a nonnegative number, not a frozen `1` literal. Freeze the public `schemaVersion: 1` contract only after the documented real-sample, Product Theme, and consumer validation gate.
 
-<!--
-Document your project's type safety conventions here.
-
-Questions to answer:
-- What type system do you use?
-- How are types organized?
-- What validation library do you use?
-- How do you handle type inference?
--->
-
-(To be filled by the team)
-
----
-
-## Type Organization
-
-<!-- Where types are defined, shared types vs local types -->
-
-(To be filled by the team)
-
----
-
-## Validation
-
-<!-- Runtime validation patterns (Zod, Yup, io-ts, etc.) -->
-
-(To be filled by the team)
-
----
-
-## Common Patterns
-
-<!-- Type utilities, generics, type guards -->
-
-(To be filled by the team)
-
----
-
-## Forbidden Patterns
-
-<!-- any, type assertions, etc. -->
-
-(To be filled by the team)
+Use discriminated unions for selection state and avoid `any`, broad casts, non-null assertions, and unvalidated JSON input.

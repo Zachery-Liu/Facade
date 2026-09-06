@@ -1,39 +1,16 @@
 # Frontend Development Guidelines
 
-> Best practices for frontend development in this project.
+These guidelines document the initial Preact SSR Product Theme and its shared contract boundaries. They must evolve with styling, browser runtime, and full selection work.
 
----
+| Guide | Use when |
+| --- | --- |
+| [Directory Structure](./directory-structure.md) | adding UI files |
+| [Component Guidelines](./component-guidelines.md) | implementing a Preact view |
+| [Hook Guidelines](./hook-guidelines.md) | adding browser behavior |
+| [State Management](./state-management.md) | deciding where state belongs |
+| [Type Safety](./type-safety.md) | handling manifest or browser input |
+| [Quality Guidelines](./quality-guidelines.md) | testing or reviewing UI |
 
-## Overview
+## Pre-Development Checklist
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
-
----
-
-## Guidelines Index
-
-| Guide | Description | Status |
-|-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
-
----
-
-## How to Fill These Guidelines
-
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+Read Directory Structure, Type Safety, and Quality Guidelines for every UI change. Read Component Guidelines for a Preact component, and Hook Guidelines plus State Management before adding browser state.

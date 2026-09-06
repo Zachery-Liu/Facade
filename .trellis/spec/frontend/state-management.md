@@ -1,51 +1,7 @@
-# State Management
+# Frontend State Management
 
-> How state is managed in this project.
+## Observed pattern
 
----
+Manifest data is immutable validated input (`src/manifest/release-page-manifest.ts`). Selection is derived by `src/core/selection-state.ts`; optional UI choice is local hook state in `use-selection-input.ts`; copy feedback is local state in `use-copy-feedback.ts`.
 
-## Overview
-
-<!--
-Document your project's state management conventions here.
-
-Questions to answer:
-- What state management solution do you use?
-- How is local vs global state decided?
-- How do you handle server state?
-- What are the patterns for derived state?
--->
-
-(To be filled by the team)
-
----
-
-## State Categories
-
-<!-- Local state, global state, server state, URL state -->
-
-(To be filled by the team)
-
----
-
-## When to Use Global State
-
-<!-- Criteria for promoting state to global -->
-
-(To be filled by the team)
-
----
-
-## Server State
-
-<!-- How server data is cached and synchronized -->
-
-(To be filled by the team)
-
----
-
-## Common Mistakes
-
-<!-- State management mistakes your team has made -->
-
-(To be filled by the team)
+There is no global store. Preserve `selected`, `needs-input`, and `no-match` rather than defaulting an unknown environment to a preferred asset. Do not cache a mutable second copy of the manifest in client state.

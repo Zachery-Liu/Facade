@@ -1,0 +1,11 @@
+{
+  "name": "facade-workspace",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "build": "pnpm --filter @facade/cli build",
+    "lint": "pnpm --filter @facade/cli lint",
+    "test": "pnpm --filter @facade/cli test",
+    "typecheck": "pnpm --filter @facade/cli typecheck"
+  }
+}
