@@ -2,6 +2,7 @@
   "name": "@facade/cli",
   "version": "0.0.0-development",
   "private": true,
+  "engines": { "node": ">=22.13.0" },
   "type": "module",
   "bin": { "facade": "./dist/index.js" },
   "files": ["dist"],
