@@ -30,13 +30,13 @@ Facade 将 `main` 视为可发布分支。所有功能应从 `main` 新建 `feat
 
 ## 启用 main Ruleset
 
-GitHub Ruleset 是仓库设置，不能由普通 git 提交可靠地替代。将本分支推送并让所有工作流至少运行一次后，仓库管理员在 GitHub 执行以下操作：
+GitHub Ruleset 是仓库设置，不能由普通 git 提交自动启用，但导入模板已版本化保存在 [`../.github/rulesets/main-quality-gate.json`](../.github/rulesets/main-quality-gate.json)。将本分支推送、创建 PR，并让所有工作流至少运行一次后，仓库管理员在 GitHub 执行以下操作：
 
-1. 打开 **Settings → Rules → Rulesets → New branch ruleset**。
+1. 打开 **Settings → Rules → Rulesets → New ruleset → Import a ruleset**，选择 `.github/rulesets/main-quality-gate.json`。
 2. 命名为 `main quality gate`，目标分支设为 `main`，状态设为 **Active**。
-3. 启用 **Require a pull request before merging**；要求至少一项批准，并启用“合并前必须解决所有会话”。
+3. 模板启用 **Require a pull request before merging**、解决所有会话、仅允许 squash merge，以及阻止删除和 force push。模板的审批数为 `0`，适合单人维护；有协作者后可改为 `1`。
 4. 启用 **Require status checks to pass** 和“要求分支为最新”；从 GitHub 实际显示的检查列表选择上表全部八项。状态检查名称以首次运行显示的名称为准，避免手工输入一个不存在的名称。
-5. 启用 **Block force pushes**。管理员可保留 bypass 权限，以便紧急恢复；常规改动仍必须经 PR。
+5. 模板启用 **Block force pushes**。仓库所有者 `Zachery-Liu` 仅可在 PR 中 bypass，以便紧急恢复；常规改动仍必须经 PR。
 
 不要在首次工作流运行之前设置 required status checks：GitHub 只会列出近期已出现过的检查名称。
 
