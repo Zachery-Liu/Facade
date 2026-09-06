@@ -1,5 +1,7 @@
 # Code of Conduct
 
+[简体中文](CODE_OF_CONDUCT.zh-CN.md) | English
+
 ## Our standard
 
 Facade is an open-source project for people working together across different backgrounds, experience levels, and working styles. Contributions should be discussed with technical clarity, patience, and respect.

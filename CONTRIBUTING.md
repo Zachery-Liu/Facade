@@ -1,5 +1,7 @@
 # Contributing to Facade
 
+[简体中文](CONTRIBUTING.zh-CN.md) | English
+
 Thanks for your interest in contributing to Facade.
 
 Facade welcomes both human-authored and agent-assisted contributions. Contributors using AI coding agents should also follow the [AI and agent contributors](#ai-and-agent-contributors) section below.
@@ -160,6 +162,10 @@ Changes should preserve Facade's core responsibilities:
 - do not proxy release downloads;
 - do not execute installations or make trust decisions on behalf of users;
 - keep core generated output usable without JavaScript.
+
+## Community standards
+
+By participating in the project, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 
