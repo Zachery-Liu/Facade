@@ -1,0 +1,24 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+
+# Build and test outputs
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# OS and editor metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Trellis local developer/session state
+.trellis/.developer
+.trellis/.runtime/
