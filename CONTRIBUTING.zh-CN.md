@@ -2,6 +2,8 @@
 
 [English](CONTRIBUTING.md) | 简体中文
 
+> 本文档为英文版本的简体中文翻译。如中英文内容存在差异，以英文版本为准。
+
 感谢你对 Facade 的关注和贡献。
 
 Facade 欢迎由人类完成以及由 AI Agent 辅助完成的贡献。如果你使用 AI 编码 Agent，也请遵循下方的 [AI 与 Agent 贡献者](#ai-与-agent-贡献者) 说明。
