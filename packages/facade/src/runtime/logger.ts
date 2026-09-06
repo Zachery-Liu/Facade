@@ -1,4 +1,5 @@
-export type LogContext = Readonly<Record<string, string | number | boolean | undefined>>;
+export type LogValue = string | number | boolean | undefined;
+export type LogContext = Readonly<Record<string, LogValue>> & { readonly level?: never; readonly message?: never };
 export type LogLevel = 'info' | 'warn' | 'error';
 export type LogSink = (line: string) => void;
 
@@ -11,9 +12,13 @@ export function createLogger(write: LogSink) {
 }
 
 function format(level: LogLevel, context: LogContext, message: string): string {
-  return JSON.stringify({ level, ...omitUndefined(context), message });
+  return JSON.stringify({ ...omitUndefined(context), level, message });
 }
 
-function omitUndefined(context: LogContext): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(context).filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined));
+function omitUndefined(context: LogContext): Record<string, Exclude<LogValue, undefined>> {
+  const safeContext: Record<string, Exclude<LogValue, undefined>> = {};
+  for (const [key, value] of Object.entries(context)) {
+    if (key !== 'level' && key !== 'message' && value !== undefined) safeContext[key] = value;
+  }
+  return safeContext;
 }

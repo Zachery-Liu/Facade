@@ -1,0 +1,1 @@
+{ "schemaVersion": 0, "productName": "Invalid Fixture", "releaseTag": "v0", "assets": [{ "id": "signature", "label": "Signature", "downloadUrl": "https://example.test/sig", "os": "unknown", "kind": "signature", "signatureFor": "missing", "evidence": { "kind": { "source": "filename-rule", "detail": "sig" } } }] }

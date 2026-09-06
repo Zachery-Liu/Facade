@@ -3,14 +3,10 @@
   "version": "0.0.0-development",
   "private": true,
   "type": "module",
-  "bin": {
-    "facade": "./dist/index.js"
-  },
-  "files": [
-    "dist"
-  ],
+  "bin": { "facade": "./dist/index.js" },
+  "files": ["dist"],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "lint": "eslint src test",
     "test": "pnpm build && vitest run",
     "typecheck": "tsc --noEmit"
@@ -25,6 +21,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
     "eslint": "^9.0.0",
+    "tsup": "^8.0.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0"

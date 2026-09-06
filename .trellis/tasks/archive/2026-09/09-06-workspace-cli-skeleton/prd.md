@@ -10,19 +10,21 @@ Create the first executable Facade slice: a pnpm workspace with one strict-TypeS
 - Configure strict TypeScript and a build that emits a runnable CLI package artifact.
 - Implement `facade --help` using commander.
 - Add lint, typecheck, test, and build scripts.
-- Add an offline Vitest test proving the CLI help path works from the built artifact.
+- Add offline Vitest tests proving the CLI help path works from the built artifact.
+- Add a validated development Manifest, explicit selection-state union, SSR Product Theme components, local enhancement hooks, and shared diagnostics.
 - Preserve the product-plan layout: `config`, `source/github`, `classifier`, `core`, `agent-interface`, `themes/product`, `runtime`, and `cli` under `packages/facade/src`; only create files needed for this slice.
 
 ## Acceptance Criteria
 
-- [ ] `pnpm install` succeeds.
-- [ ] `pnpm typecheck`, `pnpm test`, and `pnpm build` succeed.
-- [ ] The built package runs `facade --help` without executing TypeScript source.
-- [ ] No GitHub calls, release processing, rendering, database, or Action behavior is introduced.
+- [x] `pnpm install` succeeds.
+- [x] `pnpm typecheck`, `pnpm test`, and `pnpm build` succeed.
+- [x] The built package runs `facade --help` without executing TypeScript source.
+- [x] No GitHub calls, release processing, database, or Action behavior is introduced.
+- [x] A validated development Manifest renders a static Preact page and preserves explicit selection states.
 
 ## Technical Approach
 
-Use pnpm workspaces, strict TypeScript, commander, tsup for the Node CLI bundle, and Vitest. The CLI entry point must remain a thin boundary adapter; no domain policy is implemented in this task.
+Use pnpm workspaces, strict TypeScript, commander, the TypeScript compiler for the Node CLI artifact, and Vitest. The CLI entry point must remain a thin boundary adapter; no domain policy is implemented in this task.
 
 ## Decision (ADR-lite)
 
@@ -31,6 +33,10 @@ Use pnpm workspaces, strict TypeScript, commander, tsup for the Node CLI bundle,
 **Decision**: Use a single workspace package at `packages/facade` and emit its executable entry point into `dist/`.
 
 **Consequences**: Early tests can run entirely offline and later modules can be added to the planned directory layout without package churn.
+
+## Implemented extension
+
+The user requested continuing beyond the minimal skeleton. The task now also establishes the initial, offline-only Manifest/selection/rendering/diagnostics patterns. It does not implement Release loading, full rendering outputs, or deployment.
 
 ## Out of Scope
 
