@@ -113,11 +113,16 @@ marketplace, and an MCP/Agent server.
 
 ## Documentation
 
+- [Development documentation](docs/README.md) — language convention and index for
+  the development and design documents maintained under `docs/`.
 - [Product baseline](docs/facade_product_plan.md) — product scope, architecture,
-  contracts, UX, Action behavior, and acceptance criteria.
-- [Quality gates](docs/quality-gates.md) — CI checks and `main` merge-rule setup.
+  contracts, UX, Action behavior, and acceptance criteria. **Simplified Chinese;
+  primary development document.**
+- [Quality gates](docs/quality-gates.md) — CI checks and the active `main`
+  merge-rule configuration.
 - [Implementation plan](docs/implementation_plan.md) — dependency-ordered work
-  packages, verification matrix, and release gates.
+  packages, verification matrix, and release gates. **Simplified Chinese;
+  primary development document.**
 - [Trellis workflow](.trellis/workflow.md) — project task lifecycle and AI
   collaboration process.
 
