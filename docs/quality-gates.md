@@ -1,6 +1,6 @@
 # GitHub 质量门禁
 
-Facade 将 `main` 视为可发布分支。所有功能应从 `main` 新建 `feat/<name>` 分支，通过 Pull Request 合入；不要直接向 `main` 推送功能改动。
+Facade 将 `main` 视为可发布分支。所有功能应从 `main` 新建 `feat/<name>` 分支，通过 Pull Request 合入；不要直接向 `main` 推送功能改动。**在 GitHub Ruleset 实际启用前，这是一项约定而不是 GitHub 强制规则。**
 
 仓库内的 GitHub Actions 提供以下检查：
 

@@ -24,4 +24,4 @@ pnpm coverage
 
 The `main` GitHub Ruleset must require the independent CI checks (`typecheck`, `lint`, `test`, `build`, `coverage`), both CodeQL analyses (`actions`, `javascript-typescript`), and Dependency Review. Enable it only after an initial workflow run, then select the check labels GitHub actually reports. Direct feature work belongs on `feat/<name>` and reaches `main` through a passing pull request.
 
-GitHub workflows must use frozen pnpm installation, least-privilege `permissions`, and no repository secrets for these checks.
+GitHub workflows must use frozen pnpm installation, least-privilege `permissions`, and no repository secrets for these checks. When using `actions/setup-node` with `cache: pnpm`, pnpm must already be discoverable before that action runs; otherwise its cache initialization fails before subsequent `corepack enable`. Prefer no cache until pnpm setup is explicit, or activate pnpm through a dedicated setup step first.

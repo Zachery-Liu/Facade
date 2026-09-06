@@ -33,3 +33,7 @@ Create repository-owned GitHub Actions quality gates so every pull request can b
 - Base branch: `main` at `d1a81de`.
 - The existing T02 feature branch has an unmerged CI workflow; this task recreates the quality-gate implementation independently from `main` and does not use its dirty worktree state.
 - Required GitHub configuration is external state and depends on repository-admin credentials.
+
+## Completion correction (2026-09-06)
+
+This task was archived before GitHub execution was verified. The `CI` jobs subsequently failed during pnpm bootstrap, the configured coverage thresholds were lower than the documented baseline, Dependency Review had not run because no PR to `main` existed, and no `main` Ruleset had been enabled. The checked acceptance criteria above are therefore historical and must not be treated as evidence of GitHub enforcement. The active follow-up task `09-06-fix-quality-gates` owns correction and re-verification.

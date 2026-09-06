@@ -38,3 +38,9 @@ Added CI, coverage, CodeQL, dependency review, and documented the main ruleset.
 ### Next Steps
 
 - None - task complete
+
+---
+
+## Correction: Session 1 completion status
+
+The Session 1 implementation was committed, but GitHub CI was not successfully executed: pnpm cache initialization failed before `corepack enable`. Coverage thresholds also differed from the documented baseline, Dependency Review had not run, and `main` had no active Ruleset. The prior “Completed” status means “changes were committed”, not “the GitHub gate was verified”. Follow-up task `09-06-fix-quality-gates` is responsible for the repair and evidence.
