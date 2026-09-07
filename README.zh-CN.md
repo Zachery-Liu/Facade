@@ -14,7 +14,7 @@
   <a href="https://github.com/Zachery-Liu/Facade/pulls"><img alt="Open pull requests" src="https://img.shields.io/github/issues-pr/Zachery-Liu/Facade?style=flat-square&logo=github&label=PRs"></a>
   <a href="https://github.com/Zachery-Liu/Facade/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Zachery-Liu/Facade?style=flat-square&logo=git&label=last%20commit"></a>
   <img alt="Status: v0.1 planning" src="https://img.shields.io/badge/status-v0.1%20planning-2563EB?style=flat-square">
-  <img alt="陪女票 ✓" src="https://img.shields.io/badge/%E9%99%AA%E5%A5%B3%E7%A5%A8-%E2%9C%93-E11D48?style=flat-square">
+  <img alt="pnpm 11.19.0" src="https://img.shields.io/badge/pnpm-11.19.0-F69220?style=flat-square&logo=pnpm&logoColor=white">
 </p>
 
 <p align="center">
