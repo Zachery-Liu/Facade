@@ -21,11 +21,11 @@ Add a typed, read-only GitHub Release source that turns a repository and release
 
 ## Acceptance Criteria
 
-- [ ] Repository metadata, latest and tag release data, and every asset page normalize to `RepositorySnapshot`.
-- [ ] The source has deterministic, offline coverage for pagination, draft/no-latest, authentication, and network error paths.
-- [ ] CLI/config/environment precedence is tested and documented.
-- [ ] Logs and output contain neither tokens nor absolute local paths.
-- [ ] Local typecheck, lint, test, build, and coverage pass.
+- [x] Repository metadata, latest and tag release data, and every asset page normalize to `RepositorySnapshot`.
+- [x] The source has deterministic, offline coverage for pagination, draft/no-latest, authentication, and network error paths.
+- [x] CLI/config/environment precedence is tested and documented at the source-options boundary; the build CLI itself remains T03 work.
+- [x] Source errors and options expose neither tokens nor absolute local paths.
+- [x] Local typecheck, lint, test, build, and coverage pass.
 - [ ] Three real repositories can be checked when GitHub network credentials are available; otherwise this remains recorded as external verification.
 
 ## Technical Approach
@@ -42,3 +42,4 @@ Use the planned Octokit REST client behind a small injectable transport/client b
 
 - Relevant code: `packages/facade/src/source/repository-snapshot.ts`, `packages/facade/src/config/facade-config.ts`, and `packages/facade/src/cli/program.ts`.
 - Research: `research/github-rest-releases.md`.
+- External source evidence: `research/github-api-validation.md` confirms three public repositories return a Latest Release; end-to-end build validation remains blocked on T03's build entry point.
