@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 0,
+  "productName": "Facade Fixture",
+  "releaseTag": "v0.0.0-dev",
+  "assets": [
+    { "id": "macos-arm64", "label": "macOS Apple Silicon", "downloadUrl": "https://example.test/facade-macos-arm64.dmg", "os": "macos", "kind": "artifact", "evidence": { "os": { "source": "filename-rule", "detail": "macos token" } } },
+    { "id": "windows-x64", "label": "Windows x64", "downloadUrl": "https://example.test/facade-win-x64.exe", "os": "windows", "kind": "artifact", "evidence": { "os": { "source": "filename-rule", "detail": "win token" } } },
+    { "id": "linux-x64", "label": "Linux x64", "downloadUrl": "https://example.test/facade-linux-x64.tar.gz", "os": "linux", "kind": "artifact", "evidence": { "os": { "source": "filename-rule", "detail": "linux token" } } },
+    { "id": "checksums", "label": "Checksums", "downloadUrl": "https://example.test/checksums.txt", "os": "unknown", "kind": "checksum", "evidence": { "kind": { "source": "filename-rule", "detail": "checksum token" } } },
+    { "id": "macos-signature", "label": "macOS signature", "downloadUrl": "https://example.test/facade-macos-arm64.dmg.sig", "os": "macos", "kind": "signature", "signatureFor": "macos-arm64", "evidence": { "kind": { "source": "filename-rule", "detail": "sig suffix" } } }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 0,
+  "productName": "Conflicting Fixture",
+  "releaseTag": "v0.0.0-dev",
+  "assets": [
+    { "id": "conflicting-name", "label": "Conflicting platform filename", "downloadUrl": "https://example.test/facade-macos-win.exe", "os": "unknown", "kind": "other", "evidence": { "os": { "source": "filename-rule", "detail": "conflicting macos and win tokens" }, "kind": { "source": "filename-rule", "detail": "exe suffix conflicts with platform tokens" } } }
+  ]
+}

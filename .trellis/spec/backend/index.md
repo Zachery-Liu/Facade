@@ -8,6 +8,7 @@ These guidelines document the initial implemented Facade workspace. They must ev
 | [Database Guidelines](./database-guidelines.md) | considering persistence |
 | [Error Handling](./error-handling.md) | defining failures or selection states |
 | [Logging Guidelines](./logging-guidelines.md) | emitting CLI or Action diagnostics |
+| [Source Contracts](./source-contracts.md) | defining or consuming raw repository, release, or asset data |
 | [Quality Guidelines](./quality-guidelines.md) | writing or reviewing backend code |
 
 ## Pre-Development Checklist
