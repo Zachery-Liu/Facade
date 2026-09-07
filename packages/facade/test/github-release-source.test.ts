@@ -55,6 +55,18 @@ describe('GitHubReleaseSource', () => {
     await expect(source.getRepository()).rejects.toMatchObject({ code: 'SOURCE_NETWORK_UNAVAILABLE' });
     expect(calls).toBe(2);
   });
+
+  it('retries transient API failures but exposes a stable rate-limit error at the attempt limit', async () => {
+    let calls = 0;
+    const delays: number[] = [];
+    const source = new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 2, sleep: async (milliseconds) => { delays.push(milliseconds); }, fetch: async () => {
+      calls += 1;
+      return json({}, 429, { 'retry-after': '99' });
+    } });
+    await expect(source.getRepository()).rejects.toMatchObject({ code: 'SOURCE_RATE_LIMITED' });
+    expect(calls).toBe(2);
+    expect(delays).toEqual([1000]);
+  });
 });
 
 describe('GitHub source option precedence', () => {
@@ -80,6 +92,6 @@ describe('GitHub source option precedence', () => {
   });
 });
 
-function json(value: unknown, status = 200): Response {
-  return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
+function json(value: unknown, status = 200, headers: HeadersInit = {}): Response {
+  return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json', ...headers } });
 }

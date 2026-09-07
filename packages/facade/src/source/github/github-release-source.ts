@@ -4,6 +4,7 @@ import type { RawAsset, RawRelease, ReleaseSource, RepositoryMetadata, Repositor
 
 const DEFAULT_API_URL = 'https://api.github.com';
 const ASSETS_PER_PAGE = 100;
+const MAX_RETRY_DELAY_MS = 1_000;
 
 const RepositoryResponseSchema = z.object({ full_name: z.string(), html_url: z.string().url() }).passthrough();
 const ReleaseResponseSchema = z.object({
@@ -134,6 +135,7 @@ export class GitHubReleaseSource implements ReleaseSource {
   private statusError(status: number, kind: 'repository' | 'latest' | 'tag' | 'assets'): FacadeError {
     if (status === 401) return new FacadeError('SOURCE_AUTHENTICATION_REQUIRED', 'GitHub authentication is required to read this release source.');
     if (status === 403) return new FacadeError('SOURCE_ACCESS_DENIED', 'GitHub denied access to this release source.');
+    if (status === 429) return new FacadeError('SOURCE_RATE_LIMITED', 'GitHub rate-limited this release source.');
     if (status === 404 && kind === 'latest') return new FacadeError('SOURCE_LATEST_NOT_FOUND', 'This repository has no published latest release.');
     if (status === 404 && kind === 'tag') return new FacadeError('SOURCE_TAG_NOT_FOUND', 'The requested release tag was not found.');
     if (status === 404 && kind === 'repository') return new FacadeError('SOURCE_REPOSITORY_NOT_FOUND', 'The requested GitHub repository was not found.');
@@ -156,5 +158,6 @@ function isRetryableStatus(status: number): boolean {
 
 function retryDelay(response: Response, attempt: number): number {
   const retryAfter = Number(response.headers.get('retry-after'));
-  return Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter * 1000 : attempt * 100;
+  const delay = Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter * 1000 : attempt * 100;
+  return Math.min(delay, MAX_RETRY_DELAY_MS);
 }
