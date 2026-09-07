@@ -15,7 +15,7 @@ describe('GitHubReleaseSource', () => {
       requested.push(url);
       if (url.endsWith('/repos/owner/repository')) return json(repository);
       if (url.includes('/releases/latest')) return json(release);
-      if (url.includes('page=1')) return json(Array.from({ length: 100 }, (_, index) => asset(index + 1)));
+      if (url.endsWith('&page=1')) return json(Array.from({ length: 100 }, (_, index) => asset(index + 1)));
       return json([asset(101)]);
     } });
 
@@ -39,6 +39,13 @@ describe('GitHubReleaseSource', () => {
     await expect(auth.getRepository()).rejects.toSatisfy((error: unknown) => error instanceof FacadeError && error.code === 'SOURCE_AUTHENTICATION_REQUIRED' && !error.message.includes('secret-token'));
   });
 
+  it('classifies access denial and an absent explicitly selected tag', async () => {
+    const denied = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async () => json({}, 403) });
+    await expect(denied.getRepository()).rejects.toMatchObject({ code: 'SOURCE_ACCESS_DENIED' });
+    const missingTag = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async () => json({}, 404) });
+    await expect(missingTag.getReleaseByTag('v9')).rejects.toMatchObject({ code: 'SOURCE_TAG_NOT_FOUND' });
+  });
+
   it('retries transient network failures with a bounded attempt count', async () => {
     let calls = 0;
     const source = new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 2, sleep: async () => undefined, fetch: async () => {
@@ -58,8 +65,18 @@ describe('GitHub source option precedence', () => {
       .toEqual({ repository: 'cli/repository', strategy: 'tag', tag: 'v3', token: 'cli-token' });
   });
 
+  it('falls back from environment to config and omits absent optional values', () => {
+    expect(resolveGitHubSourceOptions(config, {})).toEqual({ repository: 'config/repository', strategy: 'github-latest' });
+    expect(resolveGitHubSourceOptions(config, { FACADE_REPOSITORY: 'environment/repository', FACADE_RELEASE_STRATEGY: 'tag', FACADE_RELEASE_TAG: 'v2', GITHUB_TOKEN: 'environment-token' }))
+      .toEqual({ repository: 'environment/repository', strategy: 'tag', tag: 'v2', token: 'environment-token' });
+  });
+
   it('requires a tag after precedence is applied', () => {
     expect(() => resolveGitHubSourceOptions(config, { FACADE_RELEASE_STRATEGY: 'tag' })).toThrow(/release tag/i);
+  });
+
+  it('rejects an unsupported environment strategy', () => {
+    expect(() => resolveGitHubSourceOptions(config, { FACADE_RELEASE_STRATEGY: 'beta' })).toThrow(/github-latest or tag/i);
   });
 });
 
