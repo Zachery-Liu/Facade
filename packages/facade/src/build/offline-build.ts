@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { h } from 'preact';
 import { render } from 'preact-render-to-string';
@@ -9,8 +9,9 @@ import { compileReleaseSnapshot } from '../compiler/release-compiler.js';
 import { validateManifestSemantics } from '../manifest/semantic-validation.js';
 
 export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; }
-export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; }
+export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; readonly cleanupRequired?: true; }
 const OUTPUT_MARKER = '.facade-output';
+const OUTPUT_MARKER_CONTENT = 'facade-output-v1\n';
 
 export async function buildOfflineRelease(options: OfflineBuildOptions): Promise<OfflineBuildResult> {
   const snapshot = await readSnapshot(options.fixturePath);
@@ -18,6 +19,7 @@ export async function buildOfflineRelease(options: OfflineBuildOptions): Promise
 }
 
 export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<OfflineBuildOptions, 'fixturePath'>): Promise<OfflineBuildResult> {
+  snapshot = RepositorySnapshotSchema.parse(snapshot);
   const manifest = compileReleaseSnapshot(snapshot);
   const diagnostics = validateManifestSemantics(manifest);
   if (diagnostics.length > 0) throw new FacadeError('BUILD_INVALID_MANIFEST', 'The compiled release manifest failed semantic validation.');
@@ -31,10 +33,10 @@ export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<O
       writeFile(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8'),
       writeFile(join(staging, 'install.md'), renderInstall(manifest.releaseTag, manifest.assets), 'utf8'),
       writeFile(join(staging, 'llms.txt'), renderLlms(manifest.releaseTag, manifest.assets, basePath), 'utf8'),
-      writeFile(join(staging, OUTPUT_MARKER), 'facade-output-v1\n', 'utf8'),
+      writeFile(join(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, 'utf8'),
     ]);
-    await replaceDirectory(staging, outDir);
-    return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'] };
+    const cleanupRequired = await replaceDirectory(staging, outDir);
+    return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}) };
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
     throw error;
@@ -47,11 +49,11 @@ async function readSnapshot(path: string): Promise<RepositorySnapshot> {
 }
 
 function normalizeBasePath(value: string): string {
-  if (!/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/.test(value)) throw new FacadeError('BUILD_INVALID_BASE_PATH', 'basePath must be an absolute site path.');
+  if (!/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/.test(value) || value.split('/').some((segment) => segment === '.' || segment === '..')) throw new FacadeError('BUILD_INVALID_BASE_PATH', 'basePath must be an absolute site path without dot segments.');
   return value === '/' ? value : value.replace(/\/+$/, '') + '/';
 }
 
-async function replaceDirectory(staging: string, outDir: string): Promise<void> {
+async function replaceDirectory(staging: string, outDir: string): Promise<boolean> {
   const backup = outDir + '.facade-backup';
   if (await exists(backup)) throw new FacadeError('BUILD_BACKUP_COLLISION', 'A previous or user-owned build backup blocks replacement.');
   if (await exists(outDir) && !(await isFacadeOutput(outDir))) throw new FacadeError('BUILD_UNOWNED_OUTPUT', 'Refusing to replace a directory not owned by Facade.');
@@ -68,14 +70,13 @@ async function replaceDirectory(staging: string, outDir: string): Promise<void> 
     if (hadOutput) await rename(backup, outDir);
     throw error;
   }
-  if (hadOutput) {
-    try { await rm(backup, { recursive: true, force: true }); }
-    catch (cause) { throw new FacadeError('BUILD_CLEANUP_REQUIRED', 'The new output is active but its previous output backup needs cleanup.', { cause }); }
-  }
+  if (!hadOutput) return false;
+  try { await rm(backup, { recursive: true, force: true }); return false; }
+  catch { return true; }
 }
 
 function isMissing(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'; }
 async function exists(path: string): Promise<boolean> { try { await access(path); return true; } catch { return false; } }
-async function isFacadeOutput(path: string): Promise<boolean> { try { return (await readdir(path)).includes(OUTPUT_MARKER); } catch { return false; } }
+async function isFacadeOutput(path: string): Promise<boolean> { try { return (await readFile(join(path, OUTPUT_MARKER), 'utf8')) === OUTPUT_MARKER_CONTENT; } catch { return false; } }
 function renderInstall(tag: string, assets: readonly { id: string; label: string; downloadUrl: string }[]): string { return '# Install ' + tag + '\n\n' + assets.map((asset) => '- [' + asset.label + ' (' + asset.id + ')](' + asset.downloadUrl + ')').join('\n') + '\n'; }
 function renderLlms(tag: string, assets: readonly { id: string; downloadUrl: string }[], basePath: string): string { return '# Release ' + tag + '\n\nBase path: ' + basePath + '\n\n' + assets.map((asset) => '- ' + asset.id + ': ' + asset.downloadUrl).join('\n') + '\n'; }

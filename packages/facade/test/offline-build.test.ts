@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -76,6 +76,27 @@ describe('offline build', () => {
   it('rejects a relative base path', async () => {
     const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-base-path-')), 'site');
     await expect(buildOfflineRelease({ fixturePath, outDir, basePath: 'project' })).rejects.toMatchObject({ code: 'BUILD_INVALID_BASE_PATH' });
+  });
+
+  it.each(['/../foo', '/./project', '/foo/../bar'])('rejects unsafe base path %s', async (basePath) => {
+    const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-base-path-')), 'site');
+    await expect(buildOfflineRelease({ fixturePath, outDir, basePath })).rejects.toMatchObject({ code: 'BUILD_INVALID_BASE_PATH' });
+  });
+
+  it('rejects a fake output marker', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-build-marker-'));
+    const outDir = join(root, 'site');
+    await mkdir(outDir);
+    await writeFile(join(outDir, '.facade-output'), 'not-facade', 'utf8');
+    await expect(buildOfflineRelease({ fixturePath, outDir })).rejects.toMatchObject({ code: 'BUILD_UNOWNED_OUTPUT' });
+  });
+
+  it('replaces a prior Facade output and removes its backup', async () => {
+    const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-replace-')), 'site');
+    await buildOfflineRelease({ fixturePath, outDir });
+    await buildOfflineRelease({ fixturePath, outDir });
+    await expect(access(outDir + '.facade-backup')).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(readFile(join(outDir, '.facade-output'), 'utf8')).resolves.toBe('facade-output-v1\n');
   });
 
   it('classifies the initial macOS, Windows, Linux, and checksum token set', () => {
