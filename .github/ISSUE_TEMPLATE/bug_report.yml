@@ -1,0 +1,95 @@
+name: Bug report (English)
+description: Report reproducible incorrect behavior in Facade
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem.
+
+        Please include enough information for someone else to reproduce it.
+        Do not include credentials, tokens, private repository contents, or other secrets.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected Facade to do instead.
+      placeholder: |
+        I expected ...
+        Instead ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest reproducible sequence you can.
+      placeholder: |
+        1. Run ...
+        2. Configure ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Facade version or commit
+      description: Use a release version or commit SHA when available.
+      placeholder: "v0.1.0 or abc1234"
+
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: If this involves the CLI, provide the command you ran.
+      placeholder: "facade build"
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other / not applicable
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: "22.x"
+
+  - type: input
+    id: package_manager
+    attributes:
+      label: Package manager
+      placeholder: "pnpm 11.19.0"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output or logs
+      description: Remove tokens, credentials, private URLs, and other sensitive information.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, sample configuration, release asset names, or other useful context.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I removed secrets and sensitive information from this report.
+          required: true

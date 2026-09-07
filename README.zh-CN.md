@@ -1,8 +1,25 @@
-# Facade
+<p align="center">
+  <img src="docs/assets/facade-logo-readme.svg" alt="Facade" width="380">
+</p>
 
-> 为人类和 Agent 设计的软件发布页。
+<p align="center"><strong>面向用户与 Agent 的软件发布页。</strong></p>
 
-[English](README.md) | 简体中文
+<p align="center">
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Zachery-Liu/Facade/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=CI"></a>
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/Zachery-Liu/Facade/codeql.yml?branch=main&style=flat-square&logo=github&logoColor=white&label=CodeQL"></a>
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/dependency-review.yml"><img alt="Dependency Review" src="https://img.shields.io/github/actions/workflow/status/Zachery-Liu/Facade/dependency-review.yml?branch=main&style=flat-square&logo=dependabot&logoColor=white&label=dependencies"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Zachery-Liu/Facade?style=flat-square&label=license"></a>
+  <br>
+  <a href="https://github.com/Zachery-Liu/Facade/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/Zachery-Liu/Facade?style=flat-square&logo=github&label=issues"></a>
+  <a href="https://github.com/Zachery-Liu/Facade/pulls"><img alt="Open pull requests" src="https://img.shields.io/github/issues-pr/Zachery-Liu/Facade?style=flat-square&logo=github&label=PRs"></a>
+  <a href="https://github.com/Zachery-Liu/Facade/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Zachery-Liu/Facade?style=flat-square&logo=git&label=last%20commit"></a>
+  <img alt="Status: v0.1 planning" src="https://img.shields.io/badge/status-v0.1%20planning-2563EB?style=flat-square">
+  <img alt="陪女票 ✓" src="https://img.shields.io/badge/%E9%99%AA%E5%A5%B3%E7%A5%A8-%E2%9C%93-E11D48?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> · 简体中文
+</p>
 
 Facade 将 GitHub Release 转化为静态、易维护的下载页，并生成一组可供机器读取的安装元数据。安装包始终直接托管在 GitHub Releases；Facade 负责归一化和呈现分发事实，但不代理软件下载，也不替用户或 Agent 作出安装和信任决策。
 
@@ -15,7 +32,7 @@ Facade 处于 v0.1 实施规划阶段。仓库目前包含产品基线、实施�
 - 为单个选定的公开 GitHub Release 生成静态下载页。
 - 为 macOS、Windows 和 Linux 的 Release 附件提供直连下载。
 - 归一化附件元数据：操作系统、架构、格式、用途、兼容条件、证据来源和选择理由。
-- 以同一份 `ReleasePageManifest` 生成人类页面及三个 Agent 入口：`manifest.json`、`install.md`、`llms.txt`。
+- 以同一份 `ReleasePageManifest` 生成面向用户的页面及三个 Agent 入口：`manifest.json`、`install.md`、`llms.txt`。
 - 提供 `facade init`、`facade inspect`、`facade build` 命令。
 - 为独立发布和既有 CI 流水线提供 GitHub Action 模板，并部署至 GitHub Pages。
 
@@ -38,7 +55,7 @@ Classifier -> 覆盖规则 -> 选择器 -> ReleasePageManifest
                    |
      +-------------+-------------+
      |                           |
-人类界面渲染器                  Agent 发布器
+用户界面渲染器                  Agent 发布器
 HTML / CSS / JS     manifest.json / install.md / llms.txt
      |                           |
      +-------------+-------------+
@@ -56,6 +73,8 @@ Release 附件 + .github/facade.yml
               -> HTML + manifest.json + install.md + llms.txt
               -> GitHub Pages
 ```
+
+Facade 还计划提供一个紧凑的 `Released with Facade` 徽章，供维护者放在 GitHub Release 描述中。点击徽章后应直接打开该版本对应的 Facade 下载页。这个徽章用于导航和归属展示，不承担下载代理功能；如果未来提供自动写入 Release 描述的能力，也应当由维护者显式选择启用。
 
 预期的最小配置如下：
 
@@ -82,6 +101,7 @@ v0.1 明确不包含私有仓库、数据库、账号、支付、下载代理/CD
 ## 文档
 
 - [产品基线](docs/facade_product_plan.md)：产品范围、架构、契约、交互、Action 行为与验收标准。
+- [质量门禁](docs/quality-gates.zh-CN.md)：CI 检查与当前 `main` 合并规则配置。
 - [实施计划](docs/implementation_plan.md)：按依赖排序的任务包、验证矩阵和发布门槛。
 - [Trellis 工作流](.trellis/workflow.md)：项目任务生命周期与 AI 协作流程。
 

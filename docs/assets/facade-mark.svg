@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blue" x1="67" y1="44" x2="148" y2="218" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#45A7FF"/>
+      <stop offset="0.52" stop-color="#1F7BFF"/>
+      <stop offset="1" stop-color="#145BE8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="138" y1="109" x2="216" y2="165" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DCE7FF"/>
+      <stop offset="0.5" stop-color="#BFD1FA"/>
+      <stop offset="1" stop-color="#91ACEA"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M52 78
+           Q52 71 58 68
+           L174 10
+           Q181 7 181 15
+           V67
+           Q181 73 176 76
+           L119 108
+           V230
+           Q119 237 113 233
+           L58 201
+           Q52 198 52 191
+           Z"
+        fill="url(#blue)"/>
+
+  <path d="M133 118
+           Q133 112 139 109
+           L210 72
+           Q216 69 216 76
+           V126
+           Q216 132 211 135
+           L139 173
+           Q133 176 133 169
+           Z"
+        fill="url(#panel)"/>
+</svg>
