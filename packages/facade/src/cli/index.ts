@@ -2,4 +2,4 @@
 
 import { createProgram } from './program.js';
 
-createProgram().parse();
+createProgram().parseAsync();
