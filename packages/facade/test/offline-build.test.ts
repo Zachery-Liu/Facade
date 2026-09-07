@@ -20,11 +20,18 @@ describe('offline build', () => {
     expect(manifest.releaseTag).toBe('v2.100.0');
     expect(manifest.assets.map((asset) => [asset.id, asset.os, asset.kind])).toEqual([['macos-arm64', 'unknown', 'other'], ['windows-x64', 'unknown', 'other'], ['linux-x64', 'linux', 'artifact'], ['checksums', 'unknown', 'checksum']]);
     for (const asset of manifest.assets) {
+      expect(html).toContain('data-asset-id="' + asset.id + '"');
       expect(html).toContain(asset.downloadUrl);
       expect(install).toContain(asset.downloadUrl);
       expect(llms).toContain(asset.downloadUrl);
     }
     expect(llms).toContain('Base path: /project/');
+  });
+
+  it('normalizes the root base path explicitly', async () => {
+    const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-root-')), 'site');
+    await expect(buildOfflineRelease({ fixturePath, outDir, basePath: '/' })).resolves.toMatchObject({ basePath: '/' });
+    await expect(readFile(join(outDir, 'llms.txt'), 'utf8')).resolves.toContain('Base path: /');
   });
 
   it('preserves existing output when fixture validation fails', async () => {

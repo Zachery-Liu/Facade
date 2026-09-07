@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { h } from 'preact';
 import { render } from 'preact-render-to-string';
@@ -44,6 +44,7 @@ function normalizeBasePath(value: string): string {
 
 async function replaceDirectory(staging: string, outDir: string): Promise<void> {
   const backup = outDir + '.facade-backup';
+  if (!(await exists(outDir)) && await exists(backup)) await rename(backup, outDir);
   await rm(backup, { recursive: true, force: true });
   let hadOutput = false;
   try {
@@ -62,5 +63,6 @@ async function replaceDirectory(staging: string, outDir: string): Promise<void> 
 }
 
 function isMissing(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'; }
+async function exists(path: string): Promise<boolean> { try { await access(path); return true; } catch { return false; } }
 function renderInstall(tag: string, assets: readonly { id: string; label: string; downloadUrl: string }[]): string { return '# Install ' + tag + '\n\n' + assets.map((asset) => '- [' + asset.label + ' (' + asset.id + ')](' + asset.downloadUrl + ')').join('\n') + '\n'; }
 function renderLlms(tag: string, assets: readonly { id: string; downloadUrl: string }[], basePath: string): string { return '# Release ' + tag + '\n\nBase path: ' + basePath + '\n\n' + assets.map((asset) => '- ' + asset.id + ': ' + asset.downloadUrl).join('\n') + '\n'; }
