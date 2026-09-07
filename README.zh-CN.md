@@ -5,6 +5,12 @@
 <p align="center"><strong>面向用户与 Agent 的软件发布页。</strong></p>
 
 <p align="center">
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Zachery-Liu/Facade/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Zachery-Liu/Facade/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg"></a>
+</p>
+
+<p align="center">
   <a href="README.md">English</a> · 简体中文
 </p>
 
@@ -60,6 +66,8 @@ Release 附件 + .github/facade.yml
               -> HTML + manifest.json + install.md + llms.txt
               -> GitHub Pages
 ```
+
+Facade 还计划提供一个紧凑的 `Released with Facade` 徽章，供维护者放在 GitHub Release 描述中。点击徽章后应直接打开该版本对应的 Facade 下载页。这个徽章用于导航和归属展示，不承担下载代理功能；如果未来提供自动写入 Release 描述的能力，也应当由维护者显式选择启用。
 
 预期的最小配置如下：
 
