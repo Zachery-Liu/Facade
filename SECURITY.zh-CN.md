@@ -8,7 +8,9 @@
 
 请不要通过公开 GitHub Issue 报告安全漏洞。
 
-如果仓库提供 GitHub Private Vulnerability Reporting 或 Security Advisory 报告入口，请优先使用这些私密渠道。
+请前往 [GitHub Security Advisories](https://github.com/Zachery-Liu/Facade/security/advisories)，选择 **Report a vulnerability**，通过 GitHub 的私密漏洞报告渠道提交。
+
+在问题完成评估，并在适当情况下提供修复或缓解措施之前，请不要公开披露漏洞细节。
 
 提交安全报告时，请尽量包含：
 
