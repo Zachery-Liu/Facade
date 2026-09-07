@@ -7,12 +7,6 @@
 - Never include unrelated or unrecognized working-tree changes in a commit.
 - Start every new feature or Trellis task on a dedicated branch created from its approved base branch. Make each feature's changes only on its dedicated branch; do not implement new feature work directly on main or reuse another feature's branch.
 
-## Terminal recovery
-
-- If Codex reports `setup refresh had errors`, do not infer that this repository or Trellis is unreadable or uninitialized.
-- Request elevated command execution and retry a read-only context command such as `python .\.trellis\scripts\get_context.py`.
-- If elevated execution is unavailable, report an environment-level blocker; do not present restarting Codex as the only recovery path.
-
 <!-- TRELLIS:START -->
 # Trellis Instructions
 
