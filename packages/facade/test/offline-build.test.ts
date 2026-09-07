@@ -26,12 +26,14 @@ describe('offline build', () => {
       expect(llms).toContain(asset.downloadUrl);
     }
     expect(llms).toContain('Base path: /project/');
+    expect(html).toContain('href="/project/manifest.json"');
   });
 
   it('normalizes the root base path explicitly', async () => {
     const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-root-')), 'site');
     await expect(buildOfflineRelease({ fixturePath, outDir, basePath: '/' })).resolves.toMatchObject({ basePath: '/' });
     await expect(readFile(join(outDir, 'llms.txt'), 'utf8')).resolves.toContain('Base path: /');
+    await expect(readFile(join(outDir, 'index.html'), 'utf8')).resolves.toContain('href="/manifest.json"');
   });
 
   it('preserves existing output when fixture validation fails', async () => {
@@ -51,6 +53,15 @@ describe('offline build', () => {
     await writeFile(join(backup, 'user-data.txt'), 'preserve me', 'utf8');
     await expect(buildOfflineRelease({ fixturePath, outDir })).rejects.toMatchObject({ code: 'BUILD_BACKUP_COLLISION' });
     await expect(readFile(join(backup, 'user-data.txt'), 'utf8')).resolves.toBe('preserve me');
+  });
+
+  it('refuses to replace a non-Facade output directory', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-build-unowned-'));
+    const outDir = join(root, 'site');
+    await mkdir(outDir);
+    await writeFile(join(outDir, 'user-data.txt'), 'preserve me', 'utf8');
+    await expect(buildOfflineRelease({ fixturePath, outDir })).rejects.toMatchObject({ code: 'BUILD_UNOWNED_OUTPUT' });
+    await expect(readFile(join(outDir, 'user-data.txt'), 'utf8')).resolves.toBe('preserve me');
   });
 
   it('rejects semantic manifest violations at the shared build boundary', async () => {

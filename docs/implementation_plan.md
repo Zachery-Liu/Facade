@@ -106,7 +106,7 @@ v0.1 保证串行部署、完整产物、构建失败不替换线上站点；不
 
 ### T03 — 最小离线闭环
 
-首批样本只支持明确 token 的 macOS ARM64 DMG、Windows x64 EXE、Linux x64 归档与 checksum 文件。实现 fixture 输入、基础分类和编译，输出基础 HTML、manifest.json、install.md、llms.txt；实现 basePath、保留路径和原子产物替换。
+首批样本只支持明确 token 的 macOS ARM64 DMG、Windows x64 EXE、Linux x64 归档与 checksum 文件。实现 fixture 输入、基础分类和编译，输出基础 HTML、manifest.json、install.md、llms.txt；实现 basePath、保留路径和 staged replacement：仅替换带 Facade marker 的已有输出，未知目标或 backup 碰撞失败关闭，普通失败回滚。
 
 **完成条件：** 四种输出共享版本、Asset ID 和下载 URL；根路径及项目子路径可用；无 JavaScript 时仍可下载；任一输出失败不替换旧产物。
 
