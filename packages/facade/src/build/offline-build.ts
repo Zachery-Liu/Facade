@@ -6,13 +6,20 @@ import { FacadeError } from '../runtime/facade-error.js';
 import { RepositorySnapshotSchema, type RepositorySnapshot } from '../source/repository-snapshot.js';
 import { ReleasePage } from '../themes/product/components/release-page.js';
 import { compileReleaseSnapshot } from '../compiler/release-compiler.js';
+import { validateManifestSemantics } from '../manifest/semantic-validation.js';
 
 export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; }
 export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; }
 
 export async function buildOfflineRelease(options: OfflineBuildOptions): Promise<OfflineBuildResult> {
   const snapshot = await readSnapshot(options.fixturePath);
+  return buildRelease(snapshot, options);
+}
+
+export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<OfflineBuildOptions, 'fixturePath'>): Promise<OfflineBuildResult> {
   const manifest = compileReleaseSnapshot(snapshot);
+  const diagnostics = validateManifestSemantics(manifest);
+  if (diagnostics.length > 0) throw new FacadeError('BUILD_INVALID_MANIFEST', 'The compiled release manifest failed semantic validation.');
   const basePath = normalizeBasePath(options.basePath ?? '/');
   const outDir = resolve(options.outDir);
   await mkdir(dirname(outDir), { recursive: true });
@@ -38,14 +45,13 @@ async function readSnapshot(path: string): Promise<RepositorySnapshot> {
 }
 
 function normalizeBasePath(value: string): string {
-  if (!value.startsWith('/')) throw new FacadeError('BUILD_INVALID_BASE_PATH', 'basePath must start with /.');
+  if (!/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/.test(value)) throw new FacadeError('BUILD_INVALID_BASE_PATH', 'basePath must be an absolute site path.');
   return value === '/' ? value : value.replace(/\/+$/, '') + '/';
 }
 
 async function replaceDirectory(staging: string, outDir: string): Promise<void> {
   const backup = outDir + '.facade-backup';
-  if (!(await exists(outDir)) && await exists(backup)) await rename(backup, outDir);
-  await rm(backup, { recursive: true, force: true });
+  if (await exists(backup)) throw new FacadeError('BUILD_BACKUP_COLLISION', 'A previous or user-owned build backup blocks replacement.');
   let hadOutput = false;
   try {
     await rename(outDir, backup);
@@ -55,11 +61,11 @@ async function replaceDirectory(staging: string, outDir: string): Promise<void> 
   }
   try {
     await rename(staging, outDir);
-    if (hadOutput) await rm(backup, { recursive: true, force: true });
   } catch (error) {
     if (hadOutput) await rename(backup, outDir);
     throw error;
   }
+  if (hadOutput) await rm(backup, { recursive: true, force: true }).catch(() => undefined);
 }
 
 function isMissing(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'; }

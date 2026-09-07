@@ -10,9 +10,6 @@
   "files": [
     "dist"
   ],
-  "engines": {
-    "node": ">=22.12.0"
-  },
   "scripts": {
     "build": "tsup",
     "lint": "eslint src test --max-warnings=0",

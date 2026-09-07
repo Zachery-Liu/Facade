@@ -17,7 +17,7 @@ Turn a checked-in repository snapshot fixture into a deterministic static releas
 - Write `index.html`, `manifest.json`, `install.md`, and `llms.txt`; every output must share the release tag, asset IDs, and download URLs.
 - Render useful, semantic download links in HTML without JavaScript.
 - Normalize root and project-subpath `basePath` values without changing GitHub download URLs.
-- Replace an output directory only after all outputs have been generated successfully; ordinary failures roll back and a later build recovers an interrupted replacement.
+- Replace an output directory only after all outputs have been generated successfully; ordinary failures roll back, while an interrupted or colliding backup fails closed for manual recovery.
 - Provide CLI support for fixture input, output directory, and base path.
 - Test all behavior offline, including root/subpath behavior and failed-build preservation.
 
@@ -27,7 +27,7 @@ Turn a checked-in repository snapshot fixture into a deterministic static releas
 - [x] macOS ARM64 DMG, Windows x64 EXE, Linux x64 archives, and checksum assets receive the expected initial classification.
 - [x] The generated HTML contains usable direct download anchors without JavaScript.
 - [x] Root and project-subpath builds have correct internal output paths while retaining original download URLs.
-- [x] A build error does not replace an existing output directory; replacement is crash-recoverable rather than falsely advertised as a cross-platform atomic directory swap.
+- [x] A build error does not replace an existing output directory; replacement fails closed on an interrupted/unknown backup rather than falsely advertising a cross-platform atomic directory swap.
 - [x] `facade build --fixture ... --out-dir ... --base-path ...` works from the compiled CLI.
 - [x] typecheck, lint, test, build, and coverage pass.
 

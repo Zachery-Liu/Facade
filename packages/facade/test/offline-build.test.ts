@@ -1,10 +1,10 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { buildOfflineRelease } from '../src/build/offline-build.js';
+import { buildOfflineRelease, buildRelease } from '../src/build/offline-build.js';
 import { compileReleaseSnapshot } from '../src/compiler/release-compiler.js';
 
 const fixturePath = fileURLToPath(new URL('../../../fixtures/repositories/basic-release.source.json', import.meta.url));
@@ -41,6 +41,25 @@ describe('offline build', () => {
     await writeFile(join(root, 'broken.json'), '{}', 'utf8');
     await expect(buildOfflineRelease({ fixturePath: join(root, 'broken.json'), outDir })).rejects.toMatchObject({ code: 'BUILD_INVALID_FIXTURE' });
     await expect(readFile(join(outDir, 'manifest.json'), 'utf8')).resolves.toContain('v2.100.0');
+  });
+
+  it('fails closed without deleting an unknown backup collision', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-build-backup-'));
+    const outDir = join(root, 'site');
+    const backup = outDir + '.facade-backup';
+    await mkdir(backup);
+    await writeFile(join(backup, 'user-data.txt'), 'preserve me', 'utf8');
+    await expect(buildOfflineRelease({ fixturePath, outDir })).rejects.toMatchObject({ code: 'BUILD_BACKUP_COLLISION' });
+    await expect(readFile(join(backup, 'user-data.txt'), 'utf8')).resolves.toBe('preserve me');
+  });
+
+  it('rejects semantic manifest violations at the shared build boundary', async () => {
+    const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-semantic-')), 'site');
+    const snapshot = { repository: { fullName: 'owner/repo', htmlUrl: 'https://github.com/owner/repo' }, release: { id: '1', tagName: 'v1', name: 'Release', draft: false, prerelease: false }, assets: [
+      { id: 'one', name: 'one.bin', downloadUrl: 'https://example.test/shared', size: 1 },
+      { id: 'two', name: 'two.bin', downloadUrl: 'https://example.test/shared', size: 1 },
+    ] };
+    await expect(buildRelease(snapshot, { outDir })).rejects.toMatchObject({ code: 'BUILD_INVALID_MANIFEST' });
   });
 
   it('rejects a relative base path', async () => {
