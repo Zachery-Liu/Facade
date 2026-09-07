@@ -5,6 +5,12 @@
 <p align="center"><strong>Software releases for humans and agents.</strong></p>
 
 <p align="center">
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Zachery-Liu/Facade/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/Zachery-Liu/Facade/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Zachery-Liu/Facade/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg"></a>
+</p>
+
+<p align="center">
   <a href="README.zh-CN.md">简体中文</a> · English
 </p>
 
@@ -77,6 +83,12 @@ Release assets + .github/facade.yml
               -> HTML + manifest.json + install.md + llms.txt
               -> GitHub Pages
 ```
+
+Facade also intends to provide a compact `Released with Facade` badge that
+maintainers can place in GitHub Release notes. Clicking the badge should open
+the Facade-generated download page for that release. The badge is a navigation
+and attribution affordance, not a download proxy; any future automatic insertion
+into release notes should be explicit opt-in.
 
 The intended minimal configuration is:
 
