@@ -6,6 +6,7 @@
     "build": "pnpm --filter @facade/cli build",
     "lint": "pnpm --filter @facade/cli lint",
     "test": "pnpm --filter @facade/cli test",
+    "coverage": "pnpm --filter @facade/cli coverage",
     "typecheck": "pnpm --filter @facade/cli typecheck"
   }
 }

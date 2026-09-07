@@ -5,7 +5,12 @@
 - When the user asks to commit (including “提交”), create Conventional Commits for the requested work and push the resulting branch to its configured remote.
 - Do not push only when the user explicitly says not to push (for example, “不要推送” or “不推送”).
 - Never include unrelated or unrecognized working-tree changes in a commit.
-- Start every new feature or Trellis task on a dedicated branch created from its approved base branch. Make each feature's changes only on its dedicated branch; do not implement new feature work directly on main or reuse another feature's branch.
+
+## Branch workflow
+
+- Start each independent new feature or Trellis task on a dedicated branch created from its approved base branch. Do not implement independent feature work directly on main.
+- A CI fix, review change, rebase, or documentation correction for an unmerged pull request is part of that pull request's workstream, even if Trellis records it as a follow-up task. Keep that work on the existing pull request branch; do not create a child branch unless the user explicitly requests one or the scope is independent.
+- If no relevant pull request is open, use a dedicated branch for the new work.
 
 <!-- TRELLIS:START -->
 # Trellis Instructions
