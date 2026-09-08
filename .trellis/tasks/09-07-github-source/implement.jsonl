@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend development checklist"}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Source and test module placement"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Stable source error contract"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Credential-safe diagnostics"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Offline test and quality gate contract"}
+{"file":".trellis/tasks/09-07-github-source/research/github-rest-releases.md","reason":"GitHub API and pagination constraints"}

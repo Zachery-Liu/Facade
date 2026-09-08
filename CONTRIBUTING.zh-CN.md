@@ -39,6 +39,8 @@ pnpm coverage
 
 针对 `main` 的 Pull Request 也会在 GitHub Actions 中执行对应检查。
 
+完整的必需检查与合并规则请参阅 [GitHub 质量门禁](docs/quality-gates.zh-CN.md)。
+
 ## AI 与 Agent 贡献者
 
 Facade 支持使用 AI 编码 Agent 参与开发，但 Agent 不应只读取仓库代码后就直接开始修改。

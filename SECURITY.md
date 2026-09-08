@@ -6,7 +6,9 @@
 
 Please do not report security vulnerabilities through public GitHub issues.
 
-Use GitHub's private vulnerability reporting or security advisory reporting mechanism for this repository whenever available.
+Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/Zachery-Liu/Facade/security/advisories) by selecting **Report a vulnerability**.
+
+Please do not disclose vulnerability details publicly until the issue has been reviewed and, when appropriate, a fix or mitigation is available.
 
 When reporting a vulnerability, please include:
 

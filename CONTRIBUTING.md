@@ -37,6 +37,8 @@ pnpm coverage
 
 GitHub Actions runs the equivalent checks for pull requests to `main`.
 
+For the complete required-check and merge policy, see [GitHub Quality Gates](docs/quality-gates.md).
+
 ## AI and agent contributors
 
 Facade supports development with AI coding agents, but agents should not work from repository contents alone.

@@ -162,3 +162,56 @@ Use separate existence checks as concurrency control.
 #### Correct
 
 Acquire the adjacent lock atomically, re-check ownership and backup state while holding it, then publish.
+
+## Scenario: GitHub release adapter
+
+### 1. Scope / Trigger
+
+Use this boundary when GitHub REST responses are converted into `ReleaseSource` values.
+
+### 2. Signatures
+
+```ts
+GitHubReleaseSource.getSnapshot('github-latest'): Promise<RepositorySnapshot>
+GitHubReleaseSource.getSnapshot('tag', tag): Promise<RepositorySnapshot>
+resolveGitHubSourceOptions(config, environment, cli): GitHubSourceOptions
+```
+
+### 3. Contracts
+
+- Parse JSON and provider fields, then validate every mapped value with the neutral Source schemas.
+- Return `github-latest` without a tag; return `tag` only with a non-empty tag.
+- Treat `403` with exhausted rate-limit headers and every `429` as rate limiting.
+- Never retry before `retry-after` or `x-ratelimit-reset`; fail immediately when the requested delay exceeds the bounded local wait.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+| --- | --- |
+| Malformed JSON or invalid mapped URL/name/ID | `SOURCE_INVALID_RESPONSE` with cause |
+| `403` without rate-limit evidence | `SOURCE_ACCESS_DENIED` |
+| `403` with exhausted limit or `429` | `SOURCE_RATE_LIMITED` |
+| Retry count outside 1–10 | `SOURCE_INVALID_RETRY_POLICY` |
+| Tagged selection without a tag | `SOURCE_TAG_REQUIRED` |
+
+### 5. Good / Base / Bad Cases
+
+- Good: a valid GitHub page maps immediately to HTTP(S)-only neutral assets.
+- Base: a short `5xx` retry delay is honored within the attempt bound.
+- Bad: cap a server-requested long wait and retry early, or pass `z.url()` output directly as an HTTP(S) Source URL.
+
+### 6. Tests Required
+
+- Cover malformed JSON and a provider URL rejected by the neutral schema.
+- Distinguish ordinary `403` from rate-limited `403` and do not retry a long server delay.
+- Assert lower-precedence tags are omitted when the resolved strategy is `github-latest`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+Assume provider-shape validation is equivalent to the neutral Source contract.
+
+#### Correct
+
+Validate the mapped repository, release, assets, and final snapshot through their shared schemas before returning.
