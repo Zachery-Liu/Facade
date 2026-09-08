@@ -1,0 +1,120 @@
+# Action and Pages Contracts
+
+## Scenario: Bundled Action and fresh Pages input
+
+### 1. Scope / Trigger
+
+Use this contract whenever changing the root `action.yml`,
+`src/action/`, live GitHub build orchestration, the checked-in Action bundle, or
+the Pages workflow templates. These files cross configuration, GitHub REST,
+atomic output, Action runtime, and Pages deployment boundaries.
+
+### 2. Signatures
+
+```ts
+buildFreshGitHubRelease({
+  configPath,
+  outDir,
+  basePath,
+  environment,
+  overrides,
+}): Promise<{
+  basePath: string;
+  files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt'];
+  releaseTag: string;
+  attempts: 1 | 2;
+  cleanupRequired?: true;
+}>
+
+runAction(core, dependencies?): Promise<void>
+```
+
+The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
+`out-dir`, and `token`; it declares outputs `output-path` and `release-tag`.
+
+### 3. Contracts
+
+* Runtime: `action.yml` uses Node 24 and points at the checked-in bundled CJS
+  entry. The CJS format is intentional: transitive toolkit dependencies use
+  dynamic Node built-in `require` calls that fail in an ESM bundle.
+* Packaging: the Action bundle contains every non-built-in runtime dependency.
+  A consuming repository must not install pnpm or Facade dependencies.
+* Precedence: Action overrides, then environment, then validated YAML config.
+  A non-empty `tag` input selects the exact-tag strategy.
+* Source: honor `GITHUB_API_URL` for GitHub Enterprise and use `GITHUB_TOKEN`
+  only through the source adapter. Mask Action token input before work begins.
+* Freshness: fingerprint exact config source, resolved source options, and the
+  normalized snapshot before and after publication. One mismatch causes one
+  rebuild; a mismatch on the second attempt fails.
+* Outputs: write both outputs only after a stable successful build. Never put
+  tokens or absolute paths into errors or annotations.
+* Pages: workflows configure Pages before building, pass `base_path`, upload
+  the entire output directory as one Pages artifact, and deploy in a dependent
+  job with `pages: write`, `id-token: write`, and `github-pages` environment.
+* Concurrency: use one site-level concurrency group with cancellation so older
+  refreshes cannot deploy later than the superseding workflow.
+* Unpublished Action: examples use an accessible immutable commit, never a
+  fictional major tag. The standalone release workflow explicitly checks out
+  the repository default branch; the CI-chain example depends on the job that
+  finishes every Release asset upload.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+| --- | --- |
+| Configuration cannot be read | `CONFIG_READ_FAILED`; omit its path |
+| YAML or schema is invalid | `CONFIG_INVALID`; preserve cause internally |
+| Inputs differ after first build | warn `FACADE_INPUT_CHANGED`, rebuild once |
+| Inputs differ after second build | `BUILD_INPUT_CHANGED_REPEATEDLY`; no upload/deploy |
+| Atomic publish leaves recovery directories | success plus `FACADE_OUTPUT_CLEANUP_REQUIRED` warning |
+| Known `FacadeError` reaches Action | failure contains stable code and safe message |
+| Unexpected error reaches Action | `ACTION_UNEXPECTED_FAILURE`; hide raw details |
+
+### 5. Good / Base / Bad Cases
+
+* Good: a project-site workflow passes `/repository`, the snapshot is stable,
+  and the Action returns the exact release tag after one build.
+* Base: `configure-pages` returns an empty root path; Facade normalizes it to
+  `/`, builds all four public files, and uploads the containing directory.
+* Bad: release assets mutate in both build attempts; fail before
+  `upload-pages-artifact` rather than deploy an arbitrarily stale snapshot.
+
+### 6. Tests Required
+
+* Parse `action.yml` and both workflow templates, asserting runtime, declared
+  inputs/outputs, official Pages actions, dependency edges, permissions,
+  environment, whole-output path, and concurrency.
+* Copy the built Action entry into a temporary directory without
+  `node_modules`; executing it must load successfully far enough to emit the
+  expected Action failure protocol.
+* Unit-test Action input mapping, secret masking, outputs, stable error codes,
+  freshness warnings, and deferred-cleanup warnings.
+* Unit-test stable input, one mutation, repeated mutation, YAML failures,
+  `GITHUB_API_URL`, and the shared `buildRelease` publication boundary.
+* Run typecheck, lint, test, build, and coverage after regenerating the bundle.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```yaml
+- uses: facade/action@v1
+- run: pnpm install && pnpm facade build
+```
+
+This invents an unpublished tag and assumes consumer tooling. Likewise, a
+separate `release.published` workflow is not a valid continuation for Releases
+created with the repository `GITHUB_TOKEN`.
+
+#### Correct
+
+```yaml
+- uses: Zachery-Liu/Facade@<accessible-immutable-commit>
+  id: facade
+- uses: actions/upload-pages-artifact@v4
+  with:
+    path: ${{ steps.facade.outputs.output-path }}
+```
+
+For existing release CI, place this build job after the asset-upload job with
+`needs`, then deploy from a second dependent job.

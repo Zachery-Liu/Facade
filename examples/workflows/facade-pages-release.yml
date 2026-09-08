@@ -1,0 +1,60 @@
+# Facade is pinned to the first unpublished T05a implementation commit. Replace
+# it only with another immutable commit that is accessible to this repository.
+name: Publish Facade release pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  push:
+    branches: [main] # Replace when the repository default branch is not main.
+    paths:
+      - .github/facade.yml
+      - .github/facade/**
+      - .github/workflows/facade-pages.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: facade-pages-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the site configuration branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Build the complete Facade site
+        id: facade
+        uses: Zachery-Liu/Facade@992e3eb68562941eee73c75da32b07b8e08b5851
+        with:
+          config: .github/facade.yml
+          base-path: ${{ steps.pages.outputs.base_path || '/' }}
+          token: ${{ github.token }}
+      - name: Upload the complete Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ steps.facade.outputs.output-path }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
