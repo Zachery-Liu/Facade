@@ -39,7 +39,7 @@ Facade **不代理软件下载、不凭空制造信任，也不会静默执行�
 - GitHub Release Source，可读取仓库元数据、latest/tag Release，并分页获取附件；
 - 稳定的 Source 错误码、有界重试，以及内部 Source → Build 集成路径。
 
-当前公开 CLI 仍然刻意保持很小：`facade build` 目前从离线
+当前 CLI surface 仍然刻意保持很小：`facade build` 目前从离线
 RepositorySnapshot fixture 构建。在线 GitHub CLI 接入、GitHub
 Action / Pages、完整分类与人工覆盖、共享 Selector、`inspect`、Product
 Theme，以及完整 Agent 契约仍属于 v0.1 后续工作。
@@ -79,17 +79,18 @@ User UI + Agent Interface
 首版主要验证常见桌面软件与 CLI 分发目标：
 
 - **操作系统：** macOS、Windows、Linux
-- **架构：** x64、arm64、universal；条件允许时支持 x86
+- **架构：** x64、arm64、universal
 - **格式：** dmg、pkg、exe、msi、zip、tar.gz、deb、rpm、AppImage
 
 分类必须保持保守：未知就是未知；文件名推断不等同于维护者声明；分类和推荐是两件不同的事。
 
 ## 当前开发 CLI
 
-当前 CLI 主要用于开发阶段的 fixture 构建：
+当前 CLI 主要用于开发阶段的 fixture 构建。从一个全新的仓库 checkout 开始时，先构建 CLI，再直接调用生成后的入口：
 
 ```bash
-facade build \
+pnpm build
+node packages/facade/dist/index.js build \
   --fixture <repository-snapshot.json> \
   --out-dir dist \
   --base-path /
@@ -180,13 +181,13 @@ Installer 或 Store-like UX 只属于很远期的可选探索，并不是当前�
 Facade 仍处于足够早的阶段，协议与数据模型还可以根据真实使用情况演进。Issues、实现反馈、
 fixtures、Source Adapter、构建系统集成、Conformance、独立 Consumer 等贡献都很有价值。
 
-如果准备提出较大的语义或协议改动，建议先参考产品基线与 Roadmap，再讨论具体实现。
+如果准备提出较大的语义或协议改动，建议先参考产品/设计基线与 Roadmap，再根据当前实施计划的优先级规则确认实现约束。
 
 ## 文档
 
-- [开发文档索引](docs/README.md)：开发与设计文档入口及约定。
-- [产品基线](docs/facade_product_plan.md)：产品范围、语义、架构、契约、UX 与验收标准。
-- [实施计划](docs/implementation_plan.md)：按依赖排序的 v0.1 执行计划与发布门槛。
+- [开发文档索引](docs/README.md)：开发与设计文档入口、当前实现边界和文档优先级约定。
+- [产品/设计基线](docs/facade_product_plan.md)：更广泛的产品范围、语义、架构与 UX 方向；较旧的实现级示例可能已被实施计划或代码取代。
+- [实施计划](docs/implementation_plan.md)：当前 v0.1 行为冻结、按依赖排序的执行计划与发布门槛。
 - [Roadmap](docs/roadmap.md)：从 Distribution Intelligence 到开放软件分发协议与生态的长期方向。
 - [Roadmap（简体中文）](docs/roadmap.zh-CN.md)：Roadmap 中文同步版本。
 - [质量门禁](docs/quality-gates.zh-CN.md)：CI 检查与当前合并规则。
