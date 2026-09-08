@@ -2,4 +2,4 @@
 {"file":".trellis/spec/backend/error-handling.md","reason":"Stable source error contract"}
 {"file":".trellis/spec/backend/logging-guidelines.md","reason":"Credential-safe diagnostics"}
 {"file":".trellis/spec/backend/quality-guidelines.md","reason":"Offline test and quality gate contract"}
-{"file":".trellis/tasks/09-07-github-source/research/github-rest-releases.md","reason":"GitHub API and pagination constraints"}
+{"file":".trellis/tasks/archive/2026-09/09-07-github-source/research/github-rest-releases.md","reason":"GitHub API and pagination constraints"}

@@ -27,14 +27,14 @@ release-source work builds on those contracts.
 
 ## Acceptance Criteria
 
-* [ ] `packages/facade/package.json` has exactly one Node engine declaration.
-* [ ] CI runs package checks on 22.13.0 and current 22.
-* [ ] The lockfile resolves the `tsup` build path without esbuild 0.27.7.
-* [ ] Duplicate asset IDs parse structurally and are reported once as semantic
+* [x] `packages/facade/package.json` has exactly one Node engine declaration.
+* [x] CI runs package checks on 22.13.0 and current 22.
+* [x] The lockfile resolves the `tsup` build path without esbuild 0.27.7.
+* [x] Duplicate asset IDs parse structurally and are reported once as semantic
   diagnostics.
-* [ ] Strict release strategy tests reject inconsistent configurations.
-* [ ] The versioned ruleset includes the live extra-approval parameter.
-* [ ] Lint, typecheck, tests, build, and coverage pass.
+* [x] Strict release strategy tests reject inconsistent configurations.
+* [x] The versioned ruleset includes the live extra-approval parameter.
+* [x] Lint, typecheck, tests, build, and coverage pass.
 
 ## Technical Approach
 
