@@ -10,7 +10,6 @@ inputs:
   repository:
     description: GitHub repository in owner/repository form.
     required: false
-    default: ${{ github.repository }}
   tag:
     description: Optional exact release tag override.
     required: false
@@ -25,7 +24,6 @@ inputs:
   token:
     description: Token used to read the selected GitHub release.
     required: false
-    default: ${{ github.token }}
 
 outputs:
   output-path:

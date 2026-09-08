@@ -1,5 +1,8 @@
 # Facade is pinned to the first unpublished T05a implementation commit. Replace
 # it only with another immutable commit that is accessible to this repository.
+# Publish a Release only after every asset upload is complete. Automation that
+# creates Releases must instead merge the chained workflow example into its
+# release workflow so Facade depends on the asset-upload job.
 name: Publish Facade release pages
 
 on:
@@ -7,7 +10,6 @@ on:
     types: [published]
   workflow_dispatch:
   push:
-    branches: [main] # Replace when the repository default branch is not main.
     paths:
       - .github/facade.yml
       - .github/facade/**
@@ -22,6 +24,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     steps:
       - name: Check out the site configuration branch

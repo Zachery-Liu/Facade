@@ -5,17 +5,26 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseDocument } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const ActionMetadataSchema = z.object({
+  inputs: z.record(z.string(), z.object({ default: z.unknown().optional() }).passthrough()),
+  outputs: z.record(z.string(), z.object({ description: z.string() }).passthrough()),
+  runs: z.object({ using: z.string(), main: z.string() }),
+}).passthrough();
 
 describe('packaged GitHub Action', () => {
   it('declares a Node 24 bundle and every public input/output', async () => {
     const metadata = await readFile(join(repositoryRoot, 'action.yml'), 'utf8');
-    expect(parseDocument(metadata).errors).toEqual([]);
-    expect(metadata).toContain('using: node24');
-    expect(metadata).toContain('main: action/dist/index.cjs');
-    for (const input of ['config:', 'repository:', 'tag:', 'base-path:', 'out-dir:', 'token:']) expect(metadata).toContain(input);
-    for (const output of ['output-path:', 'release-tag:']) expect(metadata).toContain(output);
+    const document = parseDocument(metadata);
+    expect(document.errors).toEqual([]);
+    const parsed = ActionMetadataSchema.parse(document.toJS());
+    expect(parsed.runs).toEqual({ using: 'node24', main: 'action/dist/index.cjs' });
+    expect(Object.keys(parsed.inputs).sort()).toEqual(['base-path', 'config', 'out-dir', 'repository', 'tag', 'token']);
+    expect(Object.keys(parsed.outputs).sort()).toEqual(['output-path', 'release-tag']);
+    expect(parsed.inputs.repository).not.toHaveProperty('default');
+    expect(parsed.inputs.token).not.toHaveProperty('default');
   });
 
   it('loads from an isolated directory without node_modules', async () => {

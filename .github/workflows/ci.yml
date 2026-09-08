@@ -61,6 +61,8 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Verify committed Action bundle
+        run: git diff --exit-code -- action/dist/index.cjs
 
   coverage:
     name: coverage

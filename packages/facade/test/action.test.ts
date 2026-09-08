@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runAction, type ActionCore } from '../src/action/run-action.js';
+import type { FreshGitHubBuildOptions } from '../src/build/fresh-github-build.js';
 import { FacadeError } from '../src/runtime/facade-error.js';
 
 function fakeCore(inputs: Readonly<Record<string, string>>) {
@@ -38,6 +39,20 @@ describe('Facade Action adapter', () => {
     expect(state.outputs).toEqual(new Map([['output-path', 'site'], ['release-tag', 'v2']]));
     expect(state.secrets).toEqual(['secret-token']);
     expect(state.failures).toEqual([]);
+  });
+
+  it('leaves omitted repository and token inputs to environment and config precedence', async () => {
+    const state = fakeCore({ config: '.github/facade.yml', 'out-dir': 'dist' });
+    const environment = { FACADE_REPOSITORY: 'environment/repository', GITHUB_TOKEN: 'environment-token' };
+    let received: FreshGitHubBuildOptions | undefined;
+    const build = vi.fn(async (options: FreshGitHubBuildOptions) => {
+      received = options;
+      return { basePath: '/', files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'] as const, attempts: 1 as const, releaseTag: 'v1' };
+    });
+    await runAction(state.core, { build, environment });
+    expect(build).toHaveBeenCalledWith(expect.objectContaining({ environment }));
+    expect(received).not.toHaveProperty('overrides');
+    expect(state.secrets).toEqual([]);
   });
 
   it('emits a native warning when the shared build retries changed inputs', async () => {
