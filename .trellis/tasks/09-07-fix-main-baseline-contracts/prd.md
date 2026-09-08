@@ -15,6 +15,8 @@ release-source work builds on those contracts.
   the current upstream release cannot resolve it.
 * Restore a runnable ESLint toolchain after validating that the locked ESLint
   10.9.1 package omits a module it requires at startup.
+* Trigger CI and CodeQL on `fix/**` pushes, matching the repository's repair
+  branch naming convention.
 * Keep structural manifest validation separate from semantic diagnostics: the
   shared semantic validator owns duplicate asset IDs.
 * Make release selection a strict discriminated union so `github-latest`
