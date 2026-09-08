@@ -270,7 +270,9 @@ Capability-based resolution 未来可以回答：“在 Linux arm64 musl 且满�
 
 ### 目标
 
-把 Manifest 与 Resolver 从内部实现细节升级成稳定公共契约。
+把可移植 Manifest 与 Resolver 生态升级成稳定的跨实现兼容契约。
+
+v0.1 已经会把首个公开 `ReleasePageManifest` 契约冻结为 `schemaVersion: 1`；v0.3 让这套元数据可移植、可由第三方独立生成；v1.0 则进一步把独立 Producer、Consumer 与 Resolver 实现之间的兼容性升级为长期公共承诺。
 
 v1.0 应明确：
 
