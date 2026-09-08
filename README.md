@@ -121,7 +121,7 @@ package, Action, and online source flow are ready.
 ## Roadmap
 
 <p align="center">
-  <img src="docs/assets/facade-roadmap.webp" alt="Facade roadmap" width="100%">
+  <img src="docs/assets/facade-roadmap.svg" alt="Facade roadmap" width="100%">
 </p>
 
 Facade is intended to evolve in layers rather than jump directly from a release
