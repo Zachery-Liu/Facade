@@ -9,11 +9,17 @@ This convention applies to internal development documentation, not to stable end
 ## Current documents
 
 - [`facade_product_plan.md`](./facade_product_plan.md) — product planning, architectural baseline, and core behavioral constraints. Primarily maintained in Simplified Chinese.
-- [`implementation_plan.md`](./implementation_plan.md) — v0.1 implementation plan, work breakdown, and acceptance requirements. Primarily maintained in Simplified Chinese.
+- [`implementation_plan.md`](./implementation_plan.md) — current v0.1 behavior freeze, work breakdown, and acceptance requirements. Primarily maintained in Simplified Chinese.
 - [`roadmap.md`](./roadmap.md) — public long-term roadmap covering the distribution metadata layer, portable protocol, Registry, Agent software discovery, and open ecosystem. Maintained together with its Chinese translation.
 - [`roadmap.zh-CN.md`](./roadmap.zh-CN.md) — Simplified Chinese translation of the public roadmap; structure and product meaning should remain synchronized with `roadmap.md`.
 - [`quality-gates.md`](./quality-gates.md) — CI, coverage, Ruleset, and merge quality gates. English version.
 - [`quality-gates.zh-CN.md`](./quality-gates.zh-CN.md) — Simplified Chinese translation of the quality-gates document.
+
+## Current baseline precedence
+
+During v0.1 implementation, [`implementation_plan.md`](./implementation_plan.md) is the most recent frozen source for task scope and behavior that has already been revised during implementation. The broader product plan remains the architectural baseline, but some older implementation-level details in it still require a dedicated synchronization pass before v0.1 release.
+
+In particular, do not infer a current implementation requirement solely from an older library name, `preferredId` example, or fixed verification-status example in the product plan when the implementation plan and current code define a newer contract. Configuration precedence is intentionally **not** resolved by this note and remains a separate product decision.
 
 ## Language convention
 
