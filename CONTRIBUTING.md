@@ -108,7 +108,7 @@ Agents contributing to Facade are expected to:
 - avoid including unrelated working-tree changes;
 - read the relevant `.trellis/spec/` guidance before changing a package or layer;
 - keep task research and decisions in repository-managed Trellis files when appropriate;
-- run the same quality checks required of human contributors;
+- run the same quality checks required of other contributors;
 - update project specs when a change introduces a reusable convention, architectural decision, or bug-prevention rule;
 - make uncertainty explicit rather than inventing missing requirements or repository facts.
 
@@ -158,7 +158,7 @@ The repository uses squash merging, so keep the pull request title suitable for 
 
 Changes should preserve Facade's core responsibilities:
 
-- keep human-facing and agent-facing output derived from the same source of truth;
+- keep user-facing and agent-facing output derived from the same source of truth;
 - represent uncertainty explicitly rather than presenting inference as fact;
 - keep classification separate from recommendation;
 - do not proxy release downloads;
