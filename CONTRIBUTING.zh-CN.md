@@ -18,7 +18,7 @@ Facade 目前仍处于积极开发阶段。相比把多个无关内容混在一�
 
 ## 开发环境
 
-Facade 使用 Node.js 和 pnpm。
+Facade 要求 Node.js `>=22.13.0`，并使用 pnpm `11.19.0`。
 
 ```bash
 corepack enable
@@ -37,7 +37,7 @@ pnpm build
 pnpm coverage
 ```
 
-针对 `main` 的 Pull Request 也会在 GitHub Actions 中执行对应检查。
+针对 `main` 的 Pull Request 也会在 GitHub Actions 中执行对应检查，其中包含 Node.js `22.13.0` 的最低版本检查。
 
 完整的必需检查与合并规则请参阅 [GitHub 质量门禁](docs/quality-gates.zh-CN.md)。
 
