@@ -127,7 +127,7 @@ User UI + Agent Interface
 - 确定性输出与安全 staged replacement
 - GitHub Pages 部署路径
 
-首版重点验证 macOS、Windows、Linux；x64、arm64、universal；以及 dmg、pkg、exe、msi、zip、tar.gz、deb、rpm、AppImage 等常见 Installer / Archive。
+首版重点验证 macOS、Windows、Linux；x64、arm64、universal；以及 dmg、pkg、exe、msi、zip、tar.gz、deb、rpm、AppImage 等常见 Installer / Archive。除非后续实施决策明确提前，否则 x86 作为 v0.1 之后的平台扩展目标处理。
 
 详细 T00–T12 任务仍见 [`implementation_plan.md`](./implementation_plan.md)。
 
@@ -188,15 +188,15 @@ Facade 不只要描述“有什么”，也要报告“缺什么、哪里不明�
 
 ### Release Graph 与 Channel
 
-支持 stable、beta、nightly、LTS、preview，并进一步表达 `supersedes`、`yanked`、`deprecated`、`security-fixed-by` 等关系。Resolver 最终应同时回答“选哪个 Release”和“选哪个 Artifact”。
+v0.1 可以为当前选中的 Release 携带 channel metadata；v0.2 再扩展为对 stable、beta、nightly、LTS、preview 等多个 Release / Channel 的统一解析，并进一步表达 `supersedes`、`yanked`、`deprecated`、`security-fixed-by` 等关系。Resolver 最终应同时回答“选哪个 Release”和“选哪个 Artifact”。
 
 ### Package Manager Reference
 
-规范化 Homebrew、Winget、Scoop、Chocolatey、apt、dnf、Snap、Flatpak、AUR、npm、pip、cargo 等现有安装路径，但不让 Facade 变成 Package Manager。版本绑定必须明确。
+v0.1 可以渲染维护者明确提供的安装命令，包括 package-manager 命令，但这些命令必须作为显式未验证的指令处理。v0.2 再把 Homebrew、Winget、Scoop、Chocolatey、apt、dnf、Snap、Flatpak、AUR、npm、pip、cargo 等外部安装路径提升为规范化的一等 Reference，同时保持 Facade 不变成 Package Manager，且版本绑定必须明确。
 
 ### 更丰富的 Artifact Role
 
-从 installer/archive 扩展到 binary、checksum、signature、SBOM、provenance、debug symbols、source、update bundle、documentation。
+在 v0.1 已有 artifact / checksum / signature 处理基础上，继续增加 binary、SBOM、provenance、debug symbols、source、update bundle、documentation 等更丰富的一等角色，同时保留明确的 verification material 与 evidence 语义。
 
 ---
 
@@ -272,7 +272,7 @@ Capability-based resolution 未来可以回答：“在 Linux arm64 musl 且满�
 
 把可移植 Manifest 与 Resolver 生态升级成稳定的跨实现兼容契约。
 
-v0.1 已经会把首个公开 `ReleasePageManifest` 契约冻结为 `schemaVersion: 1`；v0.3 让这套元数据可移植、可由第三方独立生成；v1.0 则进一步把独立 Producer、Consumer 与 Resolver 实现之间的兼容性升级为长期公共承诺。
+当前开发态 Manifest 仍使用 `schemaVersion: 0`。v0.1 的目标是在正式发布时把首个公开 `ReleasePageManifest` 契约冻结为 `schemaVersion: 1`；v0.3 再让这套元数据可移植、可由第三方独立生成；v1.0 则进一步把独立 Producer、Consumer 与 Resolver 实现之间的兼容性升级为长期公共承诺。
 
 v1.0 应明确：
 
@@ -368,16 +368,16 @@ Facade 应在“Facade 自己不是唯一 Producer、Registry 或 Consumer”时
 - 公共或自托管 Registry
 - Catalog / Search Frontend
 - IDE 与 Agent Integration
-- 真实 Fixture Corpus
+- 共享 Fixture Corpus
 - Protocol Conformance Suite
-- Interoperability Test 与示例
+- Interoperability Test 与 Example
 
-Facade 应优先选择小而明确的 Integration Contract，而不是在 core 中引入任意脚本式的大型 Plugin Runtime。
+Facade Core 应优先采用小而明确的集成契约，而不是引入一个可任意执行脚本的大型 Plugin Runtime。
 
 ```text
-Facade = 一个 reference implementation
-      + 可互操作的第三方 producers / consumers
-      + 不要求中心化托管服务
+Facade = 一个参考实现
+      + 可互操作的第三方 Producer / Consumer
+      + 不要求存在中心化托管服务
 ```
 
 ---
@@ -386,9 +386,9 @@ Facade = 一个 reference implementation
 
 **状态：Long-term / 长期**
 
-Installation 是独立风险面，涉及任意代码执行、权限、依赖、回滚与供应链安全。只有 Manifest、Resolver、Registry、Catalog 已证明真实需求后，才应该考虑。
+安装执行是独立风险面，涉及任意代码执行、权限、依赖、回滚和供应链安全。只有当 Manifest、Resolver、Registry、Catalog 层已经证明存在真实需求后，才应考虑进一步推进。
 
-架构边界应持续保持明确：
+架构边界必须保持明确：
 
 ```text
 Registry = facts
@@ -396,84 +396,84 @@ Resolver = selection
 Installer = execution
 ```
 
-Catalog 可以在视觉上接近软件商店，但不需要 Marketplace、支付、中心化 Binary Hosting 或专有基础设施。
+Catalog 可以在视觉上接近 Store，但并不意味着必须引入 Marketplace、支付、中心化 Binary 托管或专有基础设施。
 
 ---
 
-## Platform 扩展策略
+## 平台扩展策略
 
-通过可组合 Target / Environment 模型扩展，而不是不断增加特殊 enum。
+通过可组合的 Target / Environment 模型扩展，而不是持续增加特殊枚举值。
 
-**初始：** Windows / macOS / Linux，x64 / arm64 / universal，常见 Installer 与 Archive。
+**Initial / 首版：** Windows / macOS / Linux，x64 / arm64 / universal，以及常见 Installer / Archive。
 
-**下一步：** FreeBSD、x86、armv7、riscv64、glibc / musl、更多 Package Format、Minimum Runtime Requirement、更加完整的 CLI / Server Software 支持。
+**Next / 下一阶段：** FreeBSD、x86、armv7、riscv64、glibc / musl、更多 Package Format、最低 Runtime Requirement，以及更丰富的 CLI / Server 软件支持。
 
-**更远期：** Android 与 iOS 应使用独立 Distribution Profile，因为 ABI、SDK、Signing、Store、Entitlement 与 Distribution Restriction 并不适合简单套入 Desktop Artifact 模型。
+**Later / 更远期：** Android 与 iOS 应使用专门的 Distribution Profile，因为 ABI、SDK、Signing、Store、Entitlement 和 Distribution Restriction 无法干净地塞进桌面 Artifact 模型。
 
 ---
 
-## 明确的早期 Non-goals
+## 明确的早期非目标
 
-在 Metadata Protocol 成熟前，不应优先做：
+在 Metadata Protocol 成熟前，不优先推进：
 
-- 自动执行安装
+- 自动执行 Installer
 - 任意 Shell 执行
 - 成为通用 Package Manager
-- Dependency Solver
-- Binary CDN Hosting
-- 强制中心化账号
+- Dependency Solving
+- Binary CDN 托管
+- 强制中心化账号体系
 - Recommendation Feed、Rating、Review
-- 让 AI 成为 canonical artifact classifier
+- 把 AI 作为 canonical Artifact classifier
 - 任意 Plugin Script
 - 自动 Trust Claim
 - 深度 Binary Reverse Engineering
 
-> **保持核心确定性。**
+> **保持 Core 的确定性。**
 
-AI 可以消费 Facade Facts，但不应该成为这些 Facts 的 canonical source。
+AI 可以消费 Facade 事实，但不应成为这些事实的 canonical source。
 
 ---
 
-## Decision Gates
+## Decision Gate
 
-Roadmap 阶段应由真实证据解锁，而不是只因为“已经想到了”。
+Roadmap 阶段应由证据解锁，而不是由实现热情解锁。
 
 ### v0.1 发布前
 
-- 当前 Implementation Plan 完成
-- 多个真实 GitHub Repository 能稳定构建
-- Deterministic Output 与 Pages Workflow 已验证
-- External Onboarding 已测试
-- 当前 Release 的 Schema 与 Compatibility Semantics 已冻结
+- 当前 implementation plan 完成
+- 多个真实 GitHub 仓库可以成功构建
+- 确定性输出与 Pages workflow 已验证
+- 外部 onboarding 已测试
+- Release Schema 与兼容语义已冻结
 
-### Build-time Integration 成为核心前
+### Build-time Integration 成为 Core 前
 
-- Target 与 Environment 模型已经摆脱 Filename-centric 设计
-- Provenance 能表达 declared、observed、inferred、asserted
-- 矛盾 Evidence 会被诊断，而不是静默覆盖
-- Artifact Identity 足够稳定，可以跨 filename / URL 变化
-- Release-only Workflow 在没有 Build Integration 时仍能正常工作
+- Target 与 Environment 模型不再以 filename 为中心
+- provenance 可以表达 declared、observed、inferred、asserted 事实
+- 矛盾 evidence 会产生诊断，而不是静默覆盖
+- Artifact Identity 足以跨 filename / URL 变化保持稳定
+- 不使用 build integration 时，release-only workflow 仍然可用
 
 ### Public Registry 前
 
-- Manifest 已可移植
-- Resolver 已与 UI 解耦
+- Manifest 可移植
+- Resolver 与 UI 解耦
 - Environment、Compatibility、Policy、Identity 模型足够可信
 - Publisher Ownership / Federation 规则明确
-- 第三方 Producer 能通过 Conformance Test
+- 第三方 Producer 可以通过 Conformance Test
 
 ### Installer / Store-like UX 前
 
 - Registry 与 Catalog 已证明真实需求
-- 已有独立 Security Model
-- Installation Execution 与 Metadata Resolution 完全隔离
+- 存在独立 Security Model
+- Installation Execution 与 Metadata Resolution 隔离
 
 ---
 
 ## 演进图
 
 ```text
-Better Release Experience
+更好的 Release Experience
         ↓
 Distribution Metadata Layer
         ↓
@@ -492,7 +492,7 @@ Open Ecosystem + Integrations
 Optional Installer / Store-like UX — only if justified
 ```
 
-核心不变量是：
+始终不变的主线是：
 
 ```text
 Facts
@@ -507,7 +507,7 @@ Facts
 
 ## 一句话总结
 
-Facade 应从一个 GitHub Release 展示工具，演进成 **build-aware 的软件分发元数据与解析层，让用户和 Agent 基于同一组事实理解同一个软件 Release。**
+Facade 应从一个 GitHub Release 展示工具演进为 **一层 build-aware 的软件分发元数据与解析基础设施，让用户与 Agent 能从同一套事实理解同一个软件发布。**
 
 > **Software releases for humans and agents.**  
 > **面向用户与 Agent 的软件发布。**
