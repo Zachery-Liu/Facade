@@ -88,6 +88,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22.13.0
+      - run: npm install --global corepack@0.31.0
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck

@@ -17,6 +17,8 @@ release-source work builds on those contracts.
   10.9.1 package omits a module it requires at startup.
 * Trigger CI and CodeQL on `fix/**` pushes, matching the repository's repair
   branch naming convention.
+* Bootstrap Corepack 0.31.0 in the Node 22.13.0 CI job because the runtime's
+  bundled Corepack cannot verify the project-pinned pnpm signing key.
 * Keep structural manifest validation separate from semantic diagnostics: the
   shared semantic validator owns duplicate asset IDs.
 * Make release selection a strict discriminated union so `github-latest`
