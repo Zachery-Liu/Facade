@@ -3,6 +3,10 @@ import { FacadeConfigSchema } from '../src/config/facade-config.js';
 import { FacadeError } from '../src/runtime/facade-error.js';
 import { GitHubReleaseSource } from '../src/source/github/github-release-source.js';
 import { resolveGitHubSourceOptions } from '../src/source/github/source-options.js';
+import { buildGitHubRelease } from '../src/source/github/build-github-release.js';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const repository = { full_name: 'owner/repository', html_url: 'https://github.com/owner/repository' };
 const release = { id: 7, tag_name: 'v1.2.3', name: 'Version 1.2.3', draft: false, prerelease: false };
@@ -89,6 +93,19 @@ describe('GitHub source option precedence', () => {
 
   it('rejects an unsupported environment strategy', () => {
     expect(() => resolveGitHubSourceOptions(config, { FACADE_RELEASE_STRATEGY: 'beta' })).toThrow(/github-latest or tag/i);
+  });
+});
+
+describe('GitHub build integration', () => {
+  it('passes a live-source snapshot to the shared build boundary', async () => {
+    const outDir = join(await mkdtemp(join(tmpdir(), 'facade-github-build-')), 'site');
+    const source = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async (url) => {
+      if (url.endsWith('/repos/owner/repository')) return json(repository);
+      if (url.includes('/releases/latest')) return json(release);
+      return json([asset(1)]);
+    } });
+    await expect(buildGitHubRelease(source, { strategy: 'github-latest', outDir })).resolves.toMatchObject({ basePath: '/' });
+    await expect(readFile(join(outDir, 'manifest.json'), 'utf8')).resolves.toContain('v1.2.3');
   });
 });
 
