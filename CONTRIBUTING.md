@@ -16,7 +16,7 @@ For substantial behavioral or architectural changes, opening an issue first is r
 
 ## Development setup
 
-Facade uses Node.js and pnpm.
+Facade requires Node.js `>=22.13.0` and uses pnpm `11.19.0`.
 
 ```bash
 corepack enable
@@ -35,7 +35,7 @@ pnpm build
 pnpm coverage
 ```
 
-GitHub Actions runs the equivalent checks for pull requests to `main`.
+GitHub Actions runs the equivalent checks for pull requests to `main`, including a minimum-Node check at Node.js `22.13.0`.
 
 For the complete required-check and merge policy, see [GitHub Quality Gates](docs/quality-gates.md).
 
