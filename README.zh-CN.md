@@ -189,7 +189,7 @@ fixtures、Source Adapter、构建系统集成、Conformance、独立 Consumer �
 - [实施计划](docs/implementation_plan.md)：按依赖排序的 v0.1 执行计划与发布门槛。
 - [Roadmap](docs/roadmap.md)：从 Distribution Intelligence 到开放软件分发协议与生态的长期方向。
 - [Roadmap（简体中文）](docs/roadmap.zh-CN.md)：Roadmap 中文同步版本。
-- [质量门禁](docs/quality-gates.md)：CI 检查与当前合并规则。
+- [质量门禁](docs/quality-gates.zh-CN.md)：CI 检查与当前合并规则。
 - [Trellis 工作流](.trellis/workflow.md)：项目任务生命周期与 AI 协作流程。
 
 ## 开源协议
