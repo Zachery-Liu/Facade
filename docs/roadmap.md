@@ -125,7 +125,7 @@ User UI + Agent Interface
 - deterministic output and safe staged replacement
 - GitHub Pages deployment path
 
-Initial target coverage focuses on macOS, Windows, and Linux; x64, arm64, and universal targets; and common installers/archives such as dmg, pkg, exe, msi, zip, tar.gz, deb, rpm, and AppImage.
+Initial target coverage focuses on macOS, Windows, and Linux; x64, arm64, and universal targets; and common installers/archives such as dmg, pkg, exe, msi, zip, tar.gz, deb, rpm, and AppImage. x86 is a post-v0.1 expansion target unless promoted by a later implementation decision.
 
 The detailed T00–T12 work breakdown remains in [`implementation_plan.md`](./implementation_plan.md).
 
@@ -186,15 +186,15 @@ Facade should report missing and ambiguous distribution coverage, for example mi
 
 ### Release graph and channels
 
-Support stable, beta, nightly, LTS, and preview channels, then model relationships such as `supersedes`, `yanked`, `deprecated`, and `security-fixed-by`. The resolver should eventually answer both *which release* and *which artifact* should be selected.
+v0.1 may carry channel metadata for the selected release. v0.2 expands that into multi-release/channel resolution across stable, beta, nightly, LTS, and preview, then models relationships such as `supersedes`, `yanked`, `deprecated`, and `security-fixed-by`. The resolver should eventually answer both *which release* and *which artifact* should be selected.
 
 ### Package-manager references
 
-Normalize external installation paths such as Homebrew, Winget, Scoop, Chocolatey, apt, dnf, Snap, Flatpak, AUR, npm, pip, and cargo without becoming a package manager. Version binding must remain explicit.
+v0.1 may render maintainer-supplied install commands, including package-manager commands, as explicitly unverified instructions. v0.2 promotes these into normalized first-class references for external installation paths such as Homebrew, Winget, Scoop, Chocolatey, apt, dnf, Snap, Flatpak, AUR, npm, pip, and cargo without becoming a package manager. Version binding must remain explicit.
 
 ### Richer artifact roles
 
-Expand roles beyond installer/archive to binary, checksum, signature, SBOM, provenance, debug symbols, source, update bundle, and documentation.
+Extend the existing v0.1 artifact/checksum/signature handling with richer first-class roles such as binary, SBOM, provenance, debug symbols, source, update bundle, and documentation, while preserving explicit verification material and evidence semantics.
 
 ---
 
@@ -270,7 +270,7 @@ Capability-based resolution may later answer requests such as “provide the `ff
 
 Turn the portable Manifest and Resolver ecosystem into a stable cross-implementation compatibility contract.
 
-v0.1 already freezes the first public `ReleasePageManifest` contract as `schemaVersion: 1`. v0.3 makes that metadata portable and independently producible. v1.0 is where compatibility across independent producers, consumers, and resolver implementations becomes a durable public promise.
+The current development manifest still uses `schemaVersion: 0`. v0.1 is intended to freeze the first public `ReleasePageManifest` contract as `schemaVersion: 1` at release. v0.3 makes that metadata portable and independently producible. v1.0 is where compatibility across independent producers, consumers, and resolver implementations becomes a durable public promise.
 
 v1.0 should define:
 
