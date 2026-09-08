@@ -56,3 +56,59 @@ Pass unvalidated GitHub API JSON directly into classification.
 
 Parse the adapter or fixture output through `RepositorySnapshotSchema` before
 classification, then retain only the neutral contract fields.
+
+## Scenario: Manifest validation ownership
+
+### 1. Scope / Trigger
+
+Use this boundary whenever a manifest enters rendering or an external consumer
+parses the release-page contract.
+
+### 2. Signatures
+
+```ts
+ReleasePageManifestSchema.parse(input): ReleasePageManifest
+validateManifestSemantics(manifest): ValidationDiagnostic[]
+```
+
+### 3. Contracts
+
+The Zod schema owns object shape, required fields, enums, and HTTP(S) URL
+format. `validateManifestSemantics` owns cross-asset rules: unique IDs and
+URLs, signature references, and evidence references. `FacadeConfigSchema`
+uses strict discriminated release strategies: `github-latest` has no tag;
+`tag` requires a non-empty tag.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+| --- | --- |
+| Missing or malformed structural field | Zod parse failure |
+| Duplicate asset ID | semantic diagnostic |
+| `github-latest` with a tag | Zod parse failure |
+| `tag` without a tag value | Zod parse failure |
+
+### 5. Good / Base / Bad Cases
+
+* Good: a distinct-asset manifest has no diagnostics.
+* Base: a structurally valid duplicate-ID manifest parses, then reports one
+  duplicate-ID diagnostic.
+* Bad: using `superRefine` in the structural schema to duplicate a semantic
+  validator rule.
+
+### 6. Tests Required
+
+* Parse a duplicate-ID fixture and assert the semantic diagnostic.
+* Reject both inconsistent release-strategy shapes.
+* Continue rejecting invalid download URL formats structurally.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+Implement a cross-asset rule in both Zod and the semantic validator.
+
+#### Correct
+
+Keep cross-asset policy in `validateManifestSemantics` so every consumer can
+apply the same second validation layer.

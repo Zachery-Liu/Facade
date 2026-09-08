@@ -11,12 +11,6 @@ export const ManifestAssetSchema = z.object({
 export const ReleasePageManifestSchema = z.object({
   schemaVersion: z.number().int().nonnegative(),
   productName: z.string().min(1), releaseTag: z.string().min(1), assets: z.array(ManifestAssetSchema),
-}).superRefine((manifest, context) => {
-  const seen = new Set<string>();
-  manifest.assets.forEach((asset, index) => {
-    if (seen.has(asset.id)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['assets', index, 'id'], message: `duplicate asset ID: ${asset.id}` });
-    seen.add(asset.id);
-  });
 });
 export type ManifestAsset = z.infer<typeof ManifestAssetSchema>;
 export type ReleasePageManifest = z.infer<typeof ReleasePageManifestSchema>;
