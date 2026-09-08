@@ -78,3 +78,36 @@ Added a self-contained Node 24 GitHub Action, fresh release rebuild checks, two 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Fix T05a review contracts
+
+**Date**: 2026-09-08
+**Task**: Fix T05a review contracts
+**Branch**: `feat/t05-action-workflows`
+
+### Summary
+
+Verified and fixed Action input precedence, bundle drift CI, Release asset timing guidance, default-branch workflow gating, and structural workflow tests; all quality gates passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6b22abb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
