@@ -112,3 +112,53 @@ Implement a cross-asset rule in both Zod and the semantic validator.
 
 Keep cross-asset policy in `validateManifestSemantics` so every consumer can
 apply the same second validation layer.
+
+## Scenario: Static output replacement
+
+### 1. Scope / Trigger
+
+Use this boundary whenever a build publishes the generated site into an output directory.
+
+### 2. Signatures
+
+```ts
+buildRelease(snapshot, { outDir, basePath }): Promise<OfflineBuildResult>
+```
+
+### 3. Contracts
+
+- Generate every file in a sibling staging directory before publishing.
+- Hold an atomically-created `outDir.facade-lock` directory throughout replacement.
+- Replace only an output containing the exact `.facade-output` marker.
+- Collapse line breaks and escape Markdown metadata before rendering text outputs.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+| --- | --- |
+| Lock already exists | `BUILD_OUTPUT_LOCKED`; preserve the lock |
+| Backup already exists | `BUILD_BACKUP_COLLISION`; preserve the backup |
+| Existing output has no valid marker | `BUILD_UNOWNED_OUTPUT`; preserve the output |
+| Backup or lock cleanup fails after publication | Return `cleanupRequired: true` |
+
+### 5. Good / Base / Bad Cases
+
+- Good: one builder holds the lock, replaces a marked output, and removes recovery state.
+- Base: first publication has no prior output and moves staging directly into place.
+- Bad: check for a backup and rename without a lock; concurrent builders can both pass the check.
+
+### 6. Tests Required
+
+- Assert an existing lock and its contents survive a refused build.
+- Assert backup collisions and unowned outputs survive unchanged.
+- Assert release and asset metadata containing Markdown characters or line breaks remains one logical entry.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+Use separate existence checks as concurrency control.
+
+#### Correct
+
+Acquire the adjacent lock atomically, re-check ownership and backup state while holding it, then publish.
