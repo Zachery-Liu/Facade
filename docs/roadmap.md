@@ -268,7 +268,9 @@ Capability-based resolution may later answer requests such as “provide the `ff
 
 ### Goal
 
-Turn the Manifest and Resolver from internal implementation details into stable public contracts.
+Turn the portable Manifest and Resolver ecosystem into a stable cross-implementation compatibility contract.
+
+v0.1 already freezes the first public `ReleasePageManifest` contract as `schemaVersion: 1`. v0.3 makes that metadata portable and independently producible. v1.0 is where compatibility across independent producers, consumers, and resolver implementations becomes a durable public promise.
 
 v1.0 should define:
 
@@ -326,7 +328,7 @@ Public, self-hosted, and alternative registry implementations should be able to 
 
 **Status: Exploration**
 
-A human-oriented Catalog can provide software discovery using the same normalized facts: search, categories, platform filters, license, installation methods, update recency, channels, and verification/provenance availability.
+A user-oriented Catalog can provide software discovery using the same normalized facts: search, categories, platform filters, license, installation methods, update recency, channels, and verification/provenance availability.
 
 For Agents, Facade can replace web-search-and-filename-guessing with structured resolution:
 
