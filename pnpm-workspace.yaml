@@ -1,5 +1,9 @@
 packages:
   - packages/*
 
+overrides:
+  "tsup>esbuild": 0.28.2
+  "vite>esbuild": 0.28.2
+
 allowBuilds:
   esbuild: true
