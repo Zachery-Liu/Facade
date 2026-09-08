@@ -46,9 +46,9 @@ includes:
 - stable source errors, bounded retry behavior, and an internal source-to-build
   integration path.
 
-The public CLI is still intentionally narrow: `facade build` currently builds
-from an offline repository snapshot fixture. Live GitHub CLI wiring, the GitHub
-Action/Pages flow, the full classifier/override system, shared selector,
+The current CLI surface is still intentionally narrow: `facade build` currently
+builds from an offline repository snapshot fixture. Live GitHub CLI wiring, the
+GitHub Action/Pages flow, the full classifier/override system, shared selector,
 `inspect`, Product Theme, and the complete Agent contract remain v0.1 work.
 
 ## What v0.1 is building
@@ -86,7 +86,7 @@ Agent-facing
 Initial target coverage focuses on common desktop and CLI distributions:
 
 - **OS:** macOS, Windows, Linux
-- **Architecture:** x64, arm64, universal; x86 where practical
+- **Architecture:** x64, arm64, universal
 - **Formats:** dmg, pkg, exe, msi, zip, tar.gz, deb, rpm, AppImage
 
 Classification is deliberately conservative. Unknown stays unknown, filename
@@ -95,10 +95,13 @@ kept separate from recommendation.
 
 ## Current development CLI
 
-The current CLI surface is fixture-backed and intended for development:
+The current CLI surface is fixture-backed and intended for development. From a
+fresh repository checkout, build the CLI first and invoke the generated entry
+point directly:
 
 ```bash
-facade build \
+pnpm build
+node packages/facade/dist/index.js build \
   --fixture <repository-snapshot.json> \
   --out-dir dist \
   --base-path /
@@ -206,17 +209,19 @@ Issues, implementation feedback, fixture contributions, source adapters,
 build-system integrations, conformance work, and independent consumers are all
 valuable.
 
-For large semantic or protocol changes, please start from the product baseline
-and roadmap before proposing implementation details.
+For large semantic or protocol changes, please start from the product/design
+baseline and roadmap, then check the current implementation-plan precedence
+before proposing implementation details.
 
 ## Documentation
 
 - [Development documentation](docs/README.md) — development/design document
-  index and conventions.
-- [Product baseline](docs/facade_product_plan.md) — product scope, semantics,
-  architecture, contracts, UX, and acceptance criteria.
-- [Implementation plan](docs/implementation_plan.md) — dependency-ordered v0.1
-  execution plan and release gates.
+  index, current implementation boundary, and precedence rules.
+- [Product/design baseline](docs/facade_product_plan.md) — broader product scope,
+  semantics, architecture, and UX direction; older implementation-level examples
+  may be superseded by the implementation plan and code.
+- [Implementation plan](docs/implementation_plan.md) — current v0.1 behavior
+  freeze, dependency-ordered execution plan, and release gates.
 - [Roadmap](docs/roadmap.md) — post-v0.1 direction from distribution
   intelligence to an open software distribution protocol and ecosystem.
 - [Roadmap (简体中文)](docs/roadmap.zh-CN.md) — Chinese translation of the
