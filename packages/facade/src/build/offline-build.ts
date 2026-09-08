@@ -54,6 +54,31 @@ function normalizeBasePath(value: string): string {
 }
 
 async function replaceDirectory(staging: string, outDir: string): Promise<boolean> {
+  const lock = outDir + '.facade-lock';
+  try {
+    await mkdir(lock);
+  } catch (cause) {
+    if (isAlreadyExists(cause)) throw new FacadeError('BUILD_OUTPUT_LOCKED', 'Another or interrupted build blocks output replacement.', { cause });
+    throw cause;
+  }
+
+  let cleanupRequired: boolean;
+  try {
+    cleanupRequired = await replaceDirectoryWhileLocked(staging, outDir);
+  } catch (error) {
+    await removeLockAfterFailure(lock);
+    throw error;
+  }
+
+  try {
+    await rm(lock, { recursive: true });
+  } catch {
+    cleanupRequired = true;
+  }
+  return cleanupRequired;
+}
+
+async function replaceDirectoryWhileLocked(staging: string, outDir: string): Promise<boolean> {
   const backup = outDir + '.facade-backup';
   if (await exists(backup)) throw new FacadeError('BUILD_BACKUP_COLLISION', 'A previous or user-owned build backup blocks replacement.');
   if (await exists(outDir) && !(await isFacadeOutput(outDir))) throw new FacadeError('BUILD_UNOWNED_OUTPUT', 'Refusing to replace a directory not owned by Facade.');
@@ -76,7 +101,12 @@ async function replaceDirectory(staging: string, outDir: string): Promise<boolea
 }
 
 function isMissing(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'; }
+function isAlreadyExists(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'; }
 async function exists(path: string): Promise<boolean> { try { await access(path); return true; } catch { return false; } }
 async function isFacadeOutput(path: string): Promise<boolean> { try { return (await readFile(join(path, OUTPUT_MARKER), 'utf8')) === OUTPUT_MARKER_CONTENT; } catch { return false; } }
-function renderInstall(tag: string, assets: readonly { id: string; label: string; downloadUrl: string }[]): string { return '# Install ' + tag + '\n\n' + assets.map((asset) => '- [' + asset.label + ' (' + asset.id + ')](' + asset.downloadUrl + ')').join('\n') + '\n'; }
-function renderLlms(tag: string, assets: readonly { id: string; downloadUrl: string }[], basePath: string): string { return '# Release ' + tag + '\n\nBase path: ' + basePath + '\n\n' + assets.map((asset) => '- ' + asset.id + ': ' + asset.downloadUrl).join('\n') + '\n'; }
+async function removeLockAfterFailure(lock: string): Promise<void> { try { await rm(lock, { recursive: true }); } catch { /* Preserve the replacement error and leave the lock for manual recovery. */ } }
+function renderInstall(tag: string, assets: readonly { id: string; label: string; downloadUrl: string }[]): string { return '# Install ' + escapeMarkdownText(tag) + '\n\n' + assets.map((asset) => '- [' + escapeMarkdownText(asset.label + ' (' + asset.id + ')') + '](<' + escapeMarkdownUrl(asset.downloadUrl) + '>)').join('\n') + '\n'; }
+function renderLlms(tag: string, assets: readonly { id: string; downloadUrl: string }[], basePath: string): string { return '# Release ' + singleLine(tag) + '\n\nBase path: ' + basePath + '\n\n' + assets.map((asset) => '- ' + singleLine(asset.id) + ': ' + singleLine(asset.downloadUrl)).join('\n') + '\n'; }
+function singleLine(value: string): string { return value.replace(/[\r\n]+/g, ' '); }
+function escapeMarkdownText(value: string): string { return singleLine(value).replace(/([-\\`*_[\]{}()<>#+.!|])/g, '\\$1'); }
+function escapeMarkdownUrl(value: string): string { return singleLine(value).replace(/</g, '%3C').replace(/>/g, '%3E'); }

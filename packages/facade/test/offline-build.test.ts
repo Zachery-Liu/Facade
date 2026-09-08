@@ -55,6 +55,16 @@ describe('offline build', () => {
     await expect(readFile(join(backup, 'user-data.txt'), 'utf8')).resolves.toBe('preserve me');
   });
 
+  it('fails closed without deleting an active or interrupted output lock', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-build-lock-'));
+    const outDir = join(root, 'site');
+    const lock = outDir + '.facade-lock';
+    await mkdir(lock);
+    await writeFile(join(lock, 'owner.txt'), 'preserve me', 'utf8');
+    await expect(buildOfflineRelease({ fixturePath, outDir })).rejects.toMatchObject({ code: 'BUILD_OUTPUT_LOCKED' });
+    await expect(readFile(join(lock, 'owner.txt'), 'utf8')).resolves.toBe('preserve me');
+  });
+
   it('refuses to replace a non-Facade output directory', async () => {
     const root = await mkdtemp(join(tmpdir(), 'facade-build-unowned-'));
     const outDir = join(root, 'site');
@@ -107,6 +117,19 @@ describe('offline build', () => {
       { id: 'checksums', name: 'checksums.txt', downloadUrl: 'https://example.test/checksums', size: 1 },
     ] });
     expect(manifest.assets.map((asset) => [asset.os, asset.kind])).toEqual([['macos', 'artifact'], ['windows', 'artifact'], ['linux', 'artifact'], ['unknown', 'checksum']]);
+  });
+
+  it('keeps generated text outputs structurally intact for special asset metadata', async () => {
+    const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-text-')), 'site');
+    await buildRelease({ repository: { fullName: 'owner/repo', htmlUrl: 'https://github.com/owner/repo' }, release: { id: '1', tagName: 'v1\nInjected heading', name: 'Release', draft: false, prerelease: false }, assets: [
+      { id: 'asset\nInjected entry', name: 'tool [preview](unsafe).bin', downloadUrl: 'https://example.test/tool%3Epreview', size: 1 },
+    ] }, { outDir });
+    const install = await readFile(join(outDir, 'install.md'), 'utf8');
+    const llms = await readFile(join(outDir, 'llms.txt'), 'utf8');
+    expect(install).toContain('# Install v1 Injected heading');
+    expect(install).toContain('tool \\[preview\\]\\(unsafe\\)\\.bin');
+    expect(llms).toContain('# Release v1 Injected heading');
+    expect(llms).toContain('- asset Injected entry: https://example.test/tool%3Epreview');
   });
 
   it('builds from the compiled CLI', async () => {
