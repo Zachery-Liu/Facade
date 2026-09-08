@@ -111,7 +111,7 @@ pnpm build
 ## 路线图
 
 <p align="center">
-  <img src="docs/assets/facade-roadmap.webp" alt="Facade 路线图" width="100%">
+  <img src="docs/assets/facade-roadmap.svg" alt="Facade 路线图" width="100%">
 </p>
 
 Facade 的长期演进遵循逐层建立基础设施的思路，而不是从“Release 页面生成器”直接跳到一个庞大的平台：
