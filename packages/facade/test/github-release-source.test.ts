@@ -50,6 +50,18 @@ describe('GitHubReleaseSource', () => {
     await expect(missingTag.getReleaseByTag('v9')).rejects.toMatchObject({ code: 'SOURCE_TAG_NOT_FOUND' });
   });
 
+  it('classifies 403 rate-limit responses separately from access denial', async () => {
+    const source = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async () => json({}, 403, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '9999999999' }) });
+    await expect(source.getRepository()).rejects.toMatchObject({ code: 'SOURCE_RATE_LIMITED' });
+  });
+
+  it('classifies malformed JSON and invalid neutral source fields', async () => {
+    const malformed = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async () => new Response('{', { status: 200 }) });
+    await expect(malformed.getRepository()).rejects.toMatchObject({ code: 'SOURCE_INVALID_RESPONSE' });
+    const unsafeUrl = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async () => json({ ...repository, html_url: 'javascript:alert(1)' }) });
+    await expect(unsafeUrl.getRepository()).rejects.toMatchObject({ code: 'SOURCE_INVALID_RESPONSE' });
+  });
+
   it('retries transient network failures with a bounded attempt count', async () => {
     let calls = 0;
     const source = new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 2, sleep: async () => undefined, fetch: async () => {
@@ -60,7 +72,7 @@ describe('GitHubReleaseSource', () => {
     expect(calls).toBe(2);
   });
 
-  it('retries transient API failures but exposes a stable rate-limit error at the attempt limit', async () => {
+  it('does not retry before a server-provided rate-limit delay', async () => {
     let calls = 0;
     const delays: number[] = [];
     const source = new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 2, sleep: async (milliseconds) => { delays.push(milliseconds); }, fetch: async () => {
@@ -68,8 +80,24 @@ describe('GitHubReleaseSource', () => {
       return json({}, 429, { 'retry-after': '99' });
     } });
     await expect(source.getRepository()).rejects.toMatchObject({ code: 'SOURCE_RATE_LIMITED' });
-    expect(calls).toBe(2);
-    expect(delays).toEqual([1000]);
+    expect(calls).toBe(1);
+    expect(delays).toEqual([]);
+  });
+
+  it('retries short transient server failures with a bounded delay', async () => {
+    let calls = 0;
+    const delays: number[] = [];
+    const source = new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 2, sleep: async (milliseconds) => { delays.push(milliseconds); }, fetch: async () => {
+      calls += 1;
+      return calls === 1 ? json({}, 503) : json(repository);
+    } });
+    await expect(source.getRepository()).resolves.toEqual({ fullName: 'owner/repository', htmlUrl: 'https://github.com/owner/repository' });
+    expect(delays).toEqual([100]);
+  });
+
+  it('rejects unbounded or empty retry policies', () => {
+    expect(() => new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 0 })).toThrow(/between 1 and 10/);
+    expect(() => new GitHubReleaseSource({ repository: 'owner/repository', maxAttempts: 11 })).toThrow(/between 1 and 10/);
   });
 });
 
@@ -85,6 +113,12 @@ describe('GitHub source option precedence', () => {
     expect(resolveGitHubSourceOptions(config, {})).toEqual({ repository: 'config/repository', strategy: 'github-latest' });
     expect(resolveGitHubSourceOptions(config, { FACADE_REPOSITORY: 'environment/repository', FACADE_RELEASE_STRATEGY: 'tag', FACADE_RELEASE_TAG: 'v2', GITHUB_TOKEN: 'environment-token' }))
       .toEqual({ repository: 'environment/repository', strategy: 'tag', tag: 'v2', token: 'environment-token' });
+  });
+
+  it('drops lower-precedence tags when the resolved strategy is github-latest', () => {
+    const taggedConfig = FacadeConfigSchema.parse({ schema: 1, repository: 'config/repository', release: { strategy: 'tag', tag: 'v1' } });
+    expect(resolveGitHubSourceOptions(taggedConfig, { FACADE_RELEASE_TAG: 'v2' }, { strategy: 'github-latest' }))
+      .toEqual({ repository: 'config/repository', strategy: 'github-latest' });
   });
 
   it('requires a tag after precedence is applied', () => {

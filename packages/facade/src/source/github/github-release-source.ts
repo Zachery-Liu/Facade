@@ -1,10 +1,21 @@
 import { z } from 'zod';
 import { FacadeError } from '../../runtime/facade-error.js';
-import type { RawAsset, RawRelease, ReleaseSource, RepositoryMetadata, RepositorySnapshot } from '../repository-snapshot.js';
+import {
+  RawAssetSchema,
+  RawReleaseSchema,
+  RepositoryMetadataSchema,
+  RepositorySnapshotSchema,
+  type RawAsset,
+  type RawRelease,
+  type ReleaseSource,
+  type RepositoryMetadata,
+  type RepositorySnapshot,
+} from '../repository-snapshot.js';
 
 const DEFAULT_API_URL = 'https://api.github.com';
 const ASSETS_PER_PAGE = 100;
 const MAX_RETRY_DELAY_MS = 1_000;
+const MAX_ATTEMPTS = 10;
 
 const RepositoryResponseSchema = z.object({ full_name: z.string(), html_url: z.string().url() }).passthrough();
 const ReleaseResponseSchema = z.object({
@@ -51,15 +62,17 @@ export class GitHubReleaseSource implements ReleaseSource {
     this.apiUrl = (options.apiUrl ?? DEFAULT_API_URL).replace(/\/$/, '');
     this.fetch = options.fetch ?? globalThis.fetch;
     this.maxAttempts = options.maxAttempts ?? 3;
+    if (!Number.isSafeInteger(this.maxAttempts) || this.maxAttempts < 1 || this.maxAttempts > MAX_ATTEMPTS) {
+      throw new FacadeError('SOURCE_INVALID_RETRY_POLICY', 'maxAttempts must be an integer between 1 and 10.');
+    }
     this.sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     this.token = options.token;
   }
 
   async getRepository(): Promise<RepositoryMetadata> {
     const response = await this.request('/repos/' + this.owner + '/' + this.repositoryName, 'repository');
-    const parsed = RepositoryResponseSchema.safeParse(await response.json());
-    if (!parsed.success) throw this.invalidResponse('repository');
-    return { fullName: parsed.data.full_name, htmlUrl: parsed.data.html_url };
+    const parsed = parseResponse(RepositoryResponseSchema, await parseJson(response, 'repository'), 'repository');
+    return parseResponse(RepositoryMetadataSchema, { fullName: parsed.full_name, htmlUrl: parsed.html_url }, 'repository');
   }
 
   async getLatestRelease(): Promise<RawRelease> {
@@ -74,10 +87,9 @@ export class GitHubReleaseSource implements ReleaseSource {
     const assets: RawAsset[] = [];
     for (let page = 1; ; page += 1) {
       const response = await this.request('/repos/' + this.owner + '/' + this.repositoryName + '/releases/' + encodeURIComponent(releaseId) + '/assets?per_page=' + ASSETS_PER_PAGE + '&page=' + page, 'assets');
-      const parsed = z.array(AssetResponseSchema).safeParse(await response.json());
-      if (!parsed.success) throw this.invalidResponse('assets');
-      assets.push(...parsed.data.map((asset) => ({ id: String(asset.id), name: asset.name, downloadUrl: asset.browser_download_url, size: asset.size })));
-      if (parsed.data.length < ASSETS_PER_PAGE) return assets;
+      const parsed = parseResponse(z.array(AssetResponseSchema), await parseJson(response, 'assets'), 'assets');
+      assets.push(...parsed.map((asset) => parseResponse(RawAssetSchema, { id: String(asset.id), name: asset.name, downloadUrl: asset.browser_download_url, size: asset.size }, 'assets')));
+      if (parsed.length < ASSETS_PER_PAGE) return assets;
     }
   }
 
@@ -86,21 +98,20 @@ export class GitHubReleaseSource implements ReleaseSource {
     const release = strategy === 'tag'
       ? await this.getReleaseByTag(requireTag(tag))
       : await this.getLatestRelease();
-    return { repository, release, assets: await this.getReleaseAssets(release.id) };
+    return parseResponse(RepositorySnapshotSchema, { repository, release, assets: await this.getReleaseAssets(release.id) }, 'snapshot');
   }
 
   private async getRelease(path: string, kind: 'latest' | 'tag'): Promise<RawRelease> {
     const response = await this.request(path, kind);
-    const parsed = ReleaseResponseSchema.safeParse(await response.json());
-    if (!parsed.success) throw this.invalidResponse('release');
-    if (parsed.data.draft) throw new FacadeError('SOURCE_DRAFT_RELEASE', 'The selected release is a draft and cannot be published.');
-    return {
-      id: String(parsed.data.id),
-      tagName: parsed.data.tag_name,
-      name: parsed.data.name ?? parsed.data.tag_name,
-      draft: parsed.data.draft,
-      prerelease: parsed.data.prerelease,
-    };
+    const parsed = parseResponse(ReleaseResponseSchema, await parseJson(response, 'release'), 'release');
+    if (parsed.draft) throw new FacadeError('SOURCE_DRAFT_RELEASE', 'The selected release is a draft and cannot be published.');
+    return parseResponse(RawReleaseSchema, {
+      id: String(parsed.id),
+      tagName: parsed.tag_name,
+      name: parsed.name ?? parsed.tag_name,
+      draft: parsed.draft,
+      prerelease: parsed.prerelease,
+    }, 'release');
   }
 
   private async request(path: string, kind: 'repository' | 'latest' | 'tag' | 'assets'): Promise<Response> {
@@ -109,11 +120,14 @@ export class GitHubReleaseSource implements ReleaseSource {
       try {
         const response = await this.fetch(this.apiUrl + path, { headers: this.headers() });
         if (response.ok) return response;
-        if (isRetryableStatus(response.status) && attempt < this.maxAttempts) {
-          await this.sleep(retryDelay(response, attempt));
-          continue;
+        if (isRetryableResponse(response) && attempt < this.maxAttempts) {
+          const delay = retryDelay(response, attempt);
+          if (delay !== undefined) {
+            await this.sleep(delay);
+            continue;
+          }
         }
-        throw this.statusError(response.status, kind);
+        throw this.statusError(response, kind);
       } catch (error) {
         if (error instanceof FacadeError) throw error;
         cause = error;
@@ -132,19 +146,17 @@ export class GitHubReleaseSource implements ReleaseSource {
       : { accept: 'application/vnd.github+json', authorization: 'Bearer ' + this.token };
   }
 
-  private statusError(status: number, kind: 'repository' | 'latest' | 'tag' | 'assets'): FacadeError {
+  private statusError(response: Response, kind: 'repository' | 'latest' | 'tag' | 'assets'): FacadeError {
+    const { status } = response;
+    if (isRateLimited(response)) return new FacadeError('SOURCE_RATE_LIMITED', 'GitHub rate-limited this release source.');
     if (status === 401) return new FacadeError('SOURCE_AUTHENTICATION_REQUIRED', 'GitHub authentication is required to read this release source.');
     if (status === 403) return new FacadeError('SOURCE_ACCESS_DENIED', 'GitHub denied access to this release source.');
-    if (status === 429) return new FacadeError('SOURCE_RATE_LIMITED', 'GitHub rate-limited this release source.');
     if (status === 404 && kind === 'latest') return new FacadeError('SOURCE_LATEST_NOT_FOUND', 'This repository has no published latest release.');
     if (status === 404 && kind === 'tag') return new FacadeError('SOURCE_TAG_NOT_FOUND', 'The requested release tag was not found.');
     if (status === 404 && kind === 'repository') return new FacadeError('SOURCE_REPOSITORY_NOT_FOUND', 'The requested GitHub repository was not found.');
     return new FacadeError('SOURCE_API_UNAVAILABLE', 'GitHub could not provide the requested release data.');
   }
 
-  private invalidResponse(resource: string): FacadeError {
-    return new FacadeError('SOURCE_INVALID_RESPONSE', 'GitHub returned an invalid ' + resource + ' response.');
-  }
 }
 
 function requireTag(tag: string | undefined): string {
@@ -152,12 +164,42 @@ function requireTag(tag: string | undefined): string {
   return tag;
 }
 
-function isRetryableStatus(status: number): boolean {
-  return status === 429 || status >= 500;
+function isRetryableResponse(response: Response): boolean {
+  return isRateLimited(response) || response.status >= 500;
 }
 
-function retryDelay(response: Response, attempt: number): number {
-  const retryAfter = Number(response.headers.get('retry-after'));
-  const delay = Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter * 1000 : attempt * 100;
-  return Math.min(delay, MAX_RETRY_DELAY_MS);
+function isRateLimited(response: Response): boolean {
+  return response.status === 429 || (response.status === 403 && (response.headers.get('x-ratelimit-remaining') === '0' || response.headers.has('retry-after')));
+}
+
+function retryDelay(response: Response, attempt: number): number | undefined {
+  const retryAfterValue = response.headers.get('retry-after');
+  if (retryAfterValue !== null) return boundedDelay(Number(retryAfterValue) * 1000);
+  if (response.headers.get('x-ratelimit-remaining') === '0') {
+    const reset = Number(response.headers.get('x-ratelimit-reset'));
+    return Number.isFinite(reset) ? boundedDelay(Math.max(0, reset * 1000 - Date.now())) : undefined;
+  }
+  return response.status >= 500 ? boundedDelay(attempt * 100) : undefined;
+}
+
+function boundedDelay(delay: number): number | undefined {
+  return Number.isFinite(delay) && delay >= 0 && delay <= MAX_RETRY_DELAY_MS ? delay : undefined;
+}
+
+async function parseJson(response: Response, resource: string): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch (cause) {
+    throw invalidResponse(resource, cause);
+  }
+}
+
+function parseResponse<T>(schema: z.ZodType<T>, value: unknown, resource: string): T {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) throw invalidResponse(resource, parsed.error);
+  return parsed.data;
+}
+
+function invalidResponse(resource: string, cause: unknown): FacadeError {
+  return new FacadeError('SOURCE_INVALID_RESPONSE', 'GitHub returned an invalid ' + resource + ' response.', { cause });
 }

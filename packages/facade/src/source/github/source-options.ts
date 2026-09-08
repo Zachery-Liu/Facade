@@ -8,26 +8,30 @@ export interface GitHubSourceOverrides {
   readonly token?: string;
 }
 
-export interface GitHubSourceOptions {
+interface GitHubSourceBaseOptions {
   readonly repository: string;
-  readonly strategy: 'github-latest' | 'tag';
-  readonly tag?: string;
   readonly token?: string;
 }
 
+export type GitHubSourceOptions = GitHubSourceBaseOptions & (
+  | { readonly strategy: 'github-latest' }
+  | { readonly strategy: 'tag'; readonly tag: string }
+);
+
 export function resolveGitHubSourceOptions(config: FacadeConfig, environment: Readonly<Record<string, string | undefined>>, cli: GitHubSourceOverrides = {}): GitHubSourceOptions {
   const strategy = cli.strategy ?? parseStrategy(environment.FACADE_RELEASE_STRATEGY) ?? config.release.strategy;
-  const tag = cli.tag ?? environment.FACADE_RELEASE_TAG ?? config.release.tag;
-  if (strategy === 'tag' && (tag === undefined || tag.length === 0)) {
-    throw new FacadeError('SOURCE_TAG_REQUIRED', 'A release tag is required when selecting a tagged release.');
-  }
+  const configTag = config.release.strategy === 'tag' ? config.release.tag : undefined;
+  const tag = cli.tag ?? environment.FACADE_RELEASE_TAG ?? configTag;
   const token = cli.token ?? environment.GITHUB_TOKEN;
-  return {
+  const base = {
     repository: cli.repository ?? environment.FACADE_REPOSITORY ?? config.repository,
-    strategy,
-    ...(tag === undefined ? {} : { tag }),
     ...(token === undefined ? {} : { token }),
   };
+  if (strategy === 'tag') {
+    if (tag === undefined || tag.length === 0) throw new FacadeError('SOURCE_TAG_REQUIRED', 'A release tag is required when selecting a tagged release.');
+    return { ...base, strategy, tag };
+  }
+  return { ...base, strategy };
 }
 
 function parseStrategy(value: string | undefined): 'github-latest' | 'tag' | undefined {
