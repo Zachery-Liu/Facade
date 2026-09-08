@@ -21,9 +21,9 @@ Make the already-pushed quality-gate implementation execute successfully on GitH
 
 ## Acceptance Criteria
 
-- [ ] GitHub CI reaches `pnpm install --frozen-lockfile` and all five jobs execute their intended commands.
+- [x] GitHub CI reaches `pnpm install --frozen-lockfile` and all five jobs execute their intended commands.
 - [x] `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, and `pnpm coverage` pass with the 69/84/68/69 thresholds.
-- [ ] A PR to `main` is created or updated so Dependency Review can run and its status can be inspected.
+- [x] A PR to `main` is created or updated so Dependency Review can run and its status can be inspected.
 - [x] Documentation clearly states that enabling the `main` Ruleset happens only after all required checks appear and pass.
 - [x] Task records do not mark GitHub-only verification complete until it is observed.
 

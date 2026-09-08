@@ -11,14 +11,14 @@ This directory tracks records for all developers working with AI Agents on this 
 ### File Structure
 
 ```
-workspace/
-|-- index.md              # This file - main index
-+-- {developer}/          # Per-developer directory
-    |-- index.md          # Personal index with session history
-    |-- tasks/         # Task files
-    |   |-- *.json        # Active tasks
-    |   +-- archive/      # Archived tasks by month
-    +-- journal-N.md     # Journal files (sequential: 1, 2, 3...)
+.trellis/
+|-- tasks/                # Active and archived task records
+|   +-- archive/YYYY-MM/  # Completed tasks grouped by month
++-- workspace/
+    |-- index.md          # This cross-developer index
+    +-- {developer}/      # Per-developer session history
+        |-- index.md
+        +-- journal-N.md
 ```
 
 ---
@@ -27,7 +27,7 @@ workspace/
 
 | Developer | Last Active | Sessions | Active File |
 |-----------|-------------|----------|-------------|
-| (none yet) | - | - | - |
+| Zache | 2026-09-08 | 2 | `Zache/journal-1.md` |
 
 ---
 

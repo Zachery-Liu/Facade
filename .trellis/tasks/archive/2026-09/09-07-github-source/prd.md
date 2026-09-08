@@ -26,7 +26,8 @@ Add a typed, read-only GitHub Release source that turns a repository and release
 - [x] CLI/config/environment precedence is tested and documented at the source-options boundary; the build CLI itself remains T03 work.
 - [x] Source errors and options expose neither tokens nor absolute local paths.
 - [x] Local typecheck, lint, test, build, and coverage pass.
-- [ ] Three real repositories can be checked when GitHub network credentials are available; otherwise this remains recorded as external verification.
+- [x] Three public repositories' latest-release endpoints were checked without a token.
+- [ ] End-to-end builds of those repositories remain external verification and do not block the source adapter task.
 
 ## Technical Approach
 
@@ -42,4 +43,4 @@ Use the planned Octokit REST client behind a small injectable transport/client b
 
 - Relevant code: `packages/facade/src/source/repository-snapshot.ts`, `packages/facade/src/config/facade-config.ts`, and `packages/facade/src/cli/program.ts`.
 - Research: `research/github-rest-releases.md`.
-- External source evidence: `research/github-api-validation.md` confirms three public repositories return a Latest Release; end-to-end build validation remains blocked on T03's build entry point.
+- External source evidence: `research/github-api-validation.md` confirms three public repositories return a Latest Release. T03 and the GitHub-to-build bridge are now merged; live end-to-end repository builds remain unrecorded external verification.
