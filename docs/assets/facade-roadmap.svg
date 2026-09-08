@@ -44,7 +44,6 @@
   <line x1="115" y1="145" x2="1485" y2="145" stroke="url(#line)" stroke-width="3"/>
 
   <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
-    <!-- milestone labels -->
     <g font-size="28" font-weight="700" fill="#8cc7ff">
       <text x="110" y="104">v0.1</text>
       <text x="405" y="104">v0.2</text>
@@ -53,7 +52,6 @@
       <text x="1352" y="104">Future</text>
     </g>
 
-    <!-- nodes -->
     <g fill="#0d1a2c" stroke-width="3">
       <circle cx="138" cy="145" r="14" stroke="#69c6ff" filter="url(#softGlow)"/>
       <circle cx="435" cy="145" r="14" stroke="#55a7ff" filter="url(#softGlow)"/>
@@ -62,7 +60,6 @@
       <circle cx="1382" cy="145" r="14" stroke="#a855f7" filter="url(#softGlow)"/>
     </g>
 
-    <!-- cards -->
     <g fill="#0b1626" fill-opacity="0.84" stroke="url(#cardStroke)" stroke-width="1.4">
       <rect x="70" y="185" width="270" height="290" rx="20"/>
       <rect x="365" y="185" width="270" height="290" rx="20"/>
@@ -71,7 +68,6 @@
       <rect x="1250" y="185" width="280" height="290" rx="20"/>
     </g>
 
-    <!-- card titles -->
     <g fill="#f4f7ff" font-size="26" font-weight="720">
       <text x="98" y="240">Foundation</text>
       <text x="393" y="240">Distribution</text>
@@ -83,12 +79,11 @@
       <text x="1278" y="240">Open Ecosystem</text>
     </g>
 
-    <!-- card body -->
     <g fill="#a9b9d0" font-size="19" font-weight="450">
       <text x="98" y="315">GitHub source</text>
       <text x="98" y="350">classifier + overrides</text>
       <text x="98" y="385">shared selector</text>
-      <text x="98" y="420">manifest + Agent API</text>
+      <text x="98" y="420">manifest + Agent interface</text>
       <text x="98" y="455">release page + Action</text>
 
       <text x="393" y="315">environment model</text>
@@ -116,7 +111,6 @@
       <text x="1278" y="455">optional store-like UX</text>
     </g>
 
-    <!-- current focus -->
     <rect x="435" y="520" width="730" height="62" rx="31" fill="#0a1730" fill-opacity="0.9" stroke="#2f6edb" stroke-opacity="0.55"/>
     <circle cx="480" cy="551" r="11" fill="none" stroke="#38bdf8" stroke-width="3"/>
     <circle cx="480" cy="551" r="4" fill="#38bdf8"/>
