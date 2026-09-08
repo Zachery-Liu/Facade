@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FacadeConfigSchema } from '../src/config/facade-config.js';
+import { FacadeConfigInputSchema, FacadeConfigSchema } from '../src/config/facade-config.js';
 import { FacadeError } from '../src/runtime/facade-error.js';
 import { GitHubReleaseSource } from '../src/source/github/github-release-source.js';
 import { resolveGitHubSourceOptions } from '../src/source/github/source-options.js';
@@ -104,15 +104,36 @@ describe('GitHubReleaseSource', () => {
 describe('GitHub source option precedence', () => {
   const config = FacadeConfigSchema.parse({ schema: 1, repository: 'config/repository', release: { strategy: 'github-latest' } });
 
-  it('uses CLI values before environment and config values', () => {
-    expect(resolveGitHubSourceOptions(config, { FACADE_REPOSITORY: 'environment/repository', FACADE_RELEASE_STRATEGY: 'tag', FACADE_RELEASE_TAG: 'v2', GITHUB_TOKEN: 'environment-token' }, { repository: 'cli/repository', strategy: 'tag', tag: 'v3', token: 'cli-token' }))
+  it('uses CLI values before explicit environment, config, and ambient values', () => {
+    expect(resolveGitHubSourceOptions(config, { FACADE_REPOSITORY: 'environment/repository', FACADE_RELEASE_STRATEGY: 'tag', FACADE_RELEASE_TAG: 'v2', GITHUB_REPOSITORY: 'ambient/repository', GITHUB_TOKEN: 'environment-token' }, { repository: 'cli/repository', strategy: 'tag', tag: 'v3', token: 'cli-token' }))
       .toEqual({ repository: 'cli/repository', strategy: 'tag', tag: 'v3', token: 'cli-token' });
   });
 
-  it('falls back from environment to config and omits absent optional values', () => {
-    expect(resolveGitHubSourceOptions(config, {})).toEqual({ repository: 'config/repository', strategy: 'github-latest' });
-    expect(resolveGitHubSourceOptions(config, { FACADE_REPOSITORY: 'environment/repository', FACADE_RELEASE_STRATEGY: 'tag', FACADE_RELEASE_TAG: 'v2', GITHUB_TOKEN: 'environment-token' }))
+  it('uses explicit FACADE overrides before YAML and ambient inference', () => {
+    expect(resolveGitHubSourceOptions(config, { FACADE_REPOSITORY: 'environment/repository', FACADE_RELEASE_STRATEGY: 'tag', FACADE_RELEASE_TAG: 'v2', GITHUB_REPOSITORY: 'ambient/repository', GITHUB_TOKEN: 'environment-token' }))
       .toEqual({ repository: 'environment/repository', strategy: 'tag', tag: 'v2', token: 'environment-token' });
+  });
+
+  it('uses YAML before ambient CI inference', () => {
+    expect(resolveGitHubSourceOptions(config, { GITHUB_REPOSITORY: 'ambient/repository' }))
+      .toEqual({ repository: 'config/repository', strategy: 'github-latest' });
+  });
+
+  it('resolves release fields independently across layers', () => {
+    const taggedConfig = FacadeConfigSchema.parse({ schema: 1, repository: 'config/repository', release: { strategy: 'tag', tag: 'v1' } });
+    expect(resolveGitHubSourceOptions(taggedConfig, { FACADE_RELEASE_STRATEGY: 'tag' }))
+      .toEqual({ repository: 'config/repository', strategy: 'tag', tag: 'v1' });
+  });
+
+  it('uses ambient repository inference and the default release strategy for minimal YAML', () => {
+    const minimalConfig = FacadeConfigInputSchema.parse({ schema: 1 });
+    expect(resolveGitHubSourceOptions(minimalConfig, { GITHUB_REPOSITORY: 'ambient/repository', FACADE_RELEASE_TAG: 'ignored-tag' }))
+      .toEqual({ repository: 'ambient/repository', strategy: 'github-latest' });
+  });
+
+  it('fails when no layer supplies a repository', () => {
+    const minimalConfig = FacadeConfigInputSchema.parse({ schema: 1 });
+    expect(() => resolveGitHubSourceOptions(minimalConfig, {})).toThrow(expect.objectContaining({ code: 'SOURCE_REPOSITORY_REQUIRED' }));
   });
 
   it('drops lower-precedence tags when the resolved strategy is github-latest', () => {

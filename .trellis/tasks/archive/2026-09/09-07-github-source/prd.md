@@ -44,3 +44,7 @@ Use the planned Octokit REST client behind a small injectable transport/client b
 - Relevant code: `packages/facade/src/source/repository-snapshot.ts`, `packages/facade/src/config/facade-config.ts`, and `packages/facade/src/cli/program.ts`.
 - Research: `research/github-rest-releases.md`.
 - External source evidence: `research/github-api-validation.md` confirms three public repositories return a Latest Release. T03 and the GitHub-to-build bridge are now merged; live end-to-end repository builds remain unrecorded external verification.
+
+## Post-merge correction (2026-09-08)
+
+The original T04 wording `CLI > environment > config` conflated explicit `FACADE_*` overrides with ambient CI inference. The authoritative follow-up contract is now explicit CLI > explicit `FACADE_*` override > repository YAML > ambient inference > defaults. Credentials remain a separate CLI token > `GITHUB_TOKEN` injection path. The follow-up task `09-08-fix-config-precedence` owns the implementation and regression coverage; this note preserves the original T04 record while making the correction visible.
