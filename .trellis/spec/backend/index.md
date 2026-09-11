@@ -1,6 +1,6 @@
 # Backend Development Guidelines
 
-These guidelines document the initial implemented Facade workspace. They must evolve as GitHub source, configuration, classification, and build orchestration are implemented.
+These guidelines document the Facade workspace through the T04 GitHub Source integration. They must continue evolving as full classification, the Agent Interface, and Action/Pages orchestration are implemented.
 
 | Guide | Use when |
 | --- | --- |
