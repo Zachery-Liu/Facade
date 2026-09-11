@@ -10,6 +10,7 @@ on:
     types: [published]
   workflow_dispatch:
   push:
+    branches: ['**']
     paths:
       - .github/facade.yml
       - .github/facade/**

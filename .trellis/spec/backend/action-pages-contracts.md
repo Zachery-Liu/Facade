@@ -69,10 +69,12 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   template; consumers must ensure it has completed every asset upload before
   Facade's workflow or dependent jobs begin.
 * Unpublished Action: examples use an accessible immutable commit, never a
-  fictional major tag. The standalone workflow triggers configured paths
-  without a static branch filter, then gates its build job so push events run
-  only when `github.ref_name == github.event.repository.default_branch`. It
-  explicitly checks out that default branch.
+  fictional major tag. The standalone workflow limits configured-path pushes to
+  branches with `branches: ['**']`, which excludes tag pushes without
+  hard-coding a default-branch name. Its build job still gates push events on
+  `github.ref_name == github.event.repository.default_branch`, and explicitly
+  checks out that default branch. A skipped tag-push run must never enter the
+  site concurrency group and cancel a valid `release.published` refresh.
 * Asset completeness: standalone publication requires all assets to be uploaded
   before the Release is published. Automated producers use the CI-chain example,
   whose Facade job depends on the job that finishes every Release asset upload.
