@@ -112,7 +112,7 @@ v0.1 保证串行部署、完整产物、构建失败不替换线上站点；不
 
 ### T04 — GitHub Source
 
-实现 Latest、指定 tag、仓库信息及 Assets 分页；统一 CLI、配置和环境的参数优先级；加入有限重试、错误分类和来源记录；只使用 API 提供的摘要。
+实现 Latest、指定 tag、仓库信息及 Assets 分页；统一普通配置字段的优先级为显式 CLI > 显式 `FACADE_*` 覆盖 > 仓库 YAML > 环境推导 > 默认值，凭据单独按 CLI token > `GITHUB_TOKEN` 注入；加入有限重试、错误分类和来源记录；只使用 API 提供的摘要。
 
 **完成条件：** Source adapter 能将仓库信息、Latest / 指定 tag 与完整分页 Assets 规范化为 `RepositorySnapshot`；分页、draft、无 Latest、认证及网络失败有离线测试；日志和产物没有令牌或绝对本地路径；至少三个公开仓库的 GitHub Latest Release 端点已做无令牌实测。真实仓库的 Facade 端到端构建与 Pages 部署归 T05b / T11b 外部验收，不作为 T04 阻断项。
 

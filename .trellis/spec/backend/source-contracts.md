@@ -77,7 +77,10 @@ The Zod schema owns object shape, required fields, enums, and HTTP(S) URL
 format. `validateManifestSemantics` owns cross-asset rules: unique IDs and
 URLs, signature references, and evidence references. `FacadeConfigSchema`
 uses strict discriminated release strategies: `github-latest` has no tag;
-`tag` requires a non-empty tag.
+`tag` requires a non-empty tag. `FacadeConfigInputSchema` accepts the minimal
+repository YAML before source inference and defaults run;
+`FacadeConfigSchema` represents a fully specified repository and release
+selection. Neither schema accepts credentials.
 
 ### 4. Validation & Error Matrix
 
@@ -174,13 +177,26 @@ Use this boundary when GitHub REST responses are converted into `ReleaseSource` 
 ```ts
 GitHubReleaseSource.getSnapshot('github-latest'): Promise<RepositorySnapshot>
 GitHubReleaseSource.getSnapshot('tag', tag): Promise<RepositorySnapshot>
-resolveGitHubSourceOptions(config, environment, cli): GitHubSourceOptions
+resolveGitHubSourceOptions(
+  configInput: FacadeConfigInput,
+  environment: GitHubSourceEnvironment,
+  cli?: GitHubSourceOverrides,
+): GitHubSourceOptions
 ```
+
+`GitHubSourceEnvironment` recognizes the explicit keys
+`FACADE_REPOSITORY`, `FACADE_RELEASE_STRATEGY`, and `FACADE_RELEASE_TAG`,
+the ambient `GITHUB_REPOSITORY`, and the credential input `GITHUB_TOKEN`.
 
 ### 3. Contracts
 
 - Parse JSON and provider fields, then validate every mapped value with the neutral Source schemas.
 - Return `github-latest` without a tag; return `tag` only with a non-empty tag.
+- Resolve ordinary fields independently as explicit CLI > explicit `FACADE_*` override > repository YAML > ambient inference > defaults.
+- Parse repository YAML through `FacadeConfigInputSchema` at the file-loading boundary, then resolve it through the same named layers; do not require a fully specified `FacadeConfigSchema` before ambient inference runs.
+- Treat `GITHUB_REPOSITORY` as ambient inference only. Repository YAML beats it, and release-event variables do not implicitly change the configured release selection.
+- Default an omitted release selection to `github-latest`; fail when no layer supplies a repository.
+- Resolve credentials separately as CLI token > `GITHUB_TOKEN`; never accept credentials from YAML or include them in diagnostics.
 - Treat `403` with exhausted rate-limit headers and every `429` as rate limiting.
 - Never retry before `retry-after` or `x-ratelimit-reset`; fail immediately when the requested delay exceeds the bounded local wait.
 
@@ -192,26 +208,37 @@ resolveGitHubSourceOptions(config, environment, cli): GitHubSourceOptions
 | `403` without rate-limit evidence | `SOURCE_ACCESS_DENIED` |
 | `403` with exhausted limit or `429` | `SOURCE_RATE_LIMITED` |
 | Retry count outside 1–10 | `SOURCE_INVALID_RETRY_POLICY` |
+| No repository in explicit, YAML, or ambient layers | `SOURCE_REPOSITORY_REQUIRED` |
+| Unsupported `FACADE_RELEASE_STRATEGY` | `SOURCE_INVALID_STRATEGY` |
 | Tagged selection without a tag | `SOURCE_TAG_REQUIRED` |
 
 ### 5. Good / Base / Bad Cases
 
 - Good: a valid GitHub page maps immediately to HTTP(S)-only neutral assets.
-- Base: a short `5xx` retry delay is honored within the attempt bound.
-- Bad: cap a server-requested long wait and retry early, or pass `z.url()` output directly as an HTTP(S) Source URL.
+- Good: repository YAML beats `GITHUB_REPOSITORY`, while an explicit
+  `FACADE_REPOSITORY` or CLI repository can still override the YAML field.
+- Base: minimal `{ schema: 1 }` YAML uses `GITHUB_REPOSITORY` and defaults the
+  release strategy to `github-latest`.
+- Bad: treat every environment variable as one precedence layer, allowing
+  ambient CI metadata to override repository-owned YAML.
+- Bad: cap a server-requested long wait and retry early, or pass `z.url()`
+  output directly as an HTTP(S) Source URL.
 
 ### 6. Tests Required
 
 - Cover malformed JSON and a provider URL rejected by the neutral schema.
 - Distinguish ordinary `403` from rate-limited `403` and do not retry a long server delay.
+- Prove CLI > `FACADE_*` > YAML > `GITHUB_REPOSITORY`, plus the default `github-latest` selection.
 - Assert lower-precedence tags are omitted when the resolved strategy is `github-latest`.
 
 ### 7. Wrong vs Correct
 
 #### Wrong
 
-Assume provider-shape validation is equivalent to the neutral Source contract.
+Assume provider-shape validation is equivalent to the neutral Source contract,
+or merge `FACADE_*` overrides and `GITHUB_REPOSITORY` into a single
+"environment" layer.
 
 #### Correct
 
-Validate the mapped repository, release, assets, and final snapshot through their shared schemas before returning.
+Validate the mapped repository, release, assets, and final snapshot through their shared schemas before returning. Keep explicit overrides, repository configuration, ambient inference, defaults, and credentials as named layers at the source-options boundary.

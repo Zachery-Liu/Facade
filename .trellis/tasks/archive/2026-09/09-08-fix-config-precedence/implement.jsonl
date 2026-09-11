@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend pre-development checklist and guide routing."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Configuration and GitHub source module ownership."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Stable source error and credential-safety conventions."}
+{"file":".trellis/spec/backend/source-contracts.md","reason":"Authoritative GitHub source options contract and required cases."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Offline testing and full local quality gate."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Keep product docs, runtime input, resolver output, and tests aligned."}
