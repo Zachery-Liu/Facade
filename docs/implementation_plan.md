@@ -2,7 +2,7 @@
 
 > 状态：实施基线  
 > 关联需求：[Facade 产品规划](./facade_product_plan.md)  
-> 修订日期：2026-09-06
+> 修订日期：2026-09-08
 
 ## 1. 目标、范围与交付状态
 
@@ -18,7 +18,7 @@ HTML + manifest.json + install.md + llms.txt
        GitHub Pages
 ```
 
-本计划替代之前的实施拆解，并修正条件判断、推荐、验证材料和部署并发的承诺。技术栈为 TypeScript、pnpm、Zod、Octokit、commander、Preact、Vite、Vitest 和 Playwright；只维护一个主软件包与一个 Action 入口。
+本计划替代之前的实施拆解，并修正条件判断、推荐、验证材料和部署并发的承诺。技术栈为 TypeScript、pnpm、Zod、GitHub REST API（通过可注入 transport 封装）、commander、Preact、Vite、Vitest 和 Playwright；只维护一个主软件包与一个 Action 入口。
 
 v0.1 包含 Product Theme、`init` / `inspect` / `build`、三个静态 Agent 接口、GitHub 数据源及两种发布接入方式。第二主题、dev server、Playground、自动安装、MCP、Agent Server 和实际签名验证均后移。
 
@@ -114,7 +114,7 @@ v0.1 保证串行部署、完整产物、构建失败不替换线上站点；不
 
 实现 Latest、指定 tag、仓库信息及 Assets 分页；统一 CLI、配置和环境的参数优先级；加入有限重试、错误分类和来源记录；只使用 API 提供的摘要。
 
-**完成条件：** 三类真实仓库可构建；分页、draft、无 Latest、认证及网络失败有测试；日志和产物没有令牌或绝对本地路径。
+**完成条件：** Source adapter 能将仓库信息、Latest / 指定 tag 与完整分页 Assets 规范化为 `RepositorySnapshot`；分页、draft、无 Latest、认证及网络失败有离线测试；日志和产物没有令牌或绝对本地路径；至少三个公开仓库的 GitHub Latest Release 端点已做无令牌实测。真实仓库的 Facade 端到端构建与 Pages 部署归 T05b / T11b 外部验收，不作为 T04 阻断项。
 
 ### T05a — Action 与工作流工程接入
 
@@ -150,7 +150,7 @@ v0.1 保证串行部署、完整产物、构建失败不替换线上站点；不
 
 完成产品信息、品牌素材、条件标签、安装命令和更新说明；集成共享选择器和手动选择；实现浅色、深色、自动外观、强调色、复制反馈、响应式、键盘操作及 Markdown 安全处理。
 
-**完成条件：** 无 JS、多候选、未知架构、无图片和长文本场景可用；人机输出一致；无虚假兼容或验证承诺。
+**完成条件：** 无 JS、多候选、未知架构、无图片和长文本场景可用；用户页面与 Agent 输出一致；无虚假兼容或验证承诺。
 
 ### T10 — init 与使用体验
 
@@ -187,7 +187,7 @@ v0.1 保证串行部署、完整产物、构建失败不替换线上站点；不
 | 来源策略 | API、作者声明、规则推断、派生值、严格策略 |
 | 验证材料 | tag 失配、签名歧义、缺少材料、不输出 verified |
 | 契约 | Schema 通过但语义失败、重复 ID、悬空引用、无效 evidence |
-| 人机输出 | 相同版本和文件、相同选择、子路径、Markdown 转义 |
+| 用户与 Agent 输出 | 相同版本和文件、相同选择、子路径、Markdown 转义 |
 | 页面 | 无 JS、键盘、移动端、复制失败、长文本、无品牌素材 |
 | 构建部署 | 输出失败、旧产物保留、串行部署、输入变化后重建 |
 | 打包 | 干净安装、CLI 可执行、Action 无源码开发依赖 |

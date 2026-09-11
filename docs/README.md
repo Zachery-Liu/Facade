@@ -8,14 +8,37 @@ This convention applies to internal development documentation, not to stable end
 
 ## Current documents
 
-- [`facade_product_plan.md`](./facade_product_plan.md) — product planning, architectural baseline, and core behavioral constraints. Primarily maintained in Simplified Chinese.
-- [`implementation_plan.md`](./implementation_plan.md) — v0.1 implementation plan, work breakdown, and acceptance requirements. Primarily maintained in Simplified Chinese.
+- [`facade_product_plan.md`](./facade_product_plan.md) — broader product and architecture design baseline. Some implementation-level examples predate the current v0.1 contracts; use the precedence rules below before treating them as current requirements. Primarily maintained in Simplified Chinese.
+- [`implementation_plan.md`](./implementation_plan.md) — current v0.1 behavior freeze, work breakdown, and acceptance requirements. Primarily maintained in Simplified Chinese.
+- [`roadmap.md`](./roadmap.md) — public long-term roadmap covering the distribution metadata layer, portable protocol, Registry, Agent software discovery, and open ecosystem. Maintained together with its Chinese translation.
+- [`roadmap.zh-CN.md`](./roadmap.zh-CN.md) — Simplified Chinese translation of the public roadmap; structure and product meaning should remain synchronized with `roadmap.md`.
 - [`quality-gates.md`](./quality-gates.md) — CI, coverage, Ruleset, and merge quality gates. English version.
 - [`quality-gates.zh-CN.md`](./quality-gates.zh-CN.md) — Simplified Chinese translation of the quality-gates document.
+
+## Current baseline precedence
+
+During v0.1 implementation, [`implementation_plan.md`](./implementation_plan.md) is the most recent frozen source for task scope and behavior that has already been revised during implementation. Current code and tests define the implemented contract. The broader product plan remains the architecture/design baseline, but older implementation examples in it are not authoritative when they conflict with the implementation plan or code.
+
+In particular, do not infer a current implementation requirement solely from an older library name, `preferredId` example, fixed verification-status example, or minimal configuration example in the product plan when the implementation plan and current code define a newer contract.
+
+Configuration precedence is intentionally **not** frozen by this document. The current source implementation and the broader product plan are not yet fully aligned on precedence semantics; that product-contract decision should be resolved separately and then synchronized across code, tests, and documentation.
+
+## Current implementation boundary
+
+The repository is still in v0.1 development. At the current implementation point:
+
+- the public CLI surface is fixture-backed (`facade build --fixture ...`);
+- the GitHub Release source and source-to-build bridge exist internally, but live GitHub CLI wiring is not yet exposed;
+- the generated development manifest uses `schemaVersion: 0`; `schemaVersion: 1` is reserved for the v0.1 protocol freeze at release;
+- the full classifier/override model, shared selector, `inspect`, Action/Pages path, Product Theme, and final Agent contract are still planned v0.1 work.
+
+Use the current code and tests to answer “what works now,” `implementation_plan.md` to answer “what v0.1 must still deliver,” and `roadmap.md` to answer “what may come after the v0.1 foundation.”
 
 ## Language convention
 
 Unless a document explicitly states otherwise, development documents under `docs/` are maintained primarily in Simplified Chinese and the Chinese version is the primary source during the current development phase.
+
+The public Roadmap is an exception: `roadmap.md` and `roadmap.zh-CN.md` are maintained as synchronized English and Simplified Chinese versions because the roadmap is contributor-facing project documentation.
 
 When translations are added, the relationship between the primary document and its translation should be stated explicitly. Product or architecture decisions should not be maintained independently in different language versions.
 
