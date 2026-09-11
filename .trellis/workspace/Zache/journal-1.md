@@ -154,3 +154,36 @@ Verified and fixed Action input precedence, bundle drift CI, Release asset timin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Fix main review findings
+
+**Date**: 2026-09-11
+**Task**: Fix main review findings
+**Branch**: `codex/fix-main-review`
+
+### Summary
+
+Fixed Pages concurrency isolation and Action configuration pin; stage and verify live builds before output replacement; synchronized READMEs and specs. All 80 tests, lint, typecheck, build, coverage passed. Verified pinned Action minimal configuration using offline transport. Changes committed locally on codex/fix-main-review.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `16e58e3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
