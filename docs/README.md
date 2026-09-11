@@ -21,7 +21,7 @@ During v0.1 implementation, [`implementation_plan.md`](./implementation_plan.md)
 
 In particular, do not infer a current implementation requirement solely from an older library name, `preferredId` example, fixed verification-status example, or minimal configuration example in the product plan when the implementation plan and current code define a newer contract.
 
-The implemented GitHub source option precedence is **CLI > environment > config**. The source boundary currently resolves repository, release strategy/tag, and token using that order. This describes the current implementation; later public CLI/config work may extend the surface without silently changing the precedence rule.
+Configuration precedence is intentionally **not** frozen by this document. The current source implementation and the broader product plan are not yet fully aligned on precedence semantics; that product-contract decision should be resolved separately and then synchronized across code, tests, and documentation.
 
 ## Current implementation boundary
 
