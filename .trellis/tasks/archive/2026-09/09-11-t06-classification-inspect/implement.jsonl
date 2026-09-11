@@ -1,0 +1,9 @@
+{"file":".trellis/spec/backend/index.md","reason":"Routes the backend guidelines required for compiler, config, build, CLI, and diagnostics changes."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Owns placement and purity boundaries for classifier, compiler, config, build, CLI, manifest, and runtime modules."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Defines strict TypeScript, offline deterministic tests, and the complete local quality gate."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Defines stable errors versus returned uncertainty/diagnostics and sensitive-data constraints."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Constrains inspect and build diagnostics to stable non-sensitive fields."}
+{"file":".trellis/spec/backend/source-contracts.md","reason":"Defines validated source snapshots, manifest ownership, fresh build, and static output boundaries."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Requires shared constants and resolution logic across build and inspect."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"T06 spans source, config, compiler, manifest, build, CLI, and renderer boundaries."}
+{"file":".trellis/tasks/09-11-t06-classification-inspect/research/classification-contract.md","reason":"Distills the frozen T06 behavior and schema/data-flow decisions from project plans and current code."}
