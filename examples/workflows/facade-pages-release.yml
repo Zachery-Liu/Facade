@@ -1,0 +1,67 @@
+# Facade is pinned to an unpublished review-fix commit. Replace it only with
+# another immutable commit that is accessible to this repository.
+# Publish a Release only after every asset upload is complete. Automation that
+# creates Releases must instead merge the chained workflow example into its
+# release workflow so Facade depends on the asset-upload job.
+name: Publish Facade release pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/facade.yml
+      - .github/facade/**
+      - .github/workflows/facade-pages.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: facade-pages-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out the site configuration branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+      - name: Build the complete Facade site
+        id: facade
+        uses: Zachery-Liu/Facade@4d676bec6ead5324834154601d2756de9d5dc5b8
+        with:
+          config: .github/facade.yml
+          base-path: ${{ steps.pages.outputs.base_path || '/' }}
+          out-dir: .facade-dist
+          token: ${{ github.token }}
+      - name: Upload the complete Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ steps.facade.outputs.output-path }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 2
+- **Total Sessions**: 4
 - **Last Active**: 2026-09-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~86 | Active |
+| `journal-1.md` | ~150 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -30,6 +30,8 @@
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
 | 2 | 2026-09-08 | Reconcile Trellis project records | `0fa239e`, `2b3da9b`, `caf0351`, `4a73d90` | `codex/chore-trellis-cleanup` |
+| 3 | 2026-09-08 | Complete T05a Action and Pages integration | `992e3eb`, `74eb7e3` | `feat/t05-action-workflows` |
+| 4 | 2026-09-08 | Fix T05a review contracts | `6b22abb` | `feat/t05-action-workflows` |
 | 1 | 2026-09-06 | Add GitHub quality gates | `6ad8951` | `feat/quality-gates` |
 <!-- @@@/auto:session-history -->
 

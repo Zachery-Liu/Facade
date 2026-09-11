@@ -4,6 +4,8 @@ node_modules/
 
 # Build and test outputs
 dist/
+!action/dist/
+!action/dist/index.cjs
 coverage/
 playwright-report/
 test-results/

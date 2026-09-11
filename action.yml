@@ -1,0 +1,40 @@
+name: Facade release pages
+description: Build a static release site for humans and software agents.
+author: Facade contributors
+
+inputs:
+  config:
+    description: Path to the Facade YAML configuration file.
+    required: false
+    default: .github/facade.yml
+  repository:
+    description: GitHub repository in owner/repository form.
+    required: false
+  tag:
+    description: Optional exact release tag override.
+    required: false
+  base-path:
+    description: Absolute GitHub Pages site path.
+    required: false
+    default: /
+  out-dir:
+    description: Directory that receives the complete static site.
+    required: false
+    default: .facade-dist
+  token:
+    description: Token used to read the selected GitHub release.
+    required: false
+
+outputs:
+  output-path:
+    description: Path containing the complete generated static site.
+  release-tag:
+    description: Exact GitHub release tag used for the generated site.
+
+runs:
+  using: node24
+  main: action/dist/index.cjs
+
+branding:
+  icon: package
+  color: blue

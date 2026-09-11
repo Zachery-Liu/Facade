@@ -1,0 +1,66 @@
+# Merge the `facade` and `deploy` jobs into the workflow that creates your
+# release. Replace `release-assets` with that workflow's job ID. The upstream
+# job must publish the Release and finish uploading every asset before it exits.
+name: Release with Facade pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: facade-pages-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  release-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Replace this example with the existing release job
+        run: |
+          echo "Publish the Release and upload every asset in this job."
+          exit 1
+
+  facade:
+    needs: release-assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out the site configuration branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+      - name: Build after all release assets exist
+        id: facade
+        uses: Zachery-Liu/Facade@4d676bec6ead5324834154601d2756de9d5dc5b8
+        with:
+          config: .github/facade.yml
+          base-path: ${{ steps.pages.outputs.base_path || '/' }}
+          out-dir: .facade-dist
+          token: ${{ github.token }}
+      - name: Upload the complete Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ steps.facade.outputs.output-path }}
+
+  deploy:
+    needs: facade
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
