@@ -23,6 +23,7 @@ describe('packaged GitHub Action', () => {
     expect(parsed.runs).toEqual({ using: 'node24', main: 'action/dist/index.cjs' });
     expect(Object.keys(parsed.inputs).sort()).toEqual(['base-path', 'config', 'out-dir', 'repository', 'tag', 'token']);
     expect(Object.keys(parsed.outputs).sort()).toEqual(['output-path', 'release-tag']);
+    expect(parsed.inputs['out-dir']).toMatchObject({ default: '.facade-dist' });
     expect(parsed.inputs.repository).not.toHaveProperty('default');
     expect(parsed.inputs.token).not.toHaveProperty('default');
   });

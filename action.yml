@@ -20,7 +20,7 @@ inputs:
   out-dir:
     description: Directory that receives the complete static site.
     required: false
-    default: dist
+    default: .facade-dist
   token:
     description: Token used to read the selected GitHub release.
     required: false

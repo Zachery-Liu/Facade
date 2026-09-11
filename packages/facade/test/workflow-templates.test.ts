@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const unpublishedActionReference = 'Zachery-Liu/Facade@992e3eb68562941eee73c75da32b07b8e08b5851';
+const unpublishedActionReference = 'Zachery-Liu/Facade@4d676bec6ead5324834154601d2756de9d5dc5b8';
 const defaultBranchCondition = "github.event_name != 'push' || github.ref_name == github.event.repository.default_branch";
 
 const StepSchema = z.object({
@@ -40,29 +40,35 @@ describe('Pages workflow templates', () => {
     ['facade-pages-after-release.yml', 'facade'],
   ] as const)('validates %s at the exact Pages contract paths', async (name, buildJobName) => {
     const workflow = await readWorkflow(join('examples', 'workflows', name));
-    expect(workflow.concurrency).toEqual({ group: 'facade-pages-${{ github.repository }}', 'cancel-in-progress': true });
+    expect(workflow.concurrency).toEqual({
+      group: 'facade-pages-${{ github.repository }}',
+      'cancel-in-progress': true,
+    });
 
     const build = requireJob(workflow, buildJobName);
+    expect(build.permissions).toEqual({ contents: 'read', pages: 'read' });
     expect(build.steps.map((step) => step.uses)).toEqual([
       'actions/checkout@v7',
-      'actions/configure-pages@v5',
+      'actions/configure-pages@v6',
       unpublishedActionReference,
-      'actions/upload-pages-artifact@v4',
+      'actions/upload-pages-artifact@v5',
     ]);
     expect(requireStep(build, 'actions/checkout@v7').with).toEqual({ ref: '${{ github.event.repository.default_branch }}' });
     expect(requireStep(build, unpublishedActionReference).with).toEqual({
       config: '.github/facade.yml',
       'base-path': "${{ steps.pages.outputs.base_path || '/' }}",
+      'out-dir': '.facade-dist',
       token: '${{ github.token }}',
     });
-    expect(requireStep(build, 'actions/upload-pages-artifact@v4').with).toEqual({ path: '${{ steps.facade.outputs.output-path }}' });
+    expect(requireStep(build, 'actions/upload-pages-artifact@v5').with).toEqual({ path: '${{ steps.facade.outputs.output-path }}' });
 
     const deploy = requireJob(workflow, 'deploy');
     expect(deploy.needs).toBe(buildJobName);
+    expect(deploy).not.toHaveProperty('concurrency');
     expect(deploy.permissions).toEqual({ actions: 'read', contents: 'read', pages: 'write', 'id-token': 'write' });
     expect(deploy.environment).toEqual({ name: 'github-pages', url: '${{ steps.deployment.outputs.page_url }}' });
     expect(deploy.steps.map((step) => ({ id: step.id, uses: step.uses }))).toEqual([
-      { id: 'deployment', uses: 'actions/deploy-pages@v4' },
+      { id: 'deployment', uses: 'actions/deploy-pages@v5' },
     ]);
   });
 

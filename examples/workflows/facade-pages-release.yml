@@ -1,5 +1,5 @@
-# Facade is pinned to the first unpublished T05a implementation commit. Replace
-# it only with another immutable commit that is accessible to this repository.
+# Facade is pinned to an unpublished review-fix commit. Replace it only with
+# another immutable commit that is accessible to this repository.
 # Publish a Release only after every asset upload is complete. Automation that
 # creates Releases must instead merge the chained workflow example into its
 # release workflow so Facade depends on the asset-upload job.
@@ -26,6 +26,9 @@ jobs:
   build:
     if: github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - name: Check out the site configuration branch
         uses: actions/checkout@v7
@@ -33,16 +36,17 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
       - name: Configure GitHub Pages
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Build the complete Facade site
         id: facade
-        uses: Zachery-Liu/Facade@992e3eb68562941eee73c75da32b07b8e08b5851
+        uses: Zachery-Liu/Facade@4d676bec6ead5324834154601d2756de9d5dc5b8
         with:
           config: .github/facade.yml
           base-path: ${{ steps.pages.outputs.base_path || '/' }}
+          out-dir: .facade-dist
           token: ${{ github.token }}
       - name: Upload the complete Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ steps.facade.outputs.output-path }}
 
@@ -60,4 +64,4 @@ jobs:
     steps:
       - name: Deploy GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

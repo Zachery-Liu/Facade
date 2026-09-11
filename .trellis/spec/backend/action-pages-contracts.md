@@ -49,17 +49,25 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 * Source: honor `GITHUB_API_URL` for GitHub Enterprise and use `GITHUB_TOKEN`
   only through the source adapter. Mask an explicit Action token input before
   work begins; workflow templates pass `github.token` explicitly.
-* Freshness: fingerprint exact config source, resolved source options, and the
-  normalized snapshot before and after publication. One mismatch causes one
-  rebuild; a mismatch on the second attempt fails. This detects changes during
-  the sampled build interval, not arbitrary future Release asset uploads.
+* Freshness: fingerprint exact checked-out config bytes, resolved source options,
+  and the normalized snapshot before and after publication. One mismatch causes
+  one rebuild; a mismatch on the second attempt fails. This detects changes to
+  those sampled inputs during the build interval, not remote configuration
+  commits after checkout or arbitrary future Release asset uploads.
 * Outputs: write both outputs only after a stable successful build. Never put
   tokens or absolute paths into errors or annotations.
+* Output ownership: the Action defaults `out-dir` to `.facade-dist` so it does
+  not collide with a consumer's conventional `dist` directory. Templates pass
+  that value explicitly when pinning an earlier immutable Action commit.
 * Pages: workflows configure Pages before building, pass `base_path`, upload
   the entire output directory as one Pages artifact, and deploy in a dependent
-  job with `pages: write`, `id-token: write`, and `github-pages` environment.
-* Concurrency: use one site-level concurrency group with cancellation so older
-  refreshes cannot deploy later than the superseding workflow.
+  job. The build job needs `pages: read`; the deploy job needs `pages: write`,
+  `id-token: write`, and the `github-pages` environment.
+* Concurrency: use one workflow-level, site-specific group with
+  `cancel-in-progress: true`, so a newer refresh cancels an older run before it
+  can deploy stale output. The release-assets job belongs only in the chained
+  template; consumers must ensure it has completed every asset upload before
+  Facade's workflow or dependent jobs begin.
 * Unpublished Action: examples use an accessible immutable commit, never a
   fictional major tag. The standalone workflow triggers configured paths
   without a static branch filter, then gates its build job so push events run
@@ -129,7 +137,7 @@ created with the repository `GITHUB_TOKEN`.
 ```yaml
 - uses: Zachery-Liu/Facade@<accessible-immutable-commit>
   id: facade
-- uses: actions/upload-pages-artifact@v4
+- uses: actions/upload-pages-artifact@v5
   with:
     path: ${{ steps.facade.outputs.output-path }}
 ```
