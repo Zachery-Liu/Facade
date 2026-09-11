@@ -37,12 +37,12 @@ Facade **不代理软件下载、不凭空制造信任，也不会静默执行�
   `install.md` 和 `llms.txt`；
 - `basePath` 处理，以及带 staging、替换保护和回滚机制的安全输出流程；
 - GitHub Release Source，可读取仓库元数据、latest/tag Release，并分页获取附件；
-- 稳定的 Source 错误码、有界重试，以及内部 Source → Build 集成路径。
+- 稳定的 Source 错误码、有界重试，以及在线 GitHub CLI 构建；
+- 已打包的 GitHub Action 和 Pages 工作流模板，替换输出前会检查输入是否变化。
 
-当前 CLI surface 仍然刻意保持很小：`facade build` 目前从离线
-RepositorySnapshot fixture 构建。在线 GitHub CLI 接入、GitHub
-Action / Pages、完整分类与人工覆盖、共享 Selector、`inspect`、Product
-Theme，以及完整 Agent 契约仍属于 v0.1 后续工作。
+`facade build` 已支持在线 GitHub Releases 和离线 RepositorySnapshot fixture。
+完整分类与人工覆盖、共享 Selector、`inspect`、Product Theme，以及完整 Agent
+契约仍属于 v0.1 后续工作。
 
 ## v0.1 正在构建什么
 
@@ -86,15 +86,38 @@ User UI + Agent Interface
 
 ## 当前开发 CLI
 
-当前 CLI 主要用于开发阶段的 fixture 构建。从一个全新的仓库 checkout 开始时，先构建 CLI，再直接调用生成后的入口：
+从全新的仓库 checkout 开始时，先安装依赖并构建 CLI，再直接调用生成后的入口。离线 fixture 构建示例：
 
 ```bash
+pnpm install
 pnpm build
 node packages/facade/dist/index.js build \
   --fixture <repository-snapshot.json> \
   --out-dir dist \
   --base-path /
 ```
+
+在线 GitHub 构建需要创建 `.github/facade.yml`：
+
+```yaml
+schema: 1
+repository: owner/repository
+```
+
+```bash
+node packages/facade/dist/index.js build --out-dir .facade-dist
+```
+
+默认选择 GitHub latest Release。可用 `--tag v1.2.3` 指定版本，
+`--repository owner/repository` 覆盖仓库，`--config path/to/facade.yml`
+指定其他配置文件。需要认证时通过 `GITHUB_TOKEN` 提供令牌。在 GitHub Actions
+中，配置只写 `schema: 1` 即可从 `GITHUB_REPOSITORY` 推断仓库。
+
+部署 Pages 时，可在附件全部上传后使用
+[手动发布模板](examples/workflows/facade-pages-release.yml)，或将
+[串联模板](examples/workflows/facade-pages-after-release.yml) 合入上传 Release
+附件的现有工作流。两个模板均固定到不可变的 Action commit，使用者无需安装
+Facade 依赖；采用后续 Action 修复时需要更新该引用。
 
 仓库开发环境要求 Node.js `>=22.13.0` 与 pnpm `11.19.0`：
 
@@ -107,7 +130,7 @@ pnpm coverage
 pnpm build
 ```
 
-等 npm 包、GitHub Action 与在线 Source 流程稳定后，再补充面向最终用户的安装和发布说明。
+npm 包和带正式版本号的公开 Action release 尚未发布。
 
 ## 路线图
 

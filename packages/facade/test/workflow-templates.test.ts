@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const unpublishedActionReference = 'Zachery-Liu/Facade@4d676bec6ead5324834154601d2756de9d5dc5b8';
+const unpublishedActionReference = 'Zachery-Liu/Facade@e6d5dcfb5ae901841a7798e03abd7d63c6103fd8';
+const standaloneConcurrencyGroup = "facade-pages-${{ github.repository }}-${{ github.event_name == 'push' && github.ref_name != github.event.repository.default_branch && github.run_id || 'site' }}";
 const defaultBranchCondition = "github.event_name != 'push' || github.ref_name == github.event.repository.default_branch";
 
 const StepSchema = z.object({
@@ -41,7 +42,7 @@ describe('Pages workflow templates', () => {
   ] as const)('validates %s at the exact Pages contract paths', async (name, buildJobName) => {
     const workflow = await readWorkflow(join('examples', 'workflows', name));
     expect(workflow.concurrency).toEqual({
-      group: 'facade-pages-${{ github.repository }}',
+      group: buildJobName === 'build' ? standaloneConcurrencyGroup : 'facade-pages-${{ github.repository }}-site',
       'cancel-in-progress': true,
     });
 

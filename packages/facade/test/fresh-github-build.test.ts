@@ -1,8 +1,9 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { buildFreshGitHubRelease, buildFreshRelease } from '../src/build/fresh-github-build.js';
+import { buildRelease } from '../src/build/offline-build.js';
 import { loadFacadeConfig } from '../src/config/load-facade-config.js';
 import type { GitHubReleaseSourceOptions } from '../src/source/github/github-release-source.js';
 import type { RepositorySnapshot } from '../src/source/repository-snapshot.js';
@@ -78,7 +79,7 @@ describe('fresh release builds', () => {
 
   it('publishes once when verification sees the same inputs', async () => {
     const publish = vi.fn(async () => ({ basePath: '/', files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'] as const }));
-    await expect(buildFreshRelease({ capture: async () => ({ fingerprint: 'same', snapshot: snapshot('v1') }), publish }))
+    await expect(buildFreshRelease({ capture: async () => ({ fingerprint: 'same', snapshot: snapshot('v1') }), prepare: async () => ({ publish, dispose: async () => {} }) }))
       .resolves.toMatchObject({ attempts: 1, releaseTag: 'v1' });
     expect(publish).toHaveBeenCalledTimes(1);
   });
@@ -92,11 +93,11 @@ describe('fresh release builds', () => {
         const fingerprint = states.shift() ?? 'unexpected';
         return { fingerprint, snapshot: snapshot(fingerprint) };
       },
-      publish,
+      prepare: async () => ({ publish, dispose: async () => {} }),
       onInputChanged,
     });
     expect(result).toMatchObject({ attempts: 2, releaseTag: 'new' });
-    expect(publish).toHaveBeenCalledTimes(2);
+    expect(publish).toHaveBeenCalledTimes(1);
     expect(onInputChanged).toHaveBeenCalledOnce();
   });
 
@@ -108,8 +109,41 @@ describe('fresh release builds', () => {
         const fingerprint = states.shift() ?? 'unexpected';
         return { fingerprint, snapshot: snapshot(fingerprint) };
       },
-      publish,
+      prepare: async () => ({ publish, dispose: async () => {} }),
     })).rejects.toMatchObject({ code: 'BUILD_INPUT_CHANGED_REPEATEDLY' });
-    expect(publish).toHaveBeenCalledTimes(2);
+    expect(publish).not.toHaveBeenCalled();
   });
+
+  it.each(['verification-error', 'repeated-change', 'retry-success'] as const)(
+    'keeps the previous complete output until verification succeeds: %s', async (scenario) => {
+      const root = await mkdtemp(join(tmpdir(), 'facade-fresh-transaction-'));
+      const configPath = join(root, 'facade.yml');
+      const outDir = join(root, 'site');
+      await writeFile(configPath, 'schema: 1\n');
+      const previous = await buildRelease(snapshot('stable'), { outDir });
+      const readOutput = () => Promise.all(previous.files.map((file) => readFile(join(outDir, file), 'utf8')));
+      const originalFiles = await readOutput();
+      const states = scenario === 'retry-success' ? ['old', 'new', 'new', 'new'] : ['one', 'two', 'three', 'four'];
+      let captures = 0;
+      const build = buildFreshGitHubRelease({
+        configPath, outDir, environment: { GITHUB_REPOSITORY: 'owner/repository' },
+        sourceFactory: () => ({ getSnapshot: async () => {
+          // Every verification/retry must still see the last successful site.
+          expect(await readOutput()).toEqual(originalFiles);
+          captures += 1;
+          if (scenario === 'verification-error' && captures === 2) throw new Error('Verification unavailable');
+          return snapshot(states.shift() ?? 'unexpected');
+        } }),
+      });
+      if (scenario === 'retry-success') {
+        await expect(build).resolves.toMatchObject({ attempts: 2, releaseTag: 'new' });
+        expect(await readFile(join(outDir, 'manifest.json'), 'utf8')).toContain('"releaseTag": "new"');
+      } else {
+        if (scenario === 'verification-error') await expect(build).rejects.toThrow('Verification unavailable');
+        else await expect(build).rejects.toMatchObject({ code: 'BUILD_INPUT_CHANGED_REPEATEDLY' });
+        expect(await readOutput()).toEqual(originalFiles);
+      }
+      expect((await readdir(root)).sort()).toEqual(['facade.yml', 'site']);
+    },
+  );
 });

@@ -41,7 +41,8 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   A consuming repository must not install pnpm or Facade dependencies. CI must
   run the build and then fail on
   `git diff --exit-code -- action/dist/index.cjs`.
-* Precedence: Action overrides, then environment, then validated YAML config.
+* Precedence: explicit Action overrides, then `FACADE_*`, validated YAML,
+  ambient inference, and defaults; see Source Contracts for individual fields.
   A non-empty `tag` input selects the exact-tag strategy. Optional
   `repository` and `token` metadata inputs have no defaults: a metadata
   default is indistinguishable from an explicit Action input and would bypass
@@ -50,8 +51,10 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   only through the source adapter. Mask an explicit Action token input before
   work begins; workflow templates pass `github.token` explicitly.
 * Freshness: fingerprint exact checked-out config bytes, resolved source options,
-  and the normalized snapshot before and after publication. One mismatch causes
-  one rebuild; a mismatch on the second attempt fails. This detects changes to
+  and the normalized snapshot before and after staging, before publication.
+  One mismatch disposes staging and causes one rebuild; a mismatch on the second
+  attempt fails. Verification errors preserve the prior complete output.
+  This detects changes to
   those sampled inputs during the build interval, not remote configuration
   commits after checkout or arbitrary future Release asset uploads.
 * Outputs: write both outputs only after a stable successful build. Never put
@@ -67,7 +70,8 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   branch. When the environment uses a custom deployment branch policy, it must
   permit the matching release tag pattern as well as the default branch;
   otherwise the deploy job fails before any action step starts.
-* Concurrency: use one workflow-level, site-specific group with
+* Concurrency: eligible refreshes share the workflow-level group
+  `facade-pages-${{ github.repository }}-site` with
   `cancel-in-progress: true`, so a newer refresh cancels an older run before it
   can deploy stale output. The release-assets job belongs only in the chained
   template; consumers must ensure it has completed every asset upload before
@@ -79,6 +83,13 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   `github.ref_name == github.event.repository.default_branch`, and explicitly
   checks out that default branch. A skipped tag-push run must never enter the
   site concurrency group and cancel a valid `release.published` refresh.
+  Non-default-branch pushes still trigger the workflow, so they must use a
+  separate run-specific group, not the shared site group. The standalone suffix
+  is `${{ github.event_name == 'push' && github.ref_name != github.event.repository.default_branch && github.run_id || 'site' }}`.
+  A job-level `if` does not isolate workflow-level concurrency; setting only
+  `cancel-in-progress` conditionally still allows pending runs to be displaced.
+  Both Action pins must support the documented minimal YAML contract; when
+  updating a pin, smoke-test its bundle rather than only testing current source.
 * Asset completeness: standalone publication requires all assets to be uploaded
   before the Release is published. Automated producers use the CI-chain example,
   whose Facade job depends on the job that finishes every Release asset upload.
@@ -91,7 +102,9 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 | YAML or schema is invalid | `CONFIG_INVALID`; preserve cause internally |
 | Optional Action repository/token is omitted | pass no override; resolve environment/config normally |
 | Inputs differ after first build | warn `FACADE_INPUT_CHANGED`, rebuild once |
-| Inputs differ after second build | `BUILD_INPUT_CHANGED_REPEATEDLY`; no upload/deploy |
+| Inputs differ after second build | `BUILD_INPUT_CHANGED_REPEATEDLY`; previous output preserved; no upload/deploy |
+| Capture fails after staging | Failure; previous output preserved; staging disposed |
+| Non-default-branch configured-path push | Build skipped; run-specific concurrency group cannot displace site refreshes |
 | Asset is uploaded after a stable standalone build | outside freshness guarantee; rerun manually |
 | Release build succeeds but deploy has no steps | inspect `github-pages` environment branch/tag policy; permit the release tag |
 | Atomic publish leaves recovery directories | success plus `FACADE_OUTPUT_CLEANUP_REQUIRED` warning |
@@ -126,7 +139,8 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   freshness warnings, deferred-cleanup warnings, and omission of repository/token
   overrides.
 * Unit-test stable input, one mutation, repeated mutation, YAML failures,
-  `GITHUB_API_URL`, and the shared `buildRelease` publication boundary.
+  `GITHUB_API_URL`, and the shared prepare/publish boundary. Assert previous
+  files survive verification errors and mutations, and no staging remains.
 * Run typecheck, lint, test, build, and coverage after regenerating the bundle.
   The CI build job must additionally prove the generated bundle has no diff.
 

@@ -48096,7 +48096,7 @@ function validateManifestSemantics(manifest) {
 // src/build/offline-build.ts
 var OUTPUT_MARKER = ".facade-output";
 var OUTPUT_MARKER_CONTENT = "facade-output-v1\n";
-async function buildRelease(snapshot, options) {
+async function prepareRelease(snapshot, options) {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const manifest = compileReleaseSnapshot(snapshot);
   const diagnostics = validateManifestSemantics(manifest);
@@ -48113,8 +48113,17 @@ async function buildRelease(snapshot, options) {
       (0, import_promises.writeFile)((0, import_node_path.join)(staging, "llms.txt"), renderLlms(manifest.releaseTag, manifest.assets, basePath), "utf8"),
       (0, import_promises.writeFile)((0, import_node_path.join)(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, "utf8")
     ]);
-    const cleanupRequired = await replaceDirectory(staging, outDir);
-    return { basePath, files: ["index.html", "manifest.json", "install.md", "llms.txt"], ...cleanupRequired ? { cleanupRequired: true } : {} };
+    let published = false;
+    return {
+      publish: async () => {
+        const cleanupRequired = await replaceDirectory(staging, outDir);
+        published = true;
+        return { basePath, files: ["index.html", "manifest.json", "install.md", "llms.txt"], ...cleanupRequired ? { cleanupRequired: true } : {} };
+      },
+      dispose: async () => {
+        if (!published) await (0, import_promises.rm)(staging, { recursive: true, force: true });
+      }
+    };
   } catch (error62) {
     await (0, import_promises.rm)(staging, { recursive: true, force: true });
     throw error62;
@@ -48439,10 +48448,15 @@ function parseStrategy(value) {
 async function buildFreshRelease(dependencies) {
   for (const attempts of [1, 2]) {
     const before = await dependencies.capture();
-    const result = await dependencies.publish(before.snapshot);
-    const after = await dependencies.capture();
-    if (before.fingerprint === after.fingerprint) {
-      return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
+    const prepared = await dependencies.prepare(before.snapshot);
+    try {
+      const after = await dependencies.capture();
+      if (before.fingerprint === after.fingerprint) {
+        const result = await prepared.publish();
+        return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
+      }
+    } finally {
+      await prepared.dispose();
     }
     if (attempts === 1) {
       dependencies.onInputChanged?.();
@@ -48455,7 +48469,7 @@ async function buildFreshGitHubRelease(options) {
   const sourceFactory = options.sourceFactory ?? ((sourceOptions) => new GitHubReleaseSource(sourceOptions));
   return buildFreshRelease({
     capture: async () => captureGitHubInput(options, sourceFactory),
-    publish: (snapshot) => buildRelease(snapshot, {
+    prepare: (snapshot) => prepareRelease(snapshot, {
       outDir: options.outDir,
       ...options.basePath === void 0 ? {} : { basePath: options.basePath === "" ? "/" : options.basePath }
     }),
