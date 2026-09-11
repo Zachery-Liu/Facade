@@ -111,6 +111,22 @@ describe('Pages workflow templates', () => {
       'git diff --exit-code -- action/dist/index.cjs',
     ]);
   });
+
+  it('scans Action sources while excluding only the reproducible bundle from CodeQL', async () => {
+    const workflowDocument = parseDocument(await readFile(join(repositoryRoot, '.github', 'workflows', 'codeql.yml'), 'utf8'));
+    expect(workflowDocument.errors).toEqual([]);
+    const workflow = workflowDocument.toJS() as { jobs: { analyze: { steps: Array<z.infer<typeof StepSchema>> } } };
+    const init = workflow.jobs.analyze.steps.find((step) => step.uses === 'github/codeql-action/init@v4');
+    expect(init?.with).toMatchObject({
+      languages: '${{ matrix.language }}',
+      'config-file': './.github/codeql/codeql-config.yml',
+      'build-mode': 'none',
+    });
+
+    const config = parseDocument(await readFile(join(repositoryRoot, '.github', 'codeql', 'codeql-config.yml'), 'utf8'));
+    expect(config.errors).toEqual([]);
+    expect(config.toJS()).toEqual({ 'paths-ignore': ['action/dist/**'] });
+  });
 });
 
 async function readWorkflow(path: string): Promise<Workflow> {
