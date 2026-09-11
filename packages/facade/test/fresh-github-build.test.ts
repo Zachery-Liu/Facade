@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -26,6 +26,13 @@ describe('Facade YAML configuration', () => {
     await expect(loadFacadeConfig(missing)).rejects.toMatchObject({ code: 'CONFIG_READ_FAILED', message: expect.not.stringContaining(missing) });
     await writeFile(missing, 'repository: [invalid');
     await expect(loadFacadeConfig(missing)).rejects.toMatchObject({ code: 'CONFIG_INVALID', message: expect.not.stringContaining(missing) });
+  });
+
+  it('rejects malformed download globs at the safe config-loading boundary', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'facade-config-'));
+    const path = join(directory, 'facade.yml');
+    await writeFile(path, "schema: 1\ndownloads:\n  rules:\n    - match: '[z-a]'\n      exclude: true\n", 'utf8');
+    await expect(loadFacadeConfig(path)).rejects.toMatchObject({ code: 'CONFIG_INVALID', message: expect.not.stringContaining(path) });
   });
 });
 
@@ -74,6 +81,21 @@ describe('fresh release builds', () => {
       { repository: 'ambient/repository' },
       { repository: 'ambient/repository' },
     ]);
+  });
+
+  it('publishes assets with the exact downloads configuration captured beside the GitHub snapshot', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-live-classification-'));
+    const configPath = join(root, 'facade.yml');
+    const outDir = join(root, 'site');
+    await writeFile(configPath, "schema: 1\nrepository: owner/repository\ndownloads:\n  rules:\n    - match: '*.zip'\n      set:\n        label: Configured asset\n        priority: 42\n", 'utf8');
+    await buildFreshGitHubRelease({
+      configPath,
+      outDir,
+      environment: {},
+      sourceFactory: () => ({ getSnapshot: async () => ({ ...snapshot('v1'), assets: [{ id: 'asset', name: 'tool-linux-x64.zip', downloadUrl: 'https://example.test/asset', size: 5 }] }) }),
+    });
+    const manifest = JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8')) as { assets: Array<{ label: string; priority: number }> };
+    expect(manifest.assets[0]).toMatchObject({ label: 'Configured asset', priority: 42 });
   });
 
   it('publishes once when verification sees the same inputs', async () => {

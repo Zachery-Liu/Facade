@@ -6,10 +6,13 @@ import { FacadeError } from '../runtime/facade-error.js';
 import { GitHubReleaseSource, type GitHubReleaseSourceOptions } from '../source/github/github-release-source.js';
 import { resolveGitHubSourceOptions, type GitHubSourceOverrides, type GitHubSourceOptions } from '../source/github/source-options.js';
 import type { RepositorySnapshot } from '../source/repository-snapshot.js';
+import type { FacadeConfigInput } from '../config/facade-config.js';
 
 export interface CapturedBuildInput {
   readonly fingerprint: string;
   readonly snapshot: RepositorySnapshot;
+  readonly config?: FacadeConfigInput;
+  readonly selection?: 'github-latest' | 'tag';
 }
 
 export interface FreshBuildResult extends OfflineBuildResult {
@@ -19,14 +22,14 @@ export interface FreshBuildResult extends OfflineBuildResult {
 
 interface FreshBuildDependencies {
   readonly capture: () => Promise<CapturedBuildInput>;
-  readonly publish: (snapshot: RepositorySnapshot) => Promise<OfflineBuildResult>;
+  readonly publish: (snapshot: RepositorySnapshot, config?: FacadeConfigInput, selection?: 'github-latest' | 'tag') => Promise<OfflineBuildResult>;
   readonly onInputChanged?: () => void;
 }
 
 export async function buildFreshRelease(dependencies: FreshBuildDependencies): Promise<FreshBuildResult> {
   for (const attempts of [1, 2] as const) {
     const before = await dependencies.capture();
-    const result = await dependencies.publish(before.snapshot);
+    const result = await dependencies.publish(before.snapshot, before.config, before.selection);
     const after = await dependencies.capture();
     if (before.fingerprint === after.fingerprint) {
       return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
@@ -53,9 +56,12 @@ export async function buildFreshGitHubRelease(options: FreshGitHubBuildOptions):
   const sourceFactory = options.sourceFactory ?? ((sourceOptions) => new GitHubReleaseSource(sourceOptions));
   return buildFreshRelease({
     capture: async () => captureGitHubInput(options, sourceFactory),
-    publish: (snapshot) => buildRelease(snapshot, {
+    publish: (snapshot, config, selection) => buildRelease(snapshot, {
       outDir: options.outDir,
       ...(options.basePath === undefined ? {} : { basePath: options.basePath === '' ? '/' : options.basePath }),
+      ...(config === undefined ? {} : { config }),
+      provider: 'github',
+      ...(selection === undefined ? {} : { selection }),
     }),
     ...(options.onInputChanged === undefined ? {} : { onInputChanged: options.onInputChanged }),
   });
@@ -74,6 +80,8 @@ async function captureGitHubInput(
   return {
     fingerprint: fingerprint(loaded.sourceText, sourceOptions, snapshot),
     snapshot,
+    config: loaded.config,
+    selection: sourceOptions.strategy,
   };
 }
 

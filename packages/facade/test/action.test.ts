@@ -73,6 +73,21 @@ describe('Facade Action adapter', () => {
     ]);
   });
 
+  it('surfaces safe classification and rule diagnostics from the shared build', async () => {
+    const state = fakeCore({ config: '.github/facade.yml', 'out-dir': 'dist' });
+    await runAction(state.core, { build: async () => ({
+      basePath: '/',
+      files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'],
+      attempts: 1,
+      releaseTag: 'v2',
+      diagnostics: [{ code: 'DOWNLOAD_RULE_NO_MATCH', severity: 'warning', message: 'A download rule matched no assets.', configPath: 'downloads.rules[2]' }],
+    }) });
+    expect(state.warnings).toEqual([{
+      message: 'A download rule matched no assets. (downloads.rules[2])',
+      title: 'DOWNLOAD_RULE_NO_MATCH',
+    }]);
+  });
+
   it('surfaces stable Facade error codes without writing outputs', async () => {
     const state = fakeCore({ config: '.github/facade.yml', 'out-dir': 'dist' });
     await runAction(state.core, { build: async () => { throw new FacadeError('CONFIG_INVALID', 'The Facade configuration file is invalid.'); } });

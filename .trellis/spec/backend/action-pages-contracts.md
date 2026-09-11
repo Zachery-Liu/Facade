@@ -56,6 +56,9 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   commits after checkout or arbitrary future Release asset uploads.
 * Outputs: write both outputs only after a stable successful build. Never put
   tokens or absolute paths into errors or annotations.
+* Diagnostics: emit warning diagnostics returned by the shared build boundary
+  as native Action warnings with stable codes and logical configuration paths.
+  Do not include source paths or credentials.
 * Output ownership: the Action defaults `out-dir` to `.facade-dist` so it does
   not collide with a consumer's conventional `dist` directory. Templates pass
   that value explicitly when pinning an earlier immutable Action commit.
@@ -123,8 +126,8 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   `node_modules`; executing it must load successfully far enough to emit the
   expected Action failure protocol.
 * Unit-test Action input mapping, secret masking, outputs, stable error codes,
-  freshness warnings, deferred-cleanup warnings, and omission of repository/token
-  overrides.
+  freshness warnings, classification/rule warnings, deferred-cleanup warnings,
+  and omission of repository/token overrides.
 * Unit-test stable input, one mutation, repeated mutation, YAML failures,
   `GITHUB_API_URL`, and the shared `buildRelease` publication boundary.
 * Run typecheck, lint, test, build, and coverage after regenerating the bundle.

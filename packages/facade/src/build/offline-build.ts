@@ -5,22 +5,27 @@ import { render } from 'preact-render-to-string';
 import { FacadeError } from '../runtime/facade-error.js';
 import { RepositorySnapshotSchema, type RepositorySnapshot } from '../source/repository-snapshot.js';
 import { ReleasePage } from '../themes/product/components/release-page.js';
-import { compileReleaseSnapshot } from '../compiler/release-compiler.js';
+import { resolveRelease, type BuildDiagnostic } from '../compiler/release-resolver.js';
 import { validateManifestSemantics } from '../manifest/semantic-validation.js';
+import { loadFacadeConfig } from '../config/load-facade-config.js';
+import type { FacadeConfigInput } from '../config/facade-config.js';
 
-export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; }
-export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; readonly cleanupRequired?: true; }
+export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; readonly configPath?: string; }
+export interface BuildReleaseOptions { readonly outDir: string; readonly basePath?: string; readonly config?: FacadeConfigInput; readonly provider?: 'fixture' | 'github' | 'unknown'; readonly selection?: 'fixture' | 'github-latest' | 'tag'; }
+export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; readonly cleanupRequired?: true; readonly diagnostics?: readonly BuildDiagnostic[]; }
 const OUTPUT_MARKER = '.facade-output';
 const OUTPUT_MARKER_CONTENT = 'facade-output-v1\n';
 
 export async function buildOfflineRelease(options: OfflineBuildOptions): Promise<OfflineBuildResult> {
   const snapshot = await readSnapshot(options.fixturePath);
-  return buildRelease(snapshot, options);
+  const config = options.configPath === undefined ? undefined : (await loadFacadeConfig(options.configPath)).config;
+  return buildRelease(snapshot, { outDir: options.outDir, ...(options.basePath === undefined ? {} : { basePath: options.basePath }), ...(config === undefined ? {} : { config }), provider: 'fixture', selection: 'fixture' });
 }
 
-export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<OfflineBuildOptions, 'fixturePath'>): Promise<OfflineBuildResult> {
+export async function buildRelease(snapshot: RepositorySnapshot, options: BuildReleaseOptions): Promise<OfflineBuildResult> {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
-  const manifest = compileReleaseSnapshot(snapshot);
+  const resolution = resolveRelease(snapshot, options);
+  const manifest = resolution.manifest;
   const diagnostics = validateManifestSemantics(manifest);
   if (diagnostics.length > 0) throw new FacadeError('BUILD_INVALID_MANIFEST', 'The compiled release manifest failed semantic validation.');
   const basePath = normalizeBasePath(options.basePath ?? '/');
@@ -36,7 +41,7 @@ export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<O
       writeFile(join(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, 'utf8'),
     ]);
     const cleanupRequired = await replaceDirectory(staging, outDir);
-    return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}) };
+    return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}), ...(resolution.inspect.diagnostics.length === 0 ? {} : { diagnostics: resolution.inspect.diagnostics }) };
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
     throw error;
