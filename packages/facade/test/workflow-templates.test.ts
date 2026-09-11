@@ -72,7 +72,7 @@ describe('Pages workflow templates', () => {
     ]);
   });
 
-  it('gates config pushes on the actual default branch and documents asset completeness', async () => {
+  it('excludes tag pushes, gates config pushes on the actual default branch, and documents asset completeness', async () => {
     const source = await readFile(join(repositoryRoot, 'examples/workflows/facade-pages-release.yml'), 'utf8');
     const standalone = parseWorkflow(source);
     const triggers = z.object({
@@ -86,7 +86,7 @@ describe('Pages workflow templates', () => {
       '.github/facade/**',
       '.github/workflows/facade-pages.yml',
     ]);
-    expect(triggers.push).not.toHaveProperty('branches');
+    expect(triggers.push.branches).toEqual(['**']);
     expect(requireJob(standalone, 'build').if).toBe(defaultBranchCondition);
     expect(source).toContain('Publish a Release only after every asset upload is complete.');
     expect(source).toContain('must instead merge the chained workflow example');

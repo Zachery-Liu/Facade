@@ -62,17 +62,23 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 * Pages: workflows configure Pages before building, pass `base_path`, upload
   the entire output directory as one Pages artifact, and deploy in a dependent
   job. The build job needs `pages: read`; the deploy job needs `pages: write`,
-  `id-token: write`, and the `github-pages` environment.
+  `id-token: write`, and the `github-pages` environment. A `release.published`
+  run retains its tag ref even when checkout explicitly targets the default
+  branch. When the environment uses a custom deployment branch policy, it must
+  permit the matching release tag pattern as well as the default branch;
+  otherwise the deploy job fails before any action step starts.
 * Concurrency: use one workflow-level, site-specific group with
   `cancel-in-progress: true`, so a newer refresh cancels an older run before it
   can deploy stale output. The release-assets job belongs only in the chained
   template; consumers must ensure it has completed every asset upload before
   Facade's workflow or dependent jobs begin.
 * Unpublished Action: examples use an accessible immutable commit, never a
-  fictional major tag. The standalone workflow triggers configured paths
-  without a static branch filter, then gates its build job so push events run
-  only when `github.ref_name == github.event.repository.default_branch`. It
-  explicitly checks out that default branch.
+  fictional major tag. The standalone workflow limits configured-path pushes to
+  branches with `branches: ['**']`, which excludes tag pushes without
+  hard-coding a default-branch name. Its build job still gates push events on
+  `github.ref_name == github.event.repository.default_branch`, and explicitly
+  checks out that default branch. A skipped tag-push run must never enter the
+  site concurrency group and cancel a valid `release.published` refresh.
 * Asset completeness: standalone publication requires all assets to be uploaded
   before the Release is published. Automated producers use the CI-chain example,
   whose Facade job depends on the job that finishes every Release asset upload.
@@ -87,6 +93,7 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 | Inputs differ after first build | warn `FACADE_INPUT_CHANGED`, rebuild once |
 | Inputs differ after second build | `BUILD_INPUT_CHANGED_REPEATEDLY`; no upload/deploy |
 | Asset is uploaded after a stable standalone build | outside freshness guarantee; rerun manually |
+| Release build succeeds but deploy has no steps | inspect `github-pages` environment branch/tag policy; permit the release tag |
 | Atomic publish leaves recovery directories | success plus `FACADE_OUTPUT_CLEANUP_REQUIRED` warning |
 | Known `FacadeError` reaches Action | failure contains stable code and safe message |
 | Unexpected error reaches Action | `ACTION_UNEXPECTED_FAILURE`; hide raw details |
@@ -94,7 +101,8 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 ### 5. Good / Base / Bad Cases
 
 * Good: a project-site workflow passes `/repository`, the snapshot is stable,
-  and the Action returns the exact release tag after one build.
+  the `github-pages` environment permits its release tag, and the Action
+  returns the exact release tag after one build.
 * Base: no repository Action input is supplied; `FACADE_REPOSITORY` or the
   validated YAML repository remains authoritative. An empty Pages root path is
   normalized to `/`.
@@ -108,6 +116,9 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   Assert exact object paths for metadata defaults, triggers, job conditions,
   step order and inputs, dependency edges, permissions, environment,
   whole-output path, and concurrency; string presence is not structural proof.
+* In a live release-event validation, allow the event's tag in the
+  `github-pages` environment when a custom branch policy is active; assert the
+  deploy job executes rather than failing without steps.
 * Copy the built Action entry into a temporary directory without
   `node_modules`; executing it must load successfully far enough to emit the
   expected Action failure protocol.
