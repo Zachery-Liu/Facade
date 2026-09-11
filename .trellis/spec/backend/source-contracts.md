@@ -126,11 +126,17 @@ Use this boundary whenever a build publishes the generated site into an output d
 
 ```ts
 buildRelease(snapshot, { outDir, basePath }): Promise<OfflineBuildResult>
+prepareRelease(snapshot, { outDir, basePath }): Promise<PreparedRelease>
+// PreparedRelease: publish(): Promise<OfflineBuildResult>; dispose(): Promise<void>
 ```
 
 ### 3. Contracts
 
 - Generate every file in a sibling staging directory before publishing.
+- `prepareRelease` renders without changing the output. The caller must dispose
+  it in `finally`; disposal removes unpublished staging and is a no-op after
+  successful publication. `buildRelease` prepares and immediately publishes for
+  offline builds; fresh builds verify inputs between these two operations.
 - Hold an atomically-created `outDir.facade-lock` directory throughout replacement.
 - Replace only an output containing the exact `.facade-output` marker.
 - Collapse line breaks and escape Markdown metadata before rendering text outputs.
@@ -143,10 +149,12 @@ buildRelease(snapshot, { outDir, basePath }): Promise<OfflineBuildResult>
 | Backup already exists | `BUILD_BACKUP_COLLISION`; preserve the backup |
 | Existing output has no valid marker | `BUILD_UNOWNED_OUTPUT`; preserve the output |
 | Backup or lock cleanup fails after publication | Return `cleanupRequired: true` |
+| Fresh input verification fails or never stabilizes | Preserve all previous files; dispose staged output |
 
 ### 5. Good / Base / Bad Cases
 
 - Good: one builder holds the lock, replaces a marked output, and removes recovery state.
+- Good: a live build verifies its staged snapshot before the replacement starts.
 - Base: first publication has no prior output and moves staging directly into place.
 - Bad: check for a backup and rename without a lock; concurrent builders can both pass the check.
 
@@ -154,17 +162,22 @@ buildRelease(snapshot, { outDir, basePath }): Promise<OfflineBuildResult>
 
 - Assert an existing lock and its contents survive a refused build.
 - Assert backup collisions and unowned outputs survive unchanged.
+- Assert every previous output file remains byte-identical throughout fresh
+  verification and after verification failure or repeated mutation. A successful
+  retry publishes only the stable snapshot and removes discarded staging.
 - Assert release and asset metadata containing Markdown characters or line breaks remains one logical entry.
 
 ### 7. Wrong vs Correct
 
 #### Wrong
 
-Use separate existence checks as concurrency control.
+Use separate existence checks as concurrency control, or publish a fresh build
+before checking whether its input changed.
 
 #### Correct
 
-Acquire the adjacent lock atomically, re-check ownership and backup state while holding it, then publish.
+Prepare all output, verify fresh input when applicable, then acquire the adjacent
+lock atomically, re-check ownership and backup state while holding it, and publish.
 
 ## Scenario: GitHub release adapter
 

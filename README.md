@@ -43,13 +43,13 @@ includes:
 - base-path handling plus staged output replacement and rollback safeguards;
 - a GitHub Release source for repository metadata, latest/tag selection, and
   paginated release assets;
-- stable source errors, bounded retry behavior, and an internal source-to-build
-  integration path.
+- stable source errors, bounded retry behavior, and live GitHub CLI builds;
+- a bundled GitHub Action and Pages workflow templates, with input freshness
+  checks before output publication.
 
-The current CLI surface is still intentionally narrow: `facade build` currently
-builds from an offline repository snapshot fixture. Live GitHub CLI wiring, the
-GitHub Action/Pages flow, the full classifier/override system, shared selector,
-`inspect`, Product Theme, and the complete Agent contract remain v0.1 work.
+`facade build` supports both live GitHub Releases and offline repository snapshot
+fixtures. The full classifier/override system, shared selector, `inspect`,
+Product Theme, and the complete Agent contract remain v0.1 work.
 
 ## What v0.1 is building
 
@@ -95,17 +95,41 @@ kept separate from recommendation.
 
 ## Current development CLI
 
-The current CLI surface is fixture-backed and intended for development. From a
-fresh repository checkout, build the CLI first and invoke the generated entry
-point directly:
+From a fresh repository checkout, install dependencies and build the CLI, then
+invoke the generated entry point directly. For an offline fixture:
 
 ```bash
+pnpm install
 pnpm build
 node packages/facade/dist/index.js build \
   --fixture <repository-snapshot.json> \
   --out-dir dist \
   --base-path /
 ```
+
+For a live GitHub build, create `.github/facade.yml`:
+
+```yaml
+schema: 1
+repository: owner/repository
+```
+
+```bash
+node packages/facade/dist/index.js build --out-dir .facade-dist
+```
+
+The default selection is GitHub's latest release. Use `--tag v1.2.3` to select
+an exact tag, `--repository owner/repository` to override the repository, and
+`--config path/to/facade.yml` for another configuration file. `GITHUB_TOKEN`
+supplies authentication when needed. In GitHub Actions, `schema: 1` alone can
+infer the repository from `GITHUB_REPOSITORY`.
+
+For Pages, use the [manual release template](examples/workflows/facade-pages-release.yml)
+after all assets are uploaded, or merge the
+[chained template](examples/workflows/facade-pages-after-release.yml) into the
+workflow that uploads release assets. Both templates pin an immutable Action
+commit; consumers do not need to install Facade dependencies. Update the pin
+when adopting newer Action fixes.
 
 Repository development uses Node.js `>=22.13.0` and pnpm `11.19.0`:
 
@@ -118,8 +142,7 @@ pnpm coverage
 pnpm build
 ```
 
-Public installation and release instructions will be documented when the
-package, Action, and online source flow are ready.
+An npm package and a versioned public Action release are still pending.
 
 ## Roadmap
 

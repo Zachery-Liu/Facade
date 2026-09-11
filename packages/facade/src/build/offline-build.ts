@@ -10,6 +10,10 @@ import { validateManifestSemantics } from '../manifest/semantic-validation.js';
 
 export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; }
 export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; readonly cleanupRequired?: true; }
+export interface PreparedRelease {
+  readonly publish: () => Promise<OfflineBuildResult>;
+  readonly dispose: () => Promise<void>;
+}
 const OUTPUT_MARKER = '.facade-output';
 const OUTPUT_MARKER_CONTENT = 'facade-output-v1\n';
 
@@ -19,6 +23,15 @@ export async function buildOfflineRelease(options: OfflineBuildOptions): Promise
 }
 
 export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<OfflineBuildOptions, 'fixturePath'>): Promise<OfflineBuildResult> {
+  const prepared = await prepareRelease(snapshot, options);
+  try {
+    return await prepared.publish();
+  } finally {
+    await prepared.dispose();
+  }
+}
+
+export async function prepareRelease(snapshot: RepositorySnapshot, options: Omit<OfflineBuildOptions, 'fixturePath'>): Promise<PreparedRelease> {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const manifest = compileReleaseSnapshot(snapshot);
   const diagnostics = validateManifestSemantics(manifest);
@@ -35,8 +48,17 @@ export async function buildRelease(snapshot: RepositorySnapshot, options: Omit<O
       writeFile(join(staging, 'llms.txt'), renderLlms(manifest.releaseTag, manifest.assets, basePath), 'utf8'),
       writeFile(join(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, 'utf8'),
     ]);
-    const cleanupRequired = await replaceDirectory(staging, outDir);
-    return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}) };
+    let published = false;
+    return {
+      publish: async () => {
+        const cleanupRequired = await replaceDirectory(staging, outDir);
+        published = true;
+        return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}) };
+      },
+      dispose: async () => {
+        if (!published) await rm(staging, { recursive: true, force: true });
+      },
+    };
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
     throw error;
