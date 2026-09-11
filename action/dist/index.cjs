@@ -48219,13 +48219,19 @@ var import_promises2 = require("fs/promises");
 var import_yaml = __toESM(require_dist(), 1);
 
 // src/config/facade-config.ts
+var ReleaseSelectionSchema = external_exports.discriminatedUnion("strategy", [
+  external_exports.object({ strategy: external_exports.literal("github-latest") }).strict(),
+  external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1) }).strict()
+]);
 var FacadeConfigSchema = external_exports.object({
   schema: external_exports.number().int().positive(),
   repository: external_exports.string().regex(/^[^/]+\/[^/]+$/),
-  release: external_exports.discriminatedUnion("strategy", [
-    external_exports.object({ strategy: external_exports.literal("github-latest") }).strict(),
-    external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1) }).strict()
-  ])
+  release: ReleaseSelectionSchema
+}).strict();
+var FacadeConfigInputSchema = external_exports.object({
+  schema: external_exports.number().int().positive(),
+  repository: external_exports.string().regex(/^[^/]+\/[^/]+$/).optional(),
+  release: ReleaseSelectionSchema.optional()
 }).strict();
 
 // src/config/load-facade-config.ts
@@ -48237,7 +48243,7 @@ async function loadFacadeConfig(path6) {
     throw new FacadeError("CONFIG_READ_FAILED", "Unable to read the Facade configuration file.", { cause });
   }
   try {
-    return { config: FacadeConfigSchema.parse((0, import_yaml.parse)(sourceText)), sourceText };
+    return { config: FacadeConfigInputSchema.parse((0, import_yaml.parse)(sourceText)), sourceText };
   } catch (cause) {
     throw new FacadeError("CONFIG_INVALID", "The Facade configuration file is invalid.", { cause });
   }
@@ -48402,12 +48408,16 @@ function invalidResponse(resource, cause) {
 
 // src/source/github/source-options.ts
 function resolveGitHubSourceOptions(config2, environment, cli = {}) {
-  const strategy = cli.strategy ?? parseStrategy(environment.FACADE_RELEASE_STRATEGY) ?? config2.release.strategy;
-  const configTag = config2.release.strategy === "tag" ? config2.release.tag : void 0;
+  const repository = cli.repository ?? environment.FACADE_REPOSITORY ?? config2.repository ?? environment.GITHUB_REPOSITORY;
+  if (repository === void 0 || repository.length === 0) {
+    throw new FacadeError("SOURCE_REPOSITORY_REQUIRED", "A GitHub repository is required when it cannot be inferred from the environment.");
+  }
+  const strategy = cli.strategy ?? parseStrategy(environment.FACADE_RELEASE_STRATEGY) ?? config2.release?.strategy ?? "github-latest";
+  const configTag = config2.release?.strategy === "tag" ? config2.release.tag : void 0;
   const tag = cli.tag ?? environment.FACADE_RELEASE_TAG ?? configTag;
-  const token = cli.token ?? environment.GITHUB_TOKEN;
+  const token = resolveToken(cli.token, environment.GITHUB_TOKEN);
   const base = {
-    repository: cli.repository ?? environment.FACADE_REPOSITORY ?? config2.repository,
+    repository,
     ...token === void 0 ? {} : { token }
   };
   if (strategy === "tag") {
@@ -48415,6 +48425,9 @@ function resolveGitHubSourceOptions(config2, environment, cli = {}) {
     return { ...base, strategy, tag };
   }
   return { ...base, strategy };
+}
+function resolveToken(cliToken, githubToken) {
+  return cliToken ?? githubToken;
 }
 function parseStrategy(value) {
   if (value === void 0) return void 0;

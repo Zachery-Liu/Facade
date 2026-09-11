@@ -54,6 +54,28 @@ describe('fresh release builds', () => {
     ]);
   });
 
+  it('loads minimal YAML before resolving an ambient repository', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-live-build-'));
+    const configPath = join(root, 'facade.yml');
+    const outDir = join(root, 'site');
+    await writeFile(configPath, 'schema: 1\n');
+    const sourceOptions: GitHubReleaseSourceOptions[] = [];
+    const result = await buildFreshGitHubRelease({
+      configPath,
+      outDir,
+      environment: { GITHUB_REPOSITORY: 'ambient/repository' },
+      sourceFactory: (options) => {
+        sourceOptions.push(options);
+        return { getSnapshot: async () => snapshot('v1') };
+      },
+    });
+    expect(result).toMatchObject({ attempts: 1, releaseTag: 'v1' });
+    expect(sourceOptions).toEqual([
+      { repository: 'ambient/repository' },
+      { repository: 'ambient/repository' },
+    ]);
+  });
+
   it('publishes once when verification sees the same inputs', async () => {
     const publish = vi.fn(async () => ({ basePath: '/', files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'] as const }));
     await expect(buildFreshRelease({ capture: async () => ({ fingerprint: 'same', snapshot: snapshot('v1') }), publish }))

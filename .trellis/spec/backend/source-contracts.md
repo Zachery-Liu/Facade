@@ -193,6 +193,7 @@ the ambient `GITHUB_REPOSITORY`, and the credential input `GITHUB_TOKEN`.
 - Parse JSON and provider fields, then validate every mapped value with the neutral Source schemas.
 - Return `github-latest` without a tag; return `tag` only with a non-empty tag.
 - Resolve ordinary fields independently as explicit CLI > explicit `FACADE_*` override > repository YAML > ambient inference > defaults.
+- Parse repository YAML through `FacadeConfigInputSchema` at the file-loading boundary, then resolve it through the same named layers; do not require a fully specified `FacadeConfigSchema` before ambient inference runs.
 - Treat `GITHUB_REPOSITORY` as ambient inference only. Repository YAML beats it, and release-event variables do not implicitly change the configured release selection.
 - Default an omitted release selection to `github-latest`; fail when no layer supplies a repository.
 - Resolve credentials separately as CLI token > `GITHUB_TOKEN`; never accept credentials from YAML or include them in diagnostics.
