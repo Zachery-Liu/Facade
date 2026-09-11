@@ -39,15 +39,15 @@ deployments and any failures.
 
 ## Acceptance Criteria
 
-* [ ] Both real release entry points successfully deploy the selected Release.
-* [ ] The Pages project subpath resolves all four generated public outputs.
-* [ ] A deliberate build failure leaves the previous deployment reachable and
+* [x] Both real release entry points successfully deploy the selected Release.
+* [x] The Pages project subpath resolves all four generated public outputs.
+* [x] A deliberate build failure leaves the previous deployment reachable and
       unchanged.
-* [ ] A superseding refresh cancels the earlier run and the final deployed site
+* [x] A superseding refresh cancels the earlier run and the final deployed site
       corresponds to the newer refresh.
-* [ ] Publishing a Release does not let its tag push cancel the corresponding
+* [x] Publishing a Release does not let its tag push cancel the corresponding
       `release.published` Pages refresh.
-* [ ] Evidence records enough immutable identifiers for a maintainer to repeat
+* [x] Evidence records enough immutable identifiers for a maintainer to repeat
       and audit each result.
 
 ## Definition of Done

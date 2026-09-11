@@ -3,6 +3,8 @@
 # Publish a Release only after every asset upload is complete. Automation that
 # creates Releases must instead merge the chained workflow example into its
 # release workflow so Facade depends on the asset-upload job.
+# A release event runs on a tag ref even though this workflow checks out the
+# default branch. Configure the github-pages environment to permit release tags.
 name: Publish Facade release pages
 
 on:
