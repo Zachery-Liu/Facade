@@ -268,6 +268,9 @@ recommendation eligibility, and ordered override trace.
 ### 3. Contracts
 
 - Classify each filename independently with bounded tokens and longest suffixes.
+- Compound architecture normalization must preserve surrounding characters:
+  normalize `x86_64` to `x64`, never to ` x64 `. Product-name substrings such as
+  `prefixx86_64` and `x86_64suffix` must not acquire artificial token boundaries.
 - Represent unknown and conflict as evidence states; a conflicted final field is
   `unknown` until an applicable project rule explicitly replaces it.
 - Apply case-sensitive full-name glob rules in configuration order. Later rules
@@ -284,6 +287,11 @@ recommendation eligibility, and ordered override trace.
   priority does not bypass this filter.
 - Semantic manifest validation rejects recommendation-eligible auxiliary,
   unknown-platform, or conflicted assets and non-Linux libc requirements.
+- Reconcile inferred libc after overrides even when the final OS is unknown
+  (including OS conflicts). Publish unknown libc with a conflict diagnostic
+  instead of letting an ambiguous filename abort the entire build. An explicit
+  Linux OS override can retain otherwise valid inferred libc; explicit invalid
+  libc declarations still fail as `CONFIG_INVALID`.
 - Fresh GitHub capture carries the parsed configuration into publication so the
   fingerprinted source text is exactly the configuration used by the resolver.
 

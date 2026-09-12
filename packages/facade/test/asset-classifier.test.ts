@@ -30,6 +30,14 @@ describe('asset classifier', () => {
     expect(classify('tool-linux-x64-gnumeric.zip').libc).toBe('unknown');
   });
 
+  it.each(['tool-linux-prefixx86_64.zip', 'tool-linux-x86_64suffix.zip', 'tool-linux-prefixx86-64suffix.zip'])('preserves compound architecture token boundaries in %s', (name) => {
+    expect(classify(name).arch).toBe('unknown');
+  });
+
+  it('retains adjacent compound architecture conflicts', () => {
+    expect(classify('tool-linux-x86_64-x86-64-arm64.zip').evidence.arch.status).toBe('conflict');
+  });
+
   it.each([
     ['tool-linux-x64-checksums.txt', 'checksum'],
     ['tool-linux-x64.tar.gz.sig', 'signature'],

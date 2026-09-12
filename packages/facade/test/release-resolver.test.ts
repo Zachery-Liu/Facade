@@ -94,5 +94,9 @@ describe('release resolver', () => {
     expect(matchesGlob('Tool-x64.zip', 'tool-*.zip')).toBe(false);
     expect(matchesGlob('Tool-x64.zip', '[Tt]ool-?64.zip')).toBe(true);
     expect(matchesGlob("Tool\n-x64.zip", 'Tool*.zip')).toBe(true);
+    for (const ending of ['\n', '\r', '\r\n', '\u2028', '\u2029']) {
+      expect(matchesGlob(`Tool-x64.zip${ending}`, 'Tool-*.zip')).toBe(false);
+      expect(matchesGlob(`Tool-x64.zip${ending}`, 'Tool-*.zip?')).toBe(ending.length === 1);
+    }
   });
 });

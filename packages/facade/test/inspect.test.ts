@@ -10,6 +10,22 @@ import { inspectGitHubRelease, inspectOfflineRelease, renderInspectText } from '
 const fixturePath = fileURLToPath(new URL('../../../fixtures/repositories/basic-release.source.json', import.meta.url));
 
 describe('inspect', () => {
+  it.each(['tool-x64-musl.zip', 'tool-linux-windows-x64-musl.zip'])('builds unknown-OS libc evidence consistently with inspect for %s', async (name) => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-inspect-libc-'));
+    const inputPath = join(root, 'source.json');
+    const outDir = join(root, 'site');
+    await writeFile(inputPath, JSON.stringify({
+      repository: { fullName: 'owner/repo', htmlUrl: 'https://github.com/owner/repo' },
+      release: { id: 'release', tagName: 'v1', name: 'Release', draft: false, prerelease: false },
+      assets: [{ id: 'asset', name, downloadUrl: 'https://example.test/asset', size: 1 }],
+    }));
+    const resolution = await inspectOfflineRelease({ fixturePath: inputPath });
+    await buildOfflineRelease({ fixturePath: inputPath, outDir });
+    expect(JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8'))).toEqual(resolution.manifest);
+    expect(resolution.manifest.assets[0]).toMatchObject({ os: 'unknown', requirements: { libc: { family: 'unknown' } }, recommendationEligible: false });
+    expect(resolution.inspect.diagnostics).toContainEqual(expect.objectContaining({ code: 'CLASSIFICATION_LIBC_CONFLICT', assetId: 'asset' }));
+  });
+
   it('uses the same resolved asset data as fixture build while retaining exclusions', async () => {
     const root = await mkdtemp(join(tmpdir(), 'facade-inspect-'));
     const configPath = join(root, 'facade.yml');

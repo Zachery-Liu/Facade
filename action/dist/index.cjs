@@ -48101,7 +48101,7 @@ function inferOs(name, format, diagnostics) {
 }
 function inferArch(name, diagnostics) {
   const candidates = /* @__PURE__ */ new Map();
-  const protectedName = name.replace(/x86[_-]64/g, " x64 ");
+  const protectedName = name.replace(/x86[_-]64/g, "x64");
   addTokenCandidate(candidates, protectedName, "x64", ["x64", "amd64"]);
   addTokenCandidate(candidates, protectedName, "arm64", ["arm64", "aarch64"]);
   addTokenCandidate(candidates, protectedName, "x86", ["x86", "i386", "i686"]);
@@ -48456,7 +48456,7 @@ function reconcileFinalLibc(assets) {
   const invalid = assets.find((asset) => asset.evidence.libc.source === "project-config" && asset.libc !== "unknown" && asset.os !== "linux");
   if (invalid !== void 0) throw new FacadeError("CONFIG_INVALID", "A configured libc requirement is incompatible with the asset operating system.");
   for (const asset of assets) {
-    if (asset.evidence.libc.source !== "filename-rule" || asset.libc === "unknown" || asset.os === "unknown" || asset.os === "linux") continue;
+    if (asset.evidence.libc.source !== "filename-rule" || asset.libc === "unknown" || asset.os === "linux") continue;
     const detail = `${asset.libc} filename evidence conflicts with resolved ${asset.os} OS`;
     asset.libc = "unknown";
     asset.evidence.libc = { source: "filename-rule", status: "conflict", detail };

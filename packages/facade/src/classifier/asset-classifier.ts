@@ -98,7 +98,7 @@ function inferOs(name: string, format: AssetFormat, diagnostics: ClassificationD
 
 function inferArch(name: string, diagnostics: ClassificationDiagnostic[]) {
   const candidates = new Map<Exclude<Architecture, 'unknown'>, string[]>();
-  const protectedName = name.replace(/x86[_-]64/g, ' x64 ');
+  const protectedName = name.replace(/x86[_-]64/g, 'x64');
   addTokenCandidate(candidates, protectedName, 'x64', ['x64', 'amd64']);
   addTokenCandidate(candidates, protectedName, 'arm64', ['arm64', 'aarch64']);
   addTokenCandidate(candidates, protectedName, 'x86', ['x86', 'i386', 'i686']);
