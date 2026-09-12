@@ -1,4 +1,4 @@
-import { copyFile, mkdtemp, readFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -36,11 +36,26 @@ describe('packaged GitHub Action', () => {
     expect(result.code).toBe(1);
     expect(result.output).toContain('ACTION_UNEXPECTED_FAILURE');
   });
+
+  it('accepts minimal YAML in the bundled Action before resolving the repository', async () => {
+    const isolated = await mkdtemp(join(tmpdir(), 'facade-action-config-'));
+    const bundle = join(isolated, 'index.cjs');
+    const configPath = join(isolated, 'facade.yml');
+    await copyFile(join(repositoryRoot, 'action/dist/index.cjs'), bundle);
+    await writeFile(configPath, 'schema: 1\n');
+    const result = await spawnNode(bundle, isolated, {
+      INPUT_CONFIG: configPath,
+      'INPUT_OUT-DIR': join(isolated, 'site'),
+    });
+    expect(result.code).toBe(1);
+    expect(result.output).toContain('SOURCE_REPOSITORY_REQUIRED');
+    expect(result.output).not.toContain('CONFIG_INVALID');
+  });
 });
 
-function spawnNode(bundle: string, cwd: string): Promise<{ code: number | null; output: string }> {
+function spawnNode(bundle: string, cwd: string, environment: Record<string, string> = {}): Promise<{ code: number | null; output: string }> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [bundle], { cwd, env: {} });
+    const child = spawn(process.execPath, [bundle], { cwd, env: environment });
     let output = '';
     child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
     child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString(); });

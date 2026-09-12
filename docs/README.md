@@ -21,16 +21,16 @@ During v0.1 implementation, [`implementation_plan.md`](./implementation_plan.md)
 
 In particular, do not infer a current implementation requirement solely from an older library name, `preferredId` example, fixed verification-status example, or minimal configuration example in the product plan when the implementation plan and current code define a newer contract.
 
-Configuration precedence is intentionally **not** frozen by this document. The current source implementation and the broader product plan are not yet fully aligned on precedence semantics; that product-contract decision should be resolved separately and then synchronized across code, tests, and documentation.
+Configuration resolves explicit CLI/Action inputs, then explicit `FACADE_*` environment overrides, repository YAML, ambient inference (`GITHUB_REPOSITORY`), and defaults. Credentials resolve separately through the explicit token input or `GITHUB_TOKEN`. See the executable [source contracts](../.trellis/spec/backend/source-contracts.md).
 
 ## Current implementation boundary
 
 The repository is still in v0.1 development. At the current implementation point:
 
-- the public CLI surface is fixture-backed (`facade build --fixture ...`);
-- the GitHub Release source and source-to-build bridge exist internally, but live GitHub CLI wiring is not yet exposed;
+- the CLI supports live GitHub builds (`facade build`) and offline fixtures (`facade build --fixture ...`);
+- the bundled GitHub Action and [Pages templates](../examples/workflows/) support release publication and existing release CI; fresh builds verify staged input before replacing output;
 - the generated development manifest uses `schemaVersion: 0`; `schemaVersion: 1` is reserved for the v0.1 protocol freeze at release;
-- the full classifier/override model, shared selector, `inspect`, Action/Pages path, Product Theme, and final Agent contract are still planned v0.1 work.
+- the full classifier/override model, shared selector, `inspect`, Product Theme, and final Agent contract are still planned v0.1 work.
 
 Use the current code and tests to answer “what works now,” `implementation_plan.md` to answer “what v0.1 must still deliver,” and `roadmap.md` to answer “what may come after the v0.1 foundation.”
 

@@ -48522,7 +48522,7 @@ async function loadFacadeConfig(path6) {
 // src/build/offline-build.ts
 var OUTPUT_MARKER = ".facade-output";
 var OUTPUT_MARKER_CONTENT = "facade-output-v1\n";
-async function buildRelease(snapshot, options) {
+async function prepareRelease(snapshot, options) {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const resolution = resolveRelease(snapshot, options);
   const manifest = resolution.manifest;
@@ -48540,8 +48540,17 @@ async function buildRelease(snapshot, options) {
       (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "llms.txt"), renderLlms(manifest.releaseTag, manifest.assets, basePath), "utf8"),
       (0, import_promises2.writeFile)((0, import_node_path.join)(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, "utf8")
     ]);
-    const cleanupRequired = await replaceDirectory(staging, outDir);
-    return { basePath, files: ["index.html", "manifest.json", "install.md", "llms.txt"], ...cleanupRequired ? { cleanupRequired: true } : {}, ...resolution.inspect.diagnostics.length === 0 ? {} : { diagnostics: resolution.inspect.diagnostics } };
+    let published = false;
+    return {
+      publish: async () => {
+        const cleanupRequired = await replaceDirectory(staging, outDir);
+        published = true;
+        return { basePath, files: ["index.html", "manifest.json", "install.md", "llms.txt"], ...cleanupRequired ? { cleanupRequired: true } : {}, ...resolution.inspect.diagnostics.length === 0 ? {} : { diagnostics: resolution.inspect.diagnostics } };
+      },
+      dispose: async () => {
+        if (!published) await (0, import_promises2.rm)(staging, { recursive: true, force: true });
+      }
+    };
   } catch (error62) {
     await (0, import_promises2.rm)(staging, { recursive: true, force: true });
     throw error62;
@@ -48831,10 +48840,15 @@ function parseStrategy(value) {
 async function buildFreshRelease(dependencies) {
   for (const attempts of [1, 2]) {
     const before = await dependencies.capture();
-    const result = await dependencies.publish(before.snapshot, before.config, before.selection);
-    const after = await dependencies.capture();
-    if (before.fingerprint === after.fingerprint) {
-      return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
+    const prepared = await dependencies.prepare(before.snapshot, before.config, before.selection);
+    try {
+      const after = await dependencies.capture();
+      if (before.fingerprint === after.fingerprint) {
+        const result = await prepared.publish();
+        return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
+      }
+    } finally {
+      await prepared.dispose();
     }
     if (attempts === 1) {
       dependencies.onInputChanged?.();
@@ -48847,7 +48861,7 @@ async function buildFreshGitHubRelease(options) {
   const sourceFactory = options.sourceFactory ?? ((sourceOptions) => new GitHubReleaseSource(sourceOptions));
   return buildFreshRelease({
     capture: async () => captureGitHubInput(options, sourceFactory),
-    publish: (snapshot, config2, selection) => buildRelease(snapshot, {
+    prepare: (snapshot, config2, selection) => prepareRelease(snapshot, {
       outDir: options.outDir,
       ...options.basePath === void 0 ? {} : { basePath: options.basePath === "" ? "/" : options.basePath },
       ...config2 === void 0 ? {} : { config: config2 },

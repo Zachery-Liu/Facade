@@ -13,6 +13,10 @@ import type { FacadeConfigInput } from '../config/facade-config.js';
 export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; readonly configPath?: string; }
 export interface BuildReleaseOptions { readonly outDir: string; readonly basePath?: string; readonly config?: FacadeConfigInput; readonly provider?: 'fixture' | 'github' | 'unknown'; readonly selection?: 'fixture' | 'github-latest' | 'tag'; }
 export interface OfflineBuildResult { readonly basePath: string; readonly files: readonly ['index.html', 'manifest.json', 'install.md', 'llms.txt']; readonly cleanupRequired?: true; readonly diagnostics?: readonly BuildDiagnostic[]; }
+export interface PreparedRelease {
+  readonly publish: () => Promise<OfflineBuildResult>;
+  readonly dispose: () => Promise<void>;
+}
 const OUTPUT_MARKER = '.facade-output';
 const OUTPUT_MARKER_CONTENT = 'facade-output-v1\n';
 
@@ -23,6 +27,15 @@ export async function buildOfflineRelease(options: OfflineBuildOptions): Promise
 }
 
 export async function buildRelease(snapshot: RepositorySnapshot, options: BuildReleaseOptions): Promise<OfflineBuildResult> {
+  const prepared = await prepareRelease(snapshot, options);
+  try {
+    return await prepared.publish();
+  } finally {
+    await prepared.dispose();
+  }
+}
+
+export async function prepareRelease(snapshot: RepositorySnapshot, options: BuildReleaseOptions): Promise<PreparedRelease> {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const resolution = resolveRelease(snapshot, options);
   const manifest = resolution.manifest;
@@ -40,8 +53,17 @@ export async function buildRelease(snapshot: RepositorySnapshot, options: BuildR
       writeFile(join(staging, 'llms.txt'), renderLlms(manifest.releaseTag, manifest.assets, basePath), 'utf8'),
       writeFile(join(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, 'utf8'),
     ]);
-    const cleanupRequired = await replaceDirectory(staging, outDir);
-    return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}), ...(resolution.inspect.diagnostics.length === 0 ? {} : { diagnostics: resolution.inspect.diagnostics }) };
+    let published = false;
+    return {
+      publish: async () => {
+        const cleanupRequired = await replaceDirectory(staging, outDir);
+        published = true;
+        return { basePath, files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'], ...(cleanupRequired ? { cleanupRequired: true } : {}), ...(resolution.inspect.diagnostics.length === 0 ? {} : { diagnostics: resolution.inspect.diagnostics }) };
+      },
+      dispose: async () => {
+        if (!published) await rm(staging, { recursive: true, force: true });
+      },
+    };
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
     throw error;

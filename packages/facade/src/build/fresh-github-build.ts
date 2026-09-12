@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import type { OfflineBuildResult } from './offline-build.js';
-import { buildRelease } from './offline-build.js';
+import type { OfflineBuildResult, PreparedRelease } from './offline-build.js';
+import { prepareRelease } from './offline-build.js';
 import { loadFacadeConfig } from '../config/load-facade-config.js';
 import { FacadeError } from '../runtime/facade-error.js';
 import { GitHubReleaseSource, type GitHubReleaseSourceOptions } from '../source/github/github-release-source.js';
@@ -22,17 +22,22 @@ export interface FreshBuildResult extends OfflineBuildResult {
 
 interface FreshBuildDependencies {
   readonly capture: () => Promise<CapturedBuildInput>;
-  readonly publish: (snapshot: RepositorySnapshot, config?: FacadeConfigInput, selection?: 'github-latest' | 'tag') => Promise<OfflineBuildResult>;
+  readonly prepare: (snapshot: RepositorySnapshot, config?: FacadeConfigInput, selection?: 'github-latest' | 'tag') => Promise<PreparedRelease>;
   readonly onInputChanged?: () => void;
 }
 
 export async function buildFreshRelease(dependencies: FreshBuildDependencies): Promise<FreshBuildResult> {
   for (const attempts of [1, 2] as const) {
     const before = await dependencies.capture();
-    const result = await dependencies.publish(before.snapshot, before.config, before.selection);
-    const after = await dependencies.capture();
-    if (before.fingerprint === after.fingerprint) {
-      return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
+    const prepared = await dependencies.prepare(before.snapshot, before.config, before.selection);
+    try {
+      const after = await dependencies.capture();
+      if (before.fingerprint === after.fingerprint) {
+        const result = await prepared.publish();
+        return { ...result, attempts, releaseTag: before.snapshot.release.tagName };
+      }
+    } finally {
+      await prepared.dispose();
     }
     if (attempts === 1) {
       dependencies.onInputChanged?.();
@@ -56,7 +61,7 @@ export async function buildFreshGitHubRelease(options: FreshGitHubBuildOptions):
   const sourceFactory = options.sourceFactory ?? ((sourceOptions) => new GitHubReleaseSource(sourceOptions));
   return buildFreshRelease({
     capture: async () => captureGitHubInput(options, sourceFactory),
-    publish: (snapshot, config, selection) => buildRelease(snapshot, {
+    prepare: (snapshot, config, selection) => prepareRelease(snapshot, {
       outDir: options.outDir,
       ...(options.basePath === undefined ? {} : { basePath: options.basePath === '' ? '/' : options.basePath }),
       ...(config === undefined ? {} : { config }),

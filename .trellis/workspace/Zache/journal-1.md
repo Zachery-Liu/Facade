@@ -44,7 +44,7 @@ Added CI, coverage, CodeQL, dependency review, and documented the main ruleset.
 
 ## Correction: Session 1 completion status
 
-The Session 1 implementation was committed, but GitHub CI was not successfully executed: pnpm cache initialization failed before `corepack enable`. Coverage thresholds also differed from the documented baseline, Dependency Review had not run, and `main` had no active Ruleset. The prior ‚ÄúCompleted‚Äù status means ‚Äúchanges were committed‚Äù, not ‚Äúthe GitHub gate was verified‚Äù. Follow-up task `09-06-fix-quality-gates` supplied the repair and evidence and is now archived.
+The Session 1 implementation was committed, but GitHub CI was not successfully executed: pnpm cache initialization failed before `corepack enable`. Coverage thresholds also differed from the documented baseline, Dependency Review had not run, and `main` had no active Ruleset. The prior °∞Completed°± status means °∞changes were committed°±, not °∞the GitHub gate was verified°±. Follow-up task `09-06-fix-quality-gates` supplied the repair and evidence and is now archived.
 
 
 ## Session 2: Reconcile Trellis project records
@@ -156,7 +156,39 @@ Verified and fixed Action input precedence, bundle drift CI, Release asset timin
 - None - task complete
 
 
-## Session 5: Complete T06 classification and inspect
+## Session 5: Fix main review findings
+
+**Date**: 2026-09-11
+**Task**: Fix main review findings
+**Branch**: `codex/fix-main-review`
+
+### Summary
+
+Fixed Pages concurrency isolation and Action configuration pin; stage and verify live builds before output replacement; synchronized READMEs and specs. All 80 tests, lint, typecheck, build, coverage passed. Verified pinned Action minimal configuration using offline transport. Changes committed locally on codex/fix-main-review.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `16e58e3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+## Session 6: Complete T06 classification and inspect
 
 **Date**: 2026-09-11
 **Task**: Complete T06 classification and inspect
