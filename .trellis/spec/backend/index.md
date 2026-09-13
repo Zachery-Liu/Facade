@@ -10,6 +10,7 @@ These guidelines document the initial implemented Facade workspace. They must ev
 | [Logging Guidelines](./logging-guidelines.md) | emitting CLI or Action diagnostics |
 | [Source Contracts](./source-contracts.md) | defining or consuming raw repository, release, or asset data |
 | [Quality Guidelines](./quality-guidelines.md) | writing or reviewing backend code |
+| [Shared Selection](./selection.md) | installation conditions, ranking, source policy or browser/consumer integration |
 
 ## Pre-Development Checklist
 
