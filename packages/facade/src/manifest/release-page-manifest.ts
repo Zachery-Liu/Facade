@@ -6,6 +6,7 @@ export const EvidenceSchema = z.object({
   ruleId: z.string().min(1).optional(), configPath: z.string().min(1).optional(), derivedFrom: z.array(z.string().min(1)).optional(),
 });
 export const ArchitectureSchema = z.enum(['arm64', 'x64', 'x86', 'universal', 'unknown']);
+const PreferenceArchitectureSchema = ArchitectureSchema.exclude(['universal', 'unknown']);
 export const NumericVersionSchema = z.string().regex(/^\d+(?:\.\d+)*$/);
 export const RequirementsSchema = z.object({
   minimumOsVersion: NumericVersionSchema.optional(),
@@ -20,7 +21,7 @@ export const InstallMethodSchema = z.object({
 }).strict();
 export const InstallationPreferenceSchema = z.object({
   id: z.string().min(1),
-  when: z.object({ os: z.enum(['macos', 'windows', 'linux']), arch: ArchitectureSchema.optional(), libc: z.enum(['glibc', 'musl', 'none']).optional() }).strict(),
+  when: z.object({ os: z.enum(['macos', 'windows', 'linux']), arch: PreferenceArchitectureSchema.optional(), libc: z.enum(['glibc', 'musl', 'none']).optional() }).strict(),
   prefer: z.array(z.discriminatedUnion('type', [
     z.object({ type: z.literal('method'), methodId: z.string().min(1) }).strict(),
     z.object({ type: z.literal('artifacts'), assetIds: z.array(z.string().min(1)) }).strict(),

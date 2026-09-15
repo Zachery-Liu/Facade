@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { FacadeConfigSchema } from '../src/config/facade-config.js';
+import { FacadeConfigInputSchema, FacadeConfigSchema } from '../src/config/facade-config.js';
 import { ReleasePageManifestSchema } from '../src/manifest/release-page-manifest.js';
 import { validateManifestSemantics } from '../src/manifest/semantic-validation.js';
 import { RepositorySnapshotSchema } from '../src/source/repository-snapshot.js';
@@ -20,4 +20,6 @@ describe('manifest validation', () => {
   it('requires a tag when configuration selects tag strategy', () => { expect(() => FacadeConfigSchema.parse({ schema: 1, repository: 'owner/repo', release: { strategy: 'tag' } })).toThrow(); });
   it('rejects a tag for github-latest and unknown configuration keys', () => { expect(() => FacadeConfigSchema.parse({ schema: 1, repository: 'owner/repo', release: { strategy: 'github-latest', tag: 'v1.2.3' } })).toThrow(); expect(() => FacadeConfigSchema.parse({ schema: 1, repository: 'owner/repo', release: { strategy: 'github-latest' }, typo: true })).toThrow(); });
   it('accepts each unambiguous release strategy', () => { expect(FacadeConfigSchema.parse({ schema: 1, repository: 'owner/repo', release: { strategy: 'github-latest' } }).release).toEqual({ strategy: 'github-latest' }); expect(FacadeConfigSchema.parse({ schema: 1, repository: 'owner/repo', release: { strategy: 'tag', tag: 'v1.2.3' } }).release).toEqual({ strategy: 'tag', tag: 'v1.2.3' }); });
+  it('accepts minimal repository YAML before inference and defaults are applied', () => { expect(FacadeConfigInputSchema.parse({ schema: 1 })).toEqual({ schema: 1 }); });
+  it('rejects credentials in repository YAML', () => { expect(() => FacadeConfigInputSchema.parse({ schema: 1, token: 'secret' })).toThrow(); });
 });

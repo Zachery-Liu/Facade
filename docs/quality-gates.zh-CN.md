@@ -31,7 +31,7 @@ pnpm build
 pnpm coverage
 ```
 
-这些命令对应主要 CI 检查的本地版本。CodeQL 和 Dependency Review 则由 GitHub 在 Pull Request 上运行。
+这些命令对应主要 CI 检查的本地版本。`minimum-node` job 会使用 package 声明的最低受支持 Node.js 版本再次执行项目检查。CodeQL 和 Dependency Review 则由 GitHub 在 Pull Request 上运行。
 
 ## GitHub 必需检查
 
@@ -44,6 +44,7 @@ pnpm coverage
 | `CI` | `test` | Vitest 测试失败 |
 | `CI` | `build` | 生产构建失败 |
 | `CI` | `coverage` | 覆盖率低于当前基线 |
+| `CI` | `minimum-node` | 项目无法在 package 声明的最低受支持 Node.js 版本上通过检查 |
 | `CodeQL` | `Analyze (actions)` | 工作流安全分析发现问题 |
 | `CodeQL` | `Analyze (javascript-typescript)` | JavaScript/TypeScript 安全分析发现问题 |
 | `Dependency review` | `dependency-review` | PR 引入了存在已知 high 或 critical 漏洞的依赖 |
@@ -73,7 +74,7 @@ pnpm coverage
 - GitHub 针对未归属 Copilot 变更的额外 approval 设置处于启用状态，但在 required approval 为 `0` 时目前不会产生实际效果。
 - 要求线性历史，仓库只允许 squash merge。
 - 阻止分支删除和 non-fast-forward 更新，包括 force push。
-- Required status checks 使用上表八个检查名称，并要求分支在合并前保持最新。
+- Required status checks 使用上表九个检查名称，并要求分支在合并前保持最新。
 - 仓库所有者 `Zachery-Liu` 只能通过 Pull Request bypass Ruleset，用于异常恢复，不作为日常开发路径。
 
 ## Ruleset 配置来源
@@ -89,7 +90,7 @@ Ruleset 当前已经启用。只有在规则被删除、仓库迁移或配置意
 1. 打开 **Settings → Rules → Rulesets → New ruleset → Import a ruleset**，选择 `.github/rulesets/main-quality-gate.json`。
 2. 确认导入后的 Ruleset 名称为 `main quality gate`，目标为 `main`，状态为 **Active**。
 3. 确认已启用 Pull Request 要求、会话解决、线性历史、仅 squash merge、删除保护和 non-fast-forward 保护。
-4. 确认上表八个 required status checks 全部存在，并启用要求分支保持最新的 strict policy。
+4. 确认上表九个 required status checks 全部存在，并启用要求分支保持最新的 strict policy。
 5. Facade 仍为单人维护时，确认 required approval 数量为 `0`。
 6. 确认未归属 Copilot 变更的额外 approval 设置与版本化 JSON 保持一致。
 7. 确认仓库所有者的 bypass 仍然仅限 Pull Request。

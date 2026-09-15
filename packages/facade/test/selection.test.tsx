@@ -46,9 +46,17 @@ describe('shared installation selection', () => {
   it('requires an explicit Universal set and never treats it as arbitrary CPU support', () => {
     const universal = asset('u', { arch: 'universal', supportedArchitectures: ['arm64', 'x64'] });
     expect(selectInstallation(manifest([universal]), { os: 'macos', arch: 'x86' }).status).toBe('no-match');
-    expect(selectInstallation(manifest([universal]), { os: 'macos' }).status).toBe('needs-input');
+    expect(selectInstallation(manifest([universal]), { os: 'macos' }).selected?.id).toBe('u');
+    expect(selectInstallation(manifest([universal]), { os: 'macos', arch: 'unknown' }).selected?.id).toBe('u');
     expect(selectInstallation(manifest([asset('u', { arch: 'universal' })]), mac).status).toBe('needs-input');
     expect(selectInstallation(manifest([universal]), { os: 'windows', arch: 'arm64' }).status).toBe('no-match');
+  });
+  it('does not let a lower-ranked unknown candidate block a unique compatible winner', () => {
+    const winner = asset('winner', { priority: 100 });
+    const lower = asset('lower', { arch: 'unknown', kind: 'archive', priority: 0 });
+    const result = selectInstallation(manifest([lower, winner]), mac);
+    expect(result.status).toBe('selected');
+    expect(result.selected?.id).toBe('winner');
   });
   it('compares libc only on Linux and preserves Linux format choice', () => {
     const linux = asset('linux', { os: 'linux', format: 'deb', requirements: { libc: { family: 'glibc', minimumVersion: '2.31' } } });
@@ -136,6 +144,9 @@ describe('shared installation selection', () => {
       manifest([asset()], { installMethods: [method], installationPreferences: [preference, preference] }),
       manifest([asset()], { installationPreferences: [{ id: 'bad', when: { os: 'macos' }, prefer: [{ type: 'artifacts', assetIds: ['missing'] }] }] }),
       manifest([asset()], { installationPreferences: [{ id: 'bad', when: { os: 'macos' }, prefer: [], evidence: { 'when.arch': { source: 'project-config', detail: 'missing' } } }] }),
+      manifest([asset()], { installationPreferences: [{ id: 'bad', when: { os: 'macos', arch: 'unknown' }, prefer: [] }] }),
+      manifest([asset()], { installationPreferences: [{ id: 'bad', when: { os: 'macos', arch: 'universal' }, prefer: [] }] }),
+      manifest([asset()], { installationPreferences: [{ id: 'bad', when: { os: 'macos', libc: 'glibc' }, prefer: [] }] }),
     ];
     for (const input of invalid) {
       const result = selectInstallation(input, mac);
@@ -165,14 +176,14 @@ describe('shared installation selection', () => {
     expect(result.candidates.map((c) => c.id)).toEqual(['brew']);
     expect(result.candidates[0]?.conditions.find((c) => c.field === 'commands.brew')?.status).toBe('unknown');
   });
-  it('retains format conflicts and ignores inapplicable preference evidence', () => {
+  it('retains format conflicts and rejects inapplicable libc preferences', () => {
     const conflict = asset('a', { evidence: { format: { source: 'filename-rule', status: 'conflict', detail: 'format conflict' } } });
     expect(selectInstallation(manifest([conflict]), mac).status).toBe('needs-input');
-    const declared = { source: 'project-config', detail: 'declared' };
     const input = manifest([asset()], {
-      installationPreferences: [{ id: 'mac', when: { os: 'macos', libc: 'glibc' }, prefer: [], evidence: { 'when.os': declared, 'when.libc': { source: 'filename-rule', detail: 'irrelevant' } } }],
+      installationPreferences: [{ id: 'mac', when: { os: 'macos', libc: 'glibc' }, prefer: [] }],
     });
-    const result = selectInstallation(input, mac, { sources: 'strict' });
-    expect(result.conditions.some((c) => c.field.includes('libc'))).toBe(false);
+    const result = selectInstallation(input, mac);
+    expect(result.status).toBe('needs-input');
+    expect(result.diagnostics).toContain('installationPreferences.mac.when.libc: libc preference conditions require Linux');
   });
 });

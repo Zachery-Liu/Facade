@@ -1,4 +1,4 @@
-import type { FacadeConfig } from '../../config/facade-config.js';
+import type { FacadeConfigInput } from '../../config/facade-config.js';
 import { FacadeError } from '../../runtime/facade-error.js';
 
 export interface GitHubSourceOverrides {
@@ -6,6 +6,14 @@ export interface GitHubSourceOverrides {
   readonly strategy?: 'github-latest' | 'tag';
   readonly tag?: string;
   readonly token?: string;
+}
+
+export interface GitHubSourceEnvironment {
+  readonly FACADE_REPOSITORY?: string;
+  readonly FACADE_RELEASE_STRATEGY?: string;
+  readonly FACADE_RELEASE_TAG?: string;
+  readonly GITHUB_REPOSITORY?: string;
+  readonly GITHUB_TOKEN?: string;
 }
 
 interface GitHubSourceBaseOptions {
@@ -18,13 +26,24 @@ export type GitHubSourceOptions = GitHubSourceBaseOptions & (
   | { readonly strategy: 'tag'; readonly tag: string }
 );
 
-export function resolveGitHubSourceOptions(config: FacadeConfig, environment: Readonly<Record<string, string | undefined>>, cli: GitHubSourceOverrides = {}): GitHubSourceOptions {
-  const strategy = cli.strategy ?? parseStrategy(environment.FACADE_RELEASE_STRATEGY) ?? config.release.strategy;
-  const configTag = config.release.strategy === 'tag' ? config.release.tag : undefined;
+export function resolveGitHubSourceOptions(config: FacadeConfigInput, environment: GitHubSourceEnvironment, cli: GitHubSourceOverrides = {}): GitHubSourceOptions {
+  const repository = cli.repository
+    ?? environment.FACADE_REPOSITORY
+    ?? config.repository
+    ?? environment.GITHUB_REPOSITORY;
+  if (repository === undefined || repository.length === 0) {
+    throw new FacadeError('SOURCE_REPOSITORY_REQUIRED', 'A GitHub repository is required when it cannot be inferred from the environment.');
+  }
+
+  const strategy = cli.strategy
+    ?? parseStrategy(environment.FACADE_RELEASE_STRATEGY)
+    ?? config.release?.strategy
+    ?? 'github-latest';
+  const configTag = config.release?.strategy === 'tag' ? config.release.tag : undefined;
   const tag = cli.tag ?? environment.FACADE_RELEASE_TAG ?? configTag;
-  const token = cli.token ?? environment.GITHUB_TOKEN;
+  const token = resolveToken(cli.token, environment.GITHUB_TOKEN);
   const base = {
-    repository: cli.repository ?? environment.FACADE_REPOSITORY ?? config.repository,
+    repository,
     ...(token === undefined ? {} : { token }),
   };
   if (strategy === 'tag') {
@@ -32,6 +51,10 @@ export function resolveGitHubSourceOptions(config: FacadeConfig, environment: Re
     return { ...base, strategy, tag };
   }
   return { ...base, strategy };
+}
+
+function resolveToken(cliToken: string | undefined, githubToken: string | undefined): string | undefined {
+  return cliToken ?? githubToken;
 }
 
 function parseStrategy(value: string | undefined): 'github-latest' | 'tag' | undefined {

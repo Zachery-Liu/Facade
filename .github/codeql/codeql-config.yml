@@ -1,0 +1,5 @@
+# The Action bundle is a reproducible artifact checked against its TypeScript
+# sources in CI. Scan those sources, rather than third-party implementation
+# details bundled into the consumer-facing file.
+paths-ignore:
+  - action/dist/**

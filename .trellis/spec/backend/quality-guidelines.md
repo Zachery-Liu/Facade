@@ -32,3 +32,11 @@ When a build dependency requires a security override, declare the narrowest
 parent-scoped selector in `pnpm-workspace.yaml` (not `package.json` with pnpm
 11) and regenerate the lockfile; assert the vulnerable resolved version is
 absent before relying on the override.
+
+CodeQL scans the TypeScript source for the bundled Action but ignores only
+`action/dist/**`: that directory is a reproducible artifact whose third-party
+implementation details otherwise become new code-scanning alerts. Keep the
+exception in `.github/codeql/codeql-config.yml`, wire it through the CodeQL
+`init` action, and test both the exact ignore path and workflow reference. Do
+not use it to exclude Action source or other generated files without a separate
+review of their source-level coverage.

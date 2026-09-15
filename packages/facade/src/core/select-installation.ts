@@ -33,8 +33,10 @@ function assessAsset(asset: ManifestAsset, environment: SelectionEnvironment, po
   const fields = ['os', 'arch', 'kind', 'downloadUrl'];
   if (asset.arch === 'universal') {
     fields.push('supportedArchitectures');
-    if (asset.os !== 'macos' || !asset.supportedArchitectures?.length || !environment.arch || environment.arch === 'unknown') {
-      conditions.push(unknown('arch', 'Universal requires macOS, explicit supported architectures and a known environment architecture'));
+    if (asset.os !== 'macos' || !asset.supportedArchitectures?.length) {
+      conditions.push(unknown('arch', 'Universal requires macOS and an explicit supported architecture set'));
+    } else if (!environment.arch || environment.arch === 'unknown') {
+      conditions.push({ field: 'arch', status: 'match', reason: 'Explicit macOS Universal support does not require a detected architecture' });
     } else {
       conditions.push({ field: 'arch', status: asset.supportedArchitectures.includes(environment.arch) ? 'match' : 'mismatch', reason: 'Compare the explicitly supported Universal architecture set' });
     }
@@ -97,8 +99,8 @@ function result(candidates: CandidateResult[], conditions: ConditionResult[], di
   const viable = ordered.filter((candidate) => conditionStatus(candidate.conditions) !== 'mismatch');
   const first = viable[0];
   const tied = first && viable.some((candidate, i) => i > 0 && compareRank(first, candidate) === 0);
-  // Unknown candidates may outrank the apparent winner once their inputs are known.
-  const unresolved = viable.some((candidate) => conditionStatus(candidate.conditions) === 'unknown');
+  // Only an unresolved top-ranked candidate can affect the selection outcome.
+  const unresolved = first !== undefined && conditionStatus(first.conditions) === 'unknown';
   const selected = !blocked && !unresolved && !tied ? first : undefined;
   return {
     status: selected ? 'selected' : blocked || viable.length ? 'needs-input' : 'no-match',

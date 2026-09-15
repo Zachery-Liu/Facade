@@ -1,11 +1,12 @@
 # T07 delivery
 
-Implementation and local validation complete; commit confirmation pending.
+Implementation and review repairs are complete; commit confirmation pending.
 
-- Branch: feat/t07-selection; base: main (4a73d90).
-- Validation: typecheck, lint, build, 77 tests, coverage and git diff --check passed.
-- Coverage: statements/lines 92.61%, branches 91.95%, functions 91.42%.
+- Branch: feat/t07-selection; merged current origin/main (302418b).
+- Validation: typecheck, lint, both CLI/selection and Action builds, 111 tests, coverage and branch diff checks passed.
+- Coverage: statements/lines 91.68%, branches 91.18%, functions 90.8%.
 - Browser hook SSR and packaged consumer return identical selection results.
+- Review fixes: unknown-architecture macOS Universal selection, rank-aware unknown blocking, concrete preference architectures, and Linux-only libc preference conditions.
 - T06 integration and T09 browser hydration remain separate workstreams.
 
 ## Proposed work commit

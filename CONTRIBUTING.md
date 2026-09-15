@@ -16,7 +16,7 @@ For substantial behavioral or architectural changes, opening an issue first is r
 
 ## Development setup
 
-Facade uses Node.js and pnpm.
+Facade requires Node.js `>=22.13.0` and uses pnpm `11.19.0`.
 
 ```bash
 corepack enable
@@ -35,7 +35,7 @@ pnpm build
 pnpm coverage
 ```
 
-GitHub Actions runs the equivalent checks for pull requests to `main`.
+GitHub Actions runs the equivalent checks for pull requests to `main`, including a minimum-Node check at Node.js `22.13.0`.
 
 For the complete required-check and merge policy, see [GitHub Quality Gates](docs/quality-gates.md).
 
@@ -108,7 +108,7 @@ Agents contributing to Facade are expected to:
 - avoid including unrelated working-tree changes;
 - read the relevant `.trellis/spec/` guidance before changing a package or layer;
 - keep task research and decisions in repository-managed Trellis files when appropriate;
-- run the same quality checks required of human contributors;
+- run the same quality checks required of other contributors;
 - update project specs when a change introduces a reusable convention, architectural decision, or bug-prevention rule;
 - make uncertainty explicit rather than inventing missing requirements or repository facts.
 
@@ -158,7 +158,7 @@ The repository uses squash merging, so keep the pull request title suitable for 
 
 Changes should preserve Facade's core responsibilities:
 
-- keep human-facing and agent-facing output derived from the same source of truth;
+- keep user-facing and agent-facing output derived from the same source of truth;
 - represent uncertainty explicitly rather than presenting inference as fact;
 - keep classification separate from recommendation;
 - do not proxy release downloads;

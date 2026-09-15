@@ -317,7 +317,9 @@ links:
 - 所有本地素材路径相对于配置文件目录。示例中的 `../assets/` 指仓库根目录的 `assets/`。
 - v0.1 品牌图片支持仓库内 PNG、JPEG、WebP；打包为站内资源。远程图片及用户 SVG 可后续增加。
 - 不允许素材路径解析到仓库根目录之外；解析符号链接后也要检查。
-- 配置优先级：显式 CLI 参数 > YAML > 环境推导 > 默认值。
+- 普通配置字段按字段解析，优先级为：显式 CLI 参数 > 显式 `FACADE_*` 环境覆盖 > 仓库 YAML > 环境推导 > 默认值。高优先级没有提供某字段时，才继续读取下一层。
+- `GITHUB_REPOSITORY` 属于环境推导，只在 CLI、`FACADE_REPOSITORY` 和 YAML 都未指定仓库时补位；Release 事件变量不隐式覆盖 YAML 中的版本选择。
+- 凭据不属于普通配置合并：显式 CLI token 可覆盖 `GITHUB_TOKEN`，但 token 不得来自 YAML、环境推导或默认值，也不得进入日志和产物。
 - `site.basePath` 规范化为带首尾斜杠的路径；所有站内资源统一使用该路径生成。
 - `site.url` 与 basePath 冲突时失败，避免生成错误 canonical 或资源路径。
 - 未知配置字段报错，附带 YAML 字段位置；不静默忽略拼写错误。

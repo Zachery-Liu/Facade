@@ -16,11 +16,11 @@ const result = selectInstallation(manifest, {
 
 Manifest 在当前 main 结构上增加可选 `arch`、`supportedArchitectures`、`format`、`priority`、`requirements`、`recommendationEligible`、`installMethods` 和 `installationPreferences`。保留 schemaVersion 0 与开发中的 1；其他协议版本返回 needs-input 及诊断。T06 尚未合入此分支，旧构建产物缺少架构时不会自动推荐；此处不重新实现分类器。
 
-`requirements` 可声明 `minimumOsVersion` 及 `libc: { family, minimumVersion? }`。Linux 不比较系统版本；libc 只在 Linux 上参与判断，none 表示明确不依赖 libc。macOS Universal 必须声明 supportedArchitectures，并且环境架构在该集合内。
+`requirements` 可声明 `minimumOsVersion` 及 `libc: { family, minimumVersion? }`。Linux 不比较系统版本；libc 只在 Linux 上参与判断，none 表示明确不依赖 libc，非 Linux 偏好不能声明 libc 条件。偏好的 arch 只能是具体架构，不能是 universal 或 unknown。macOS Universal 必须声明 supportedArchitectures；环境架构已知时必须在该集合内，架构未知时唯一的明确 Universal 首选仍可推荐。
 
 结果有 selected、needs-input、no-match 三种状态。仅 selected 提供 `selected` 候选；`candidates` 保留已评估候选的条件、evidence、rank、rankingReasons 和 missingMetadata。`conditions` 记录已评估的偏好条件，顶层 missingMetadata 按候选 ID 汇总。明确不兼容候选仍可用于解释，但不能被选择。
 
-未声明最低版本、Linux libc 等限制进入 missingMetadata，不伪造 match，也不阻止推荐。已声明条件但环境未知会阻止自动选择。显示结果时应使用“符合已提供条件”。同分保留选择，名称只稳定排序；Linux 不依靠用途替用户选择包格式。排序先 priority，再精确架构，再用途。为保守处理未知信息，存在尚未排除的 unknown 候选时返回 needs-input。
+未声明最低版本、Linux libc 等限制进入 missingMetadata，不伪造 match，也不阻止推荐。已声明条件但环境未知会阻止自动选择。显示结果时应使用“符合已提供条件”。同分保留选择，名称只稳定排序；Linux 不依靠用途替用户选择包格式。排序先 priority，再精确架构，再用途。首位候选未知或同分候选未决时返回 needs-input；已无法影响首位结果的低排名 unknown 候选不会阻止唯一明确赢家。
 
 安装偏好按配置顺序检查 when，未知即停止；首条匹配规则按 prefer 顺序选择方法或 assetIds。命令明确 unavailable 才允许继续；当前列表全不可用或为空时转默认文件选择，不检查后续规则。空文件组产生诊断；不存在的引用是输入错误。`assetMatch` 属于配置编译阶段，选择器只消费解析后的 assetIds。
 

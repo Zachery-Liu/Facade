@@ -43,6 +43,7 @@ export function validateManifestSemantics(manifest: ReleasePageManifest): Valida
   for (const preference of manifest.installationPreferences ?? []) {
     if (preferenceIds.has(preference.id)) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: 'preference IDs must be unique' });
     preferenceIds.add(preference.id);
+    if (preference.when.libc !== undefined && preference.when.os !== 'linux') diagnostics.push({ path: `installationPreferences.${preference.id}.when.libc`, message: 'libc preference conditions require Linux' });
     for (const field of Object.keys(preference.evidence ?? {})) if (!['when.os', 'when.arch', 'when.libc'].includes(field) || fieldValue(preference, field) === undefined) diagnostics.push({ path: `installationPreferences.${preference.id}.evidence.${field}`, message: 'evidence must reference a populated preference condition' });
     for (const item of preference.prefer) {
       if (item.type === 'method' && !methodIds.has(item.methodId)) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: 'preference must reference an existing method' });

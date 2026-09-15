@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/error-handling.md","reason":"Verify stable failures and credential redaction."}
+{"file":".trellis/spec/backend/source-contracts.md","reason":"Verify precedence, release coherence, and test coverage."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Run the required typecheck, lint, test, build, and coverage gate."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Verify documentation, schemas, resolver, and tests agree."}
