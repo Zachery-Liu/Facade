@@ -33,6 +33,12 @@ parent-scoped selector in `pnpm-workspace.yaml` (not `package.json` with pnpm
 11) and regenerate the lockfile; assert the vulnerable resolved version is
 absent before relying on the override.
 
+When an advisory is owned by a direct dependency family, upgrade the direct
+package and its peer-coupled tooling together instead of masking only the
+transitive resolution with an override. Verify the exact resolved versions,
+run a frozen offline install after regeneration, and audit against the npm
+official registry when the configured mirror does not implement the audit API.
+
 CodeQL scans the TypeScript source for the bundled Action but ignores only
 `action/dist/**`: that directory is a reproducible artifact whose third-party
 implementation details otherwise become new code-scanning alerts. Keep the
