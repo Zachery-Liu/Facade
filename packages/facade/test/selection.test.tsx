@@ -8,7 +8,16 @@ import { ReleasePageManifestSchema, type ManifestAsset } from '../src/manifest/r
 import { useSelectionInput } from '../src/themes/product/hooks/use-selection-input.js';
 
 function asset(id = 'a', extra: Partial<ManifestAsset> = {}): ManifestAsset {
-  return { id, label: id, downloadUrl: `https://example.test/${id}`, os: 'macos', arch: 'arm64', kind: 'installer', format: 'dmg', evidence: {}, ...extra };
+  const os = extra.os ?? 'macos';
+  const arch = extra.arch ?? 'arm64';
+  const kind = extra.kind ?? 'installer';
+  const recommendationEligible = extra.recommendationEligible
+    ?? (os !== 'unknown' && arch !== 'unknown' && ['installer', 'portable', 'archive'].includes(kind));
+  return {
+    id, name: id, label: id, downloadUrl: `https://example.test/${id}`, size: 1,
+    os, arch, kind, format: 'dmg', priority: 0,
+    requirements: { libc: { family: 'unknown' } }, recommendationEligible, evidence: {}, ...extra,
+  };
 }
 function manifest(assets = [asset()], extra = {}) { return { schemaVersion: 1, productName: 'Example', releaseTag: 'v1', assets, ...extra }; }
 const mac = { os: 'macos', arch: 'arm64' };
@@ -27,7 +36,7 @@ describe('shared installation selection', () => {
     expect(selectInstallation(manifest(), env).status).toBe('needs-input');
   });
   it('excludes incompatible and auxiliary candidates regardless of priority', () => {
-    for (const kind of ['checksum', 'signature', 'debug', 'update', 'other', 'unknown'] as const) {
+    for (const kind of ['checksum', 'signature', 'debug', 'update', 'unknown'] as const) {
       const auxiliary = asset('aux', { kind, priority: 999, ...(kind === 'signature' ? { signatureFor: 'a' } : {}) });
       expect(selectInstallation(manifest([asset(), auxiliary, asset('wrong', { arch: 'x64', priority: 999 })]), mac).selected?.id).toBe('a');
     }
@@ -70,7 +79,7 @@ describe('shared installation selection', () => {
     const missing = asset('missing', { os: 'linux' });
     expect(selectInstallation(manifest([missing]), env).missingMetadata).toContain('missing.requirements.libc');
     expect(selectInstallation(manifest([missing, { ...independent, kind: 'archive' }]), env).status).toBe('needs-input');
-    expect(selectInstallation(manifest([asset('a', { requirements: linux.requirements })]), mac).status).toBe('selected');
+    expect(selectInstallation(manifest([asset('a', { requirements: linux.requirements })]), mac).status).toBe('needs-input');
   });
   it.each([
     ['10.2', '10.10', 'match'], ['10.2.0', '10.2', 'match'], ['10.2', '10.1.99', 'mismatch'],
@@ -80,7 +89,7 @@ describe('shared installation selection', () => {
     expect(matchMinimumVersion('version', minimum, actual).status).toBe(status);
   });
   it('blocks missing declared OS version but accepts an explicit sufficient version', () => {
-    const input = manifest([asset('a', { requirements: { minimumOsVersion: '13.2' } })]);
+    const input = manifest([asset('a', { requirements: { minimumOsVersion: '13.2', libc: { family: 'unknown' } } })]);
     expect(selectInstallation(input, mac).status).toBe('needs-input');
     expect(selectInstallation(input, { ...mac, osVersion: '13.10' }).status).toBe('selected');
   });
@@ -88,10 +97,16 @@ describe('shared installation selection', () => {
     const inferred = asset('a', { evidence: { arch: { source: 'filename-rule', detail: 'arm64 token' } } });
     expect(selectInstallation(manifest([inferred]), mac).selected?.evidence.arch?.source).toBe('filename-rule');
     expect(selectInstallation(manifest([inferred]), mac, { sources: 'strict' }).status).toBe('needs-input');
-    const evidence = Object.fromEntries(['os', 'arch', 'kind', 'downloadUrl'].map((field) => [field, { source: 'project-config' as const, detail: 'Author declaration' }]));
+    const evidence = Object.fromEntries(['os', 'arch', 'kind', 'downloadUrl', 'priority'].map((field) => [field, { source: 'project-config' as const, detail: 'Author declaration' }]));
     expect(selectInstallation(manifest([asset('a', { evidence })]), mac, { sources: 'strict' }).status).toBe('selected');
     expect(selectInstallation(manifest([asset('a', { evidence: { ...evidence, arch: { source: 'derived', detail: 'derived' } } })]), mac, { sources: 'strict' }).status).toBe('needs-input');
     expect(selectInstallation(manifest([asset('a', { evidence: { arch: { source: 'filename-rule', status: 'conflict', detail: 'conflict' } } })]), mac).status).toBe('needs-input');
+  });
+  it('accepts T06 libc evidence aliases under strict source policy', () => {
+    const declared = { source: 'project-config' as const, status: 'explicit' as const, detail: 'Author declaration' };
+    const evidence = Object.fromEntries(['os', 'arch', 'kind', 'downloadUrl', 'priority', 'requirements', 'libc'].map((field) => [field, declared]));
+    const linux = asset('linux', { os: 'linux', format: 'tar.gz', requirements: { libc: { family: 'glibc' } }, evidence });
+    expect(selectInstallation(manifest([linux]), { os: 'linux', arch: 'arm64', libc: { family: 'glibc' } }, { sources: 'strict' }).status).toBe('selected');
   });
   it('handles preference when unknown, mismatch and first-match fallback', () => {
     const input = manifest([asset()], { installMethods: [method], installationPreferences: [preference] });
@@ -161,7 +176,8 @@ describe('shared installation selection', () => {
     const result = selectInstallation(input, mac, { sources: 'strict' });
     expect(result.status).toBe('needs-input');
     expect(result.conditions.find((c) => c.field === 'installationPreferences.first.os')?.status).toBe('unknown');
-    const candidate = selectInstallation(manifest([asset('win', { os: 'windows', evidence: { os: { source: 'filename-rule', detail: 'conflicting', status: 'conflict' } } })]), mac);
+    const declared = Object.fromEntries(['arch', 'kind', 'downloadUrl', 'priority'].map((field) => [field, { source: 'project-config' as const, detail: 'Author declaration' }]));
+    const candidate = selectInstallation(manifest([asset('win', { os: 'windows', evidence: { ...declared, os: { source: 'filename-rule', detail: 'inferred Windows', status: 'inferred' } } })]), mac, { sources: 'strict' });
     expect(candidate.status).toBe('needs-input');
     expect(candidate.candidates[0]?.conditions.find((c) => c.field === 'os')?.status).toBe('unknown');
   });

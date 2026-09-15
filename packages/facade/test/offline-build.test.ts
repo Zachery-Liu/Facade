@@ -18,7 +18,7 @@ describe('offline build', () => {
     const install = await readFile(join(outDir, 'install.md'), 'utf8');
     const llms = await readFile(join(outDir, 'llms.txt'), 'utf8');
     expect(manifest.releaseTag).toBe('v2.100.0');
-    expect(manifest.assets.map((asset) => [asset.id, asset.os, asset.kind])).toEqual([['macos-arm64', 'unknown', 'other'], ['windows-x64', 'unknown', 'other'], ['linux-x64', 'linux', 'artifact'], ['checksums', 'unknown', 'checksum']]);
+    expect(manifest.assets.map((asset) => [asset.id, asset.os, asset.kind])).toEqual([['macos-arm64', 'macos', 'archive'], ['windows-x64', 'windows', 'installer'], ['linux-x64', 'linux', 'archive'], ['checksums', 'unknown', 'checksum']]);
     for (const asset of manifest.assets) {
       expect(html).toContain('data-asset-id="' + asset.id + '"');
       expect(html).toContain(asset.downloadUrl);
@@ -116,7 +116,7 @@ describe('offline build', () => {
       { id: 'linux', name: 'tool-linux-amd64.tar.gz', downloadUrl: 'https://example.test/linux', size: 1 },
       { id: 'checksums', name: 'checksums.txt', downloadUrl: 'https://example.test/checksums', size: 1 },
     ] });
-    expect(manifest.assets.map((asset) => [asset.os, asset.kind])).toEqual([['macos', 'artifact'], ['windows', 'artifact'], ['linux', 'artifact'], ['unknown', 'checksum']]);
+    expect(manifest.assets.map((asset) => [asset.os, asset.kind])).toEqual([['macos', 'installer'], ['windows', 'installer'], ['linux', 'archive'], ['unknown', 'checksum']]);
   });
 
   it('keeps generated text outputs structurally intact for special asset metadata', async () => {

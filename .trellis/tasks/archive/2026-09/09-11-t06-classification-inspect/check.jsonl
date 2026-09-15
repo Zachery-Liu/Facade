@@ -1,0 +1,9 @@
+{"file":".trellis/spec/backend/index.md","reason":"Routes the backend guidelines for the final spec-compliance review."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Check module ownership and pure/IO separation."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Run and evaluate the complete local quality gate and coverage floor."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Check conflict uncertainty, stable errors, and sensitive-data handling."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Check inspect/diagnostic output for deterministic safe fields."}
+{"file":".trellis/spec/backend/source-contracts.md","reason":"Check source, manifest, config, fresh build, and output contracts."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Check build/inspect parity comes from reuse rather than duplicated resolution."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Check classification fields survive every boundary consistently."}
+{"file":".trellis/tasks/09-11-t06-classification-inspect/research/classification-contract.md","reason":"Review against the distilled T06 contract and explicit exclusions."}

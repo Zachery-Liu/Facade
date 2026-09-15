@@ -255,3 +255,102 @@ or merge `FACADE_*` overrides and `GITHUB_REPOSITORY` into a single
 #### Correct
 
 Validate the mapped repository, release, assets, and final snapshot through their shared schemas before returning. Keep explicit overrides, repository configuration, ambient inference, defaults, and credentials as named layers at the source-options boundary.
+
+## Scenario: Explainable asset classification and inspection
+
+### 1. Scope / Trigger
+
+Use `src/compiler/release-resolver.ts` whenever a validated snapshot becomes a
+public manifest, build input, or inspect report. Do not classify independently
+inside a renderer or command.
+
+### 2. Signatures
+
+```ts
+classifyAsset(asset: RawAsset): ClassifiedAsset
+resolveRelease(snapshot: RepositorySnapshot, options?: ResolveReleaseOptions): ReleaseResolution
+inspectOfflineRelease(options: InspectOfflineOptions): Promise<ReleaseResolution>
+inspectGitHubRelease(options: InspectGitHubOptions): Promise<ReleaseResolution>
+renderInspectText(resolution: ReleaseResolution): string
+```
+
+`ReleaseResolution` contains one public `manifest` plus an inspect-only report
+with every source asset, applicable rule result, diagnostic, exclusion state,
+recommendation eligibility, and ordered override trace.
+
+### 3. Contracts
+
+- Classify each filename independently with bounded tokens and longest suffixes.
+- Compound architecture normalization must preserve surrounding characters:
+  normalize `x86_64` to `x64`, never to ` x64 `. Product-name substrings such as
+  `prefixx86_64` and `x86_64suffix` must not acquire artificial token boundaries.
+- Represent unknown and conflict as evidence states; a conflicted final field is
+  `unknown` until an applicable project rule explicitly replaces it.
+- Apply case-sensitive full-name glob rules in configuration order. Later rules
+  replace only fields they provide, and every provided field produces a stable
+  before/after trace.
+- Validate glob syntax while parsing configuration so malformed character
+  classes fail as `CONFIG_INVALID` instead of surfacing a regular-expression
+  error during release resolution.
+- `downloads.auto: false` disables all filename inference and excludes assets
+  that match no tag-applicable rule.
+- Build publishes only non-excluded assets. Inspect retains every source asset,
+  rule result, classification diagnostic, and override trace.
+- Auxiliary kinds and unresolved conflicts are never recommendation eligible;
+  priority does not bypass this filter.
+- Semantic manifest validation rejects recommendation-eligible auxiliary,
+  unknown-platform, or conflicted assets and non-Linux libc requirements.
+- Reconcile inferred libc after overrides even when the final OS is unknown
+  (including OS conflicts). Publish unknown libc with a conflict diagnostic
+  instead of letting an ambiguous filename abort the entire build. An explicit
+  Linux OS override can retain otherwise valid inferred libc; explicit invalid
+  libc declarations still fail as `CONFIG_INVALID`.
+- Fresh GitHub capture carries the parsed configuration into publication so the
+  fingerprinted source text is exactly the configuration used by the resolver.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+| --- | --- |
+| Malformed download glob | Config parsing fails as `CONFIG_INVALID` at the loading boundary |
+| Rule tag differs from selected release | Skip the complete rule and emit `DOWNLOAD_RULE_TAG_MISMATCH` |
+| Applicable rule matches no asset | Emit `DOWNLOAD_RULE_NO_MATCH`; retain the result in inspect |
+| Explicit non-unknown libc with final non-Linux or unknown OS | Fail as `CONFIG_INVALID` |
+| Filename libc conflicts with the final non-Linux OS | Keep libc unknown/conflicted and emit `CLASSIFICATION_LIBC_CONFLICT` |
+| Auxiliary, unknown-platform, or conflicted asset claims eligibility | Semantic manifest diagnostic |
+| `downloads.auto: false` and no applicable rule matches | Exclude from build; retain the asset and reason in inspect |
+
+### 5. Good / Base / Bad Cases
+
+- Good: `tool-x86_64-unknown-linux-gnu.tar.gz` resolves once, carries inferred
+  field evidence, and has identical final fields in build and inspect.
+- Good: ordered rules can set a field, reset exclusion, and leave all omitted
+  fields untouched while recording each before/after change.
+- Base: an unrecognized file remains visible as an unknown non-eligible download
+  without a build failure.
+- Bad: run a second classifier inside `facade inspect`, silently choose one side
+  of conflicting evidence, or let priority make a checksum eligible.
+
+### 6. Tests Required
+
+- Cover token boundaries, longest suffixes, auxiliary purposes, GNU target
+  patterns, and OS/architecture/libc conflicts.
+- Cover ordered partial replacement, exclusion reset, exact tag skips,
+  zero-match warnings, malformed globs, and auto-off inclusion.
+- Compare fixture build manifest data with structured inspect data for identical
+  inputs, and verify fresh GitHub publication applies captured download rules.
+- Assert semantic rejection for unsafe eligibility and non-Linux libc, and assert
+  Action warnings preserve stable codes/logical config paths without local paths.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+Load the config to fingerprint inputs, discard it, and reload or omit it when
+publishing. Build and inspect can then resolve different facts from nominally
+the same input.
+
+#### Correct
+
+Carry the validated config captured with the snapshot into the shared resolver,
+then derive both public build output and inspect output from that one resolution.

@@ -14,7 +14,7 @@ const result = selectInstallation(manifest, {
 
 环境字段全部可省略：`os` 为 macos/windows/linux/unknown，`arch` 为 arm64/x64/x86/unknown；`osVersion` 和 libc 的 `version` 接受原始字符串，无法按点分非负整数比较时结果为 unknown。`commands` 将命令名映射到 available/unavailable/unknown；未提供命令状态等于 unknown。浏览器传入可靠检测线索或用户选择，不能从缺失信息默认 x64 或 glibc。Hook 的手动环境覆盖检测结果，可通过设置 undefined 恢复检测输入。
 
-Manifest 在当前 main 结构上增加可选 `arch`、`supportedArchitectures`、`format`、`priority`、`requirements`、`recommendationEligible`、`installMethods` 和 `installationPreferences`。保留 schemaVersion 0 与开发中的 1；其他协议版本返回 needs-input 及诊断。T06 尚未合入此分支，旧构建产物缺少架构时不会自动推荐；此处不重新实现分类器。
+选择器直接消费 T06 解析器生成的 `schemaVersion: 1` Manifest，并在其分类字段上增加可选的 `supportedArchitectures`、`installMethods` 和 `installationPreferences`，以及 requirements 中的最低版本字段。输入的旧版 `schemaVersion: 0` Manifest 会先规范化为 v1；其他协议版本返回 needs-input 及诊断。旧构建产物缺少可信分类时保持不可推荐，不会猜测架构或用途。
 
 `requirements` 可声明 `minimumOsVersion` 及 `libc: { family, minimumVersion? }`。Linux 不比较系统版本；libc 只在 Linux 上参与判断，none 表示明确不依赖 libc，非 Linux 偏好不能声明 libc 条件。偏好的 arch 只能是具体架构，不能是 universal 或 unknown。macOS Universal 必须声明 supportedArchitectures；环境架构已知时必须在该集合内，架构未知时唯一的明确 Universal 首选仍可推荐。
 
@@ -26,7 +26,7 @@ Manifest 在当前 main 结构上增加可选 `arch`、`supportedArchitectures`�
 
 方法结构为 `{ id, platform, name, command, prerequisites, versionBinding? }`，prerequisites 是 `{ "command-available": "brew" }` 数组。versionBinding 省略时为 unverified；默认允许只读展示，`requireVersionBinding: true` 会要求补充确认。自由文本 command 不影响结构化条件，也不产生执行授权。验证失败应由消费者停止流程，不调用选择器绕过失败。
 
-默认来源策略允许 filename-rule 和 derived，保留证据。严格策略要求参与匹配或排序的字段、下载 URL、方法条件及命令具有 github-api 或 project-config 来源；缺失、unknown 或 conflict 证据返回 needs-input。字段 evidence 使用点分路径，例如 `requirements.libc.family`、方法的 `command`、偏好的 `when.os`。来源标签是输入声明，不等于真实性验证。
+默认来源策略允许 filename-rule 和 derived，保留证据。严格策略要求参与匹配或排序的字段、下载 URL、方法条件及命令具有 github-api 或 project-config 来源；缺失、unknown 或 conflict 证据返回 needs-input。字段 evidence 可使用解析器的 `requirements` / `libc` 键，扩展字段使用点分路径，例如 `requirements.libc.minimumVersion`；方法使用 `command`，偏好使用 `when.os`。来源标签是输入声明，不等于真实性验证。
 
 只读消费者示例：
 

@@ -8,7 +8,9 @@ const unknown = (field: string, reason: string): ConditionResult => ({ field, st
 
 function sourceConditions(evidence: CandidateResult['evidence'], fields: string[], policy: SelectionPolicy, conditions: ConditionResult[]): ConditionResult[] {
   return fields.flatMap((field) => {
-    const entry = evidence[field];
+    const entry = evidence[field]
+      ?? (field.startsWith('requirements.libc.') ? evidence.libc ?? evidence.requirements : undefined)
+      ?? (field === 'requirements.minimumOsVersion' ? evidence.requirements : undefined);
     const reason = entry?.status === 'conflict' || entry?.status === 'unknown'
       ? 'Field evidence is unresolved'
       : policy.sources === 'strict' && (!entry || !['github-api', 'project-config'].includes(entry.source))
@@ -117,7 +119,6 @@ export function selectInstallation(manifestInput: unknown, environmentInput: unk
   const policy = SelectionPolicySchema.safeParse(policyInput);
   if (!parsed.success || !environment.success || !policy.success) return result([], [], ['Invalid manifest, environment or policy'], true);
   const manifest = parsed.data;
-  if (manifest.schemaVersion !== 0 && manifest.schemaVersion !== 1) return result([], [], ['Unsupported schemaVersion'], true);
   const errors = validateManifestSemantics(manifest);
   if (errors.length) return result([], [], errors.map((error) => `${error.path}: ${error.message}`), true);
   return selectValidated(manifest, environment.data, policy.data);
