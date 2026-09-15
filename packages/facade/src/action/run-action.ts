@@ -51,6 +51,13 @@ export async function runAction(core: ActionCore, dependencies: ActionDependenci
         { title: 'FACADE_OUTPUT_CLEANUP_REQUIRED' },
       );
     }
+    for (const diagnostic of result.diagnostics ?? []) {
+      if (diagnostic.severity !== 'warning') continue;
+      core.warning(
+        diagnostic.message + (diagnostic.configPath === undefined ? '' : ` (${diagnostic.configPath})`),
+        { title: diagnostic.code },
+      );
+    }
     core.setOutput('output-path', outDir);
     core.setOutput('release-tag', result.releaseTag);
   } catch (error) {

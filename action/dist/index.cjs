@@ -28573,7 +28573,7 @@ function getIDToken(aud) {
 var import_node_crypto = require("crypto");
 
 // src/build/offline-build.ts
-var import_promises = require("fs/promises");
+var import_promises2 = require("fs/promises");
 var import_node_path = require("path");
 
 // ../../node_modules/.pnpm/preact@10.29.8_preact-render-to-string@6.7.0/node_modules/preact/dist/preact.mjs
@@ -48029,45 +48029,450 @@ function ReleasePage({ manifest, basePath = "/" }) {
   ] });
 }
 
+// src/classifier/asset-classifier.ts
+var OPERATING_SYSTEMS = ["macos", "windows", "linux", "unknown"];
+var ARCHITECTURES = ["arm64", "x64", "x86", "universal", "unknown"];
+var ASSET_FORMATS = ["dmg", "pkg", "exe", "msi", "appimage", "deb", "rpm", "zip", "tar.gz", "other"];
+var ASSET_KINDS = ["installer", "portable", "archive", "checksum", "signature", "debug", "update", "unknown"];
+var LIBC_FAMILIES = ["glibc", "musl", "none", "unknown"];
+var FORMAT_SUFFIXES = [
+  [".tar.gz", "tar.gz"],
+  [".appimage", "appimage"],
+  [".dmg", "dmg"],
+  [".pkg", "pkg"],
+  [".exe", "exe"],
+  [".msi", "msi"],
+  [".deb", "deb"],
+  [".rpm", "rpm"],
+  [".zip", "zip"]
+];
+var OS_FORMAT_HINTS = {
+  dmg: "macos",
+  pkg: "macos",
+  exe: "windows",
+  msi: "windows",
+  appimage: "linux",
+  deb: "linux",
+  rpm: "linux"
+};
+var INSTALLER_FORMATS = /* @__PURE__ */ new Set(["dmg", "pkg", "exe", "msi", "appimage", "deb", "rpm"]);
+var ARCHIVE_FORMATS = /* @__PURE__ */ new Set(["zip", "tar.gz"]);
+function classifyAsset(asset) {
+  const normalized = asset.name.toLowerCase();
+  const format = inferFormat(normalized);
+  const diagnostics = [];
+  const osResult = inferOs(normalized, format, diagnostics);
+  const archResult = inferArch(normalized, diagnostics);
+  const kindResult = inferKind(normalized, format, diagnostics);
+  let libcResult = inferLibc(normalized, diagnostics);
+  if (libcResult.value !== "unknown" && osResult.value !== "unknown" && osResult.value !== "linux") {
+    const detail = `${libcResult.value} filename evidence conflicts with resolved ${osResult.value} OS`;
+    diagnostics.push({ code: "CLASSIFICATION_LIBC_CONFLICT", field: "libc", message: `Conflicting libc evidence: ${detail}` });
+    libcResult = { value: "unknown", evidence: { source: "filename-rule", status: "conflict", detail } };
+  }
+  return {
+    source: asset,
+    os: osResult.value,
+    arch: archResult.value,
+    format,
+    kind: kindResult.value,
+    libc: libcResult.value,
+    evidence: {
+      os: osResult.evidence,
+      arch: archResult.evidence,
+      format: format === "other" ? unknownEvidence("No recognized file suffix") : inferredEvidence(`Longest suffix matched ${format}`),
+      kind: kindResult.evidence,
+      libc: libcResult.evidence
+    },
+    diagnostics
+  };
+}
+function inferFormat(name) {
+  return FORMAT_SUFFIXES.find(([suffix]) => name.endsWith(suffix))?.[1] ?? "other";
+}
+function inferOs(name, format, diagnostics) {
+  const candidates = /* @__PURE__ */ new Map();
+  addTokenCandidate(candidates, name, "macos", ["macos", "darwin", "osx", "mac"]);
+  addTokenCandidate(candidates, name, "windows", ["windows", "win", "win32", "win64"]);
+  addTokenCandidate(candidates, name, "linux", ["linux"]);
+  const formatHint = OS_FORMAT_HINTS[format];
+  if (formatHint !== void 0) addCandidate(candidates, formatHint, `${format} format hint`);
+  return resolveCandidates("os", candidates, diagnostics);
+}
+function inferArch(name, diagnostics) {
+  const candidates = /* @__PURE__ */ new Map();
+  const protectedName = name.replace(/x86[_-]64/g, "x64");
+  addTokenCandidate(candidates, protectedName, "x64", ["x64", "amd64"]);
+  addTokenCandidate(candidates, protectedName, "arm64", ["arm64", "aarch64"]);
+  addTokenCandidate(candidates, protectedName, "x86", ["x86", "i386", "i686"]);
+  addTokenCandidate(candidates, protectedName, "universal", ["universal", "universal2"]);
+  return resolveCandidates("arch", candidates, diagnostics);
+}
+function inferKind(name, format, diagnostics) {
+  const auxiliary = /* @__PURE__ */ new Map();
+  if (hasToken(name, ["checksum", "checksums", "sha256sum", "sha256sums", "sha512sum", "sha512sums"]) || /(?:^|[._-])sha(?:256|512)(?:[._-]|$)/.test(name)) addCandidate(auxiliary, "checksum", "checksum token");
+  if (hasToken(name, ["signature", "signatures"]) || /\.(?:sig|asc|minisig)$/i.test(name)) addCandidate(auxiliary, "signature", "signature token or suffix");
+  if (hasToken(name, ["debug", "symbols", "symbol", "pdb", "dsym"])) addCandidate(auxiliary, "debug", "debug-symbol token");
+  if (hasToken(name, ["update", "updater", "delta", "patch"])) addCandidate(auxiliary, "update", "update token");
+  if (auxiliary.size > 0) return resolveCandidates("kind", auxiliary, diagnostics);
+  if (hasToken(name, ["portable"])) return { value: "portable", evidence: inferredEvidence("portable token") };
+  if (INSTALLER_FORMATS.has(format)) return { value: "installer", evidence: inferredEvidence(`${format} format rule`) };
+  if (ARCHIVE_FORMATS.has(format)) return { value: "archive", evidence: inferredEvidence(`${format} format rule`) };
+  return { value: "unknown", evidence: unknownEvidence("No recognized artifact-purpose evidence") };
+}
+function inferLibc(name, diagnostics) {
+  const candidates = /* @__PURE__ */ new Map();
+  if (hasToken(name, ["musl"])) addCandidate(candidates, "musl", "bounded musl token");
+  if (hasToken(name, ["glibc"])) addCandidate(candidates, "glibc", "bounded glibc token");
+  if (/(?:^|[._-])(?:x86_64|amd64|aarch64|arm64|i[3-6]86)-(?:unknown-)?linux-gnu(?:[._-]|$)/.test(name)) addCandidate(candidates, "glibc", "recognized Linux GNU target pattern");
+  return resolveCandidates("libc", candidates, diagnostics);
+}
+function resolveCandidates(field, candidates, diagnostics) {
+  if (candidates.size === 0) return { value: "unknown", evidence: unknownEvidence(`No recognized ${field} evidence`) };
+  if (candidates.size === 1) {
+    const [value, reasons] = [...candidates.entries()][0];
+    return { value, evidence: inferredEvidence(reasons.join("; ")) };
+  }
+  const details = [...candidates.entries()].map(([value, reasons]) => `${value} (${reasons.join(", ")})`).join("; ");
+  diagnostics.push({ code: `CLASSIFICATION_${field.toUpperCase()}_CONFLICT`, field, message: `Conflicting ${field} evidence: ${details}` });
+  return { value: "unknown", evidence: { source: "filename-rule", status: "conflict", detail: details } };
+}
+function addTokenCandidate(candidates, name, value, tokens) {
+  const matched = tokens.filter((token) => hasToken(name, [token]));
+  if (matched.length > 0) addCandidate(candidates, value, `${matched.join("/")} token`);
+}
+function addCandidate(candidates, value, reason) {
+  const reasons = candidates.get(value) ?? [];
+  if (!reasons.includes(reason)) reasons.push(reason);
+  candidates.set(value, reasons);
+}
+function hasToken(name, tokens) {
+  return tokens.some((token) => new RegExp(`(?:^|[^a-z0-9])${escapeRegex2(token)}(?:$|[^a-z0-9])`, "i").test(name));
+}
+function escapeRegex2(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function inferredEvidence(detail) {
+  return { source: "filename-rule", status: "inferred", detail };
+}
+function unknownEvidence(detail) {
+  return { source: "filename-rule", status: "unknown", detail };
+}
+
+// src/config/full-name-glob.ts
+function compileFullNameGlob(glob) {
+  let pattern = "^";
+  for (let index = 0; index < glob.length; index += 1) {
+    const character = glob[index];
+    if (character === "*") pattern += "[\\s\\S]*";
+    else if (character === "?") pattern += "[\\s\\S]";
+    else if (character === "[") {
+      const closing = glob.indexOf("]", index + 1);
+      if (closing === -1) throw new Error("Unclosed glob character class");
+      const content = glob.slice(index + 1, closing);
+      const negated = content.startsWith("!") || content.startsWith("^");
+      const characters = (negated ? content.slice(1) : content).replace(/\\/g, "\\\\").replace(/]/g, "\\]");
+      if (characters === "") throw new Error("Empty glob character class");
+      pattern += `[${negated ? "^" : ""}${characters}]`;
+      index = closing;
+    } else pattern += character.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(pattern + "$");
+}
+function isValidFullNameGlob(glob) {
+  try {
+    compileFullNameGlob(glob);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// src/config/facade-config.ts
+var ReleaseSelectionSchema = external_exports.discriminatedUnion("strategy", [
+  external_exports.object({ strategy: external_exports.literal("github-latest") }).strict(),
+  external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1) }).strict()
+]);
+var ConfigLibcFamilySchema = external_exports.enum(LIBC_FAMILIES);
+var RuleRequirementsSchema = external_exports.object({
+  libc: external_exports.object({ family: ConfigLibcFamilySchema }).strict()
+}).strict();
+var DownloadRuleSetSchema = external_exports.object({
+  os: external_exports.enum(OPERATING_SYSTEMS).optional(),
+  arch: external_exports.enum(ARCHITECTURES).optional(),
+  format: external_exports.enum(ASSET_FORMATS).optional(),
+  kind: external_exports.enum(ASSET_KINDS).optional(),
+  label: external_exports.string().min(1).optional(),
+  priority: external_exports.number().int().optional(),
+  requirements: RuleRequirementsSchema.optional()
+}).strict().refine((value) => Object.keys(value).length > 0, { message: "set must override at least one field" });
+var DownloadRuleSchema = external_exports.object({
+  match: external_exports.string().min(1).refine(isValidFullNameGlob, { message: "match must be a valid full-name glob" }),
+  tag: external_exports.string().min(1).optional(),
+  exclude: external_exports.boolean().optional(),
+  set: DownloadRuleSetSchema.optional()
+}).strict().superRefine((rule, context) => {
+  if (rule.exclude === void 0 && rule.set === void 0) {
+    context.addIssue({ code: "custom", message: "a download rule must provide exclude and/or set" });
+  }
+  const family = rule.set?.requirements?.libc.family;
+  if (rule.set?.os !== void 0 && rule.set.os !== "linux" && family !== void 0 && family !== "unknown") {
+    context.addIssue({ code: "custom", path: ["set", "requirements", "libc", "family"], message: "a non-Linux rule cannot declare a libc requirement" });
+  }
+});
+var DownloadsConfigSchema = external_exports.object({
+  auto: external_exports.boolean().default(true),
+  rules: external_exports.array(DownloadRuleSchema).default([])
+}).strict();
+var FacadeConfigSchema = external_exports.object({
+  schema: external_exports.number().int().positive(),
+  repository: external_exports.string().regex(/^[^/]+\/[^/]+$/),
+  release: ReleaseSelectionSchema,
+  downloads: DownloadsConfigSchema.optional()
+}).strict();
+var FacadeConfigInputSchema = external_exports.object({
+  schema: external_exports.number().int().positive(),
+  repository: external_exports.string().regex(/^[^/]+\/[^/]+$/).optional(),
+  release: ReleaseSelectionSchema.optional(),
+  downloads: DownloadsConfigSchema.optional()
+}).strict();
+
 // src/manifest/release-page-manifest.ts
-var EvidenceSchema = external_exports.object({ source: external_exports.enum(["github-api", "project-config", "filename-rule"]), detail: external_exports.string().min(1) });
+var EvidenceSchema = external_exports.object({
+  source: external_exports.enum(["github-api", "project-config", "filename-rule", "derived"]),
+  status: external_exports.enum(["explicit", "inferred", "unknown", "conflict"]),
+  detail: external_exports.string().min(1),
+  ruleId: external_exports.string().min(1).optional(),
+  configPath: external_exports.string().min(1).optional()
+}).strict();
 var ManifestAssetSchema = external_exports.object({
   id: external_exports.string().min(1),
+  name: external_exports.string().min(1),
   label: external_exports.string().min(1),
   downloadUrl: external_exports.httpUrl(),
-  os: external_exports.enum(["macos", "windows", "linux", "unknown"]),
-  kind: external_exports.enum(["artifact", "checksum", "signature", "other"]),
+  size: external_exports.number().int().nonnegative(),
+  os: external_exports.enum(OPERATING_SYSTEMS),
+  arch: external_exports.enum(ARCHITECTURES),
+  format: external_exports.enum(ASSET_FORMATS),
+  kind: external_exports.enum(ASSET_KINDS),
+  priority: external_exports.number().int(),
+  requirements: external_exports.object({ libc: external_exports.object({ family: external_exports.enum(LIBC_FAMILIES) }).strict() }).strict(),
+  recommendationEligible: external_exports.boolean(),
   signatureFor: external_exports.string().min(1).optional(),
   evidence: external_exports.record(external_exports.string().min(1), EvidenceSchema)
-});
-var ReleasePageManifestSchema = external_exports.object({
-  schemaVersion: external_exports.number().int().nonnegative(),
+}).strict();
+var ReleasePageManifestV1Schema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
   productName: external_exports.string().min(1),
   releaseTag: external_exports.string().min(1),
   assets: external_exports.array(ManifestAssetSchema)
-});
+}).strict();
+var ReleasePageManifestSchema = external_exports.preprocess(normalizeLegacyManifest, ReleasePageManifestV1Schema);
+function normalizeLegacyManifest(input2) {
+  if (!isRecord(input2) || input2.schemaVersion !== 0 || !Array.isArray(input2.assets)) return input2;
+  return { ...input2, schemaVersion: 1, assets: input2.assets.map(normalizeLegacyAsset) };
+}
+function normalizeLegacyAsset(input2) {
+  if (!isRecord(input2)) return input2;
+  const label = typeof input2.label === "string" ? input2.label : "Download";
+  const kind = input2.kind === "artifact" ? "archive" : input2.kind === "other" ? "unknown" : input2.kind;
+  const evidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value)])) : input2.evidence;
+  return {
+    ...input2,
+    name: typeof input2.name === "string" ? input2.name : label,
+    size: typeof input2.size === "number" ? input2.size : 0,
+    arch: typeof input2.arch === "string" ? input2.arch : "unknown",
+    format: typeof input2.format === "string" ? input2.format : "other",
+    kind,
+    priority: typeof input2.priority === "number" ? input2.priority : 0,
+    requirements: isRecord(input2.requirements) ? input2.requirements : { libc: { family: "unknown" } },
+    recommendationEligible: typeof input2.recommendationEligible === "boolean" ? input2.recommendationEligible : false,
+    evidence
+  };
+}
+function normalizeLegacyEvidence(input2) {
+  if (!isRecord(input2) || typeof input2.source !== "string") return input2;
+  return { ...input2, status: typeof input2.status === "string" ? input2.status : input2.source === "project-config" ? "explicit" : "inferred" };
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null;
+}
 
-// src/compiler/release-compiler.ts
-function compileReleaseSnapshot(snapshot) {
-  return ReleasePageManifestSchema.parse({
-    schemaVersion: 0,
+// src/compiler/release-resolver.ts
+var RECOMMENDABLE_KINDS = /* @__PURE__ */ new Set(["installer", "portable", "archive"]);
+function resolveRelease(snapshotInput, options = {}) {
+  const snapshot = RepositorySnapshotSchema.parse(snapshotInput);
+  const config2 = FacadeConfigInputSchema.parse(options.config ?? { schema: 1 });
+  const downloads = config2.downloads ?? { auto: true, rules: [] };
+  const assets = snapshot.assets.map((asset) => {
+    const classified = classifyAsset(asset);
+    const disabledEvidence = (field) => ({ source: "filename-rule", status: "unknown", detail: `Filename ${field} inference disabled by downloads.auto` });
+    return {
+      source: asset,
+      os: downloads.auto ? classified.os : "unknown",
+      arch: downloads.auto ? classified.arch : "unknown",
+      format: downloads.auto ? classified.format : "other",
+      kind: downloads.auto ? classified.kind : "unknown",
+      libc: downloads.auto ? classified.libc : "unknown",
+      label: asset.name,
+      priority: 0,
+      evidence: downloads.auto ? { ...classified.evidence } : { os: disabledEvidence("os"), arch: disabledEvidence("arch"), format: disabledEvidence("format"), kind: disabledEvidence("kind"), libc: disabledEvidence("libc") },
+      diagnostics: downloads.auto ? classified.diagnostics.map((diagnostic) => ({ ...diagnostic, severity: "warning", assetId: asset.id })) : [],
+      overrides: [],
+      excluded: !downloads.auto,
+      ...!downloads.auto ? { exclusionReason: "downloads.auto is false and no applicable rule matched" } : {},
+      matchedApplicableRule: false
+    };
+  });
+  const ruleDiagnostics = [];
+  const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
+  reconcileFinalLibc(assets);
+  const diagnostics = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
+  const inspectAssets = assets.map(finalizeAsset);
+  const manifest = ReleasePageManifestSchema.parse({
+    schemaVersion: 1,
     productName: snapshot.release.name,
     releaseTag: snapshot.release.tagName,
-    assets: snapshot.assets.map(compileAsset)
+    assets: inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final)
   });
+  return {
+    manifest,
+    inspect: {
+      source: { provider: options.provider ?? "unknown", repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl },
+      release: {
+        id: snapshot.release.id,
+        tag: snapshot.release.tagName,
+        name: snapshot.release.name,
+        selection: options.selection ?? (options.provider === "fixture" ? "fixture" : config2.release?.strategy ?? "github-latest")
+      },
+      assets: inspectAssets,
+      rules,
+      diagnostics
+    }
+  };
 }
-function compileAsset(asset) {
-  const name = asset.name.toLowerCase();
-  const evidence = { kind: { source: "filename-rule", detail: "T03 filename token" } };
-  if (name.includes("checksum")) return { id: asset.id, label: "Checksums", downloadUrl: asset.downloadUrl, os: "unknown", kind: "checksum", evidence };
-  if (name.includes("macos") && name.includes("arm64") && name.endsWith(".dmg")) return { id: asset.id, label: "macOS Apple Silicon", downloadUrl: asset.downloadUrl, os: "macos", kind: "artifact", evidence: { ...evidence, os: { source: "filename-rule", detail: "macOS ARM64 DMG tokens" } } };
-  if ((name.includes("windows") || name.includes("win")) && (name.includes("x64") || name.includes("amd64")) && name.endsWith(".exe")) return { id: asset.id, label: "Windows x64", downloadUrl: asset.downloadUrl, os: "windows", kind: "artifact", evidence: { ...evidence, os: { source: "filename-rule", detail: "Windows x64 EXE tokens" } } };
-  if (name.includes("linux") && (name.includes("x64") || name.includes("amd64")) && (name.endsWith(".tar.gz") || name.endsWith(".zip"))) return { id: asset.id, label: "Linux x64", downloadUrl: asset.downloadUrl, os: "linux", kind: "artifact", evidence: { ...evidence, os: { source: "filename-rule", detail: "Linux x64 archive tokens" } } };
-  return { id: asset.id, label: asset.name, downloadUrl: asset.downloadUrl, os: "unknown", kind: "other", evidence: {} };
+function applyRule(rule, index, releaseTag, assets, diagnostics) {
+  const ruleId = `downloads.rules[${index}]`;
+  if (rule.tag !== void 0 && rule.tag !== releaseTag) {
+    diagnostics.push({ code: "DOWNLOAD_RULE_TAG_MISMATCH", severity: "warning", message: `Download rule ${ruleId} was skipped because its release tag does not match.`, configPath: `${ruleId}.tag` });
+    return { ruleId, configPath: ruleId, match: rule.match, tag: rule.tag, status: "skipped-tag", matchedAssetIds: [], detail: `Skipped because release tag ${releaseTag} does not equal ${rule.tag}` };
+  }
+  const matched = assets.filter((asset) => matchesGlob(asset.source.name, rule.match));
+  if (matched.length === 0) {
+    diagnostics.push({ code: "DOWNLOAD_RULE_NO_MATCH", severity: "warning", message: `Download rule ${ruleId} matched no assets.`, configPath: ruleId });
+    return { ruleId, configPath: ruleId, match: rule.match, ...rule.tag === void 0 ? {} : { tag: rule.tag }, status: "unmatched", matchedAssetIds: [], detail: "No source asset name matched the case-sensitive full-name glob" };
+  }
+  for (const asset of matched) applyRuleToAsset(asset, rule, ruleId);
+  return {
+    ruleId,
+    configPath: ruleId,
+    match: rule.match,
+    ...rule.tag === void 0 ? {} : { tag: rule.tag },
+    status: "matched",
+    matchedAssetIds: matched.map((asset) => asset.source.id),
+    detail: `Matched ${matched.length} asset${matched.length === 1 ? "" : "s"}`
+  };
+}
+function applyRuleToAsset(asset, rule, ruleId) {
+  if (!asset.matchedApplicableRule && asset.exclusionReason === "downloads.auto is false and no applicable rule matched") {
+    asset.overrides.push({ ruleId, configPath: ruleId, field: "exclude", before: true, after: false });
+    asset.excluded = false;
+    delete asset.exclusionReason;
+  }
+  asset.matchedApplicableRule = true;
+  if (rule.exclude !== void 0) {
+    recordChange(asset, ruleId, "exclude", asset.excluded, rule.exclude);
+    asset.excluded = rule.exclude;
+    if (rule.exclude) asset.exclusionReason = ruleId;
+    else delete asset.exclusionReason;
+  }
+  const set2 = rule.set;
+  if (set2 === void 0) return;
+  if (set2.os !== void 0) overrideClassification(asset, ruleId, "os", set2.os);
+  if (set2.arch !== void 0) overrideClassification(asset, ruleId, "arch", set2.arch);
+  if (set2.format !== void 0) overrideClassification(asset, ruleId, "format", set2.format);
+  if (set2.kind !== void 0) overrideClassification(asset, ruleId, "kind", set2.kind);
+  if (set2.requirements !== void 0) overrideClassification(asset, ruleId, "libc", set2.requirements.libc.family);
+  if (set2.label !== void 0) {
+    recordChange(asset, ruleId, "label", asset.label, set2.label);
+    asset.label = set2.label;
+  }
+  if (set2.priority !== void 0) {
+    recordChange(asset, ruleId, "priority", asset.priority, set2.priority);
+    asset.priority = set2.priority;
+  }
+}
+function overrideClassification(asset, ruleId, field, value) {
+  const before = asset[field];
+  recordChange(asset, ruleId, field, before, value);
+  asset[field] = value;
+  asset.evidence[field] = { source: "project-config", status: "explicit", detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field === "libc" ? "requirements.libc.family" : field}` };
+}
+function recordChange(asset, ruleId, field, before, after) {
+  const configPath = field === "exclude" ? `${ruleId}.exclude` : `${ruleId}.set.${field === "libc" ? "requirements.libc.family" : field}`;
+  asset.overrides.push({ ruleId, configPath, field, before, after });
+}
+function finalizeAsset(asset) {
+  const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === "conflict");
+  const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== "unknown" && asset.arch !== "unknown" && RECOMMENDABLE_KINDS.has(asset.kind);
+  const sourceEvidence = { source: "github-api", status: "explicit", detail: "Preserved from the validated release source" };
+  const labelTrace = findLastTrace(asset.overrides, "label");
+  const priorityTrace = findLastTrace(asset.overrides, "priority");
+  const labelEvidence = labelTrace === void 0 ? sourceEvidence : configuredEvidence(labelTrace);
+  const priorityEvidence = priorityTrace === void 0 ? { source: "derived", status: "inferred", detail: "Default priority 0" } : configuredEvidence(priorityTrace);
+  const final = ManifestAssetSchema.parse({
+    id: asset.source.id,
+    name: asset.source.name,
+    label: asset.label,
+    downloadUrl: asset.source.downloadUrl,
+    size: asset.source.size,
+    os: asset.os,
+    arch: asset.arch,
+    format: asset.format,
+    kind: asset.kind,
+    priority: asset.priority,
+    requirements: { libc: { family: asset.libc } },
+    recommendationEligible,
+    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc }
+  });
+  return {
+    source: asset.source,
+    final,
+    excluded: asset.excluded,
+    ...asset.exclusionReason === void 0 ? {} : { exclusionReason: asset.exclusionReason },
+    recommendationEligible,
+    diagnostics: asset.diagnostics,
+    overrides: asset.overrides
+  };
+}
+function findLastTrace(traces, field) {
+  for (let index = traces.length - 1; index >= 0; index -= 1) if (traces[index]?.field === field) return traces[index];
+  return void 0;
+}
+function configuredEvidence(trace) {
+  return { source: "project-config", status: "explicit", detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
+}
+function reconcileFinalLibc(assets) {
+  const invalid = assets.find((asset) => asset.evidence.libc.source === "project-config" && asset.libc !== "unknown" && asset.os !== "linux");
+  if (invalid !== void 0) throw new FacadeError("CONFIG_INVALID", "A configured libc requirement is incompatible with the asset operating system.");
+  for (const asset of assets) {
+    if (asset.evidence.libc.source !== "filename-rule" || asset.libc === "unknown" || asset.os === "linux") continue;
+    const detail = `${asset.libc} filename evidence conflicts with resolved ${asset.os} OS`;
+    asset.libc = "unknown";
+    asset.evidence.libc = { source: "filename-rule", status: "conflict", detail };
+    if (!asset.diagnostics.some((diagnostic) => diagnostic.code === "CLASSIFICATION_LIBC_CONFLICT")) {
+      asset.diagnostics.push({ code: "CLASSIFICATION_LIBC_CONFLICT", severity: "warning", message: `Conflicting libc evidence: ${detail}`, assetId: asset.source.id });
+    }
+  }
+}
+function matchesGlob(value, glob) {
+  return compileFullNameGlob(glob).test(value);
 }
 
 // src/manifest/semantic-validation.ts
-var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "label", "downloadUrl", "os", "kind", "signatureFor"]);
+var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "name", "label", "downloadUrl", "size", "os", "arch", "format", "kind", "priority", "requirements", "libc", "signatureFor"]);
+var RECOMMENDABLE_KINDS2 = /* @__PURE__ */ new Set(["installer", "portable", "archive"]);
+var CLASSIFICATION_EVIDENCE_FIELDS = ["os", "arch", "format", "kind", "requirements", "libc"];
 function validateManifestSemantics(manifest) {
   const diagnostics = [];
   const ids = /* @__PURE__ */ new Set();
@@ -48079,18 +48484,39 @@ function validateManifestSemantics(manifest) {
     assets.set(asset.id, asset);
     if (urls.has(asset.downloadUrl)) diagnostics.push({ path: `assets.${asset.id}.downloadUrl`, message: "asset download URLs must be unique" });
     urls.add(asset.downloadUrl);
-    if (asset.kind === "signature" && asset.signatureFor === void 0) diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: "signature assets must reference an artifact" });
     if (asset.kind !== "signature" && asset.signatureFor !== void 0) diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: "only signature assets may declare signatureFor" });
+    if (asset.os !== "linux" && asset.requirements.libc.family !== "unknown") diagnostics.push({ path: `assets.${asset.id}.requirements.libc.family`, message: "non-Linux assets must keep libc unknown" });
+    const hasClassificationConflict = CLASSIFICATION_EVIDENCE_FIELDS.some((field) => asset.evidence[field]?.status === "conflict");
+    if (asset.recommendationEligible && (asset.os === "unknown" || asset.arch === "unknown" || !RECOMMENDABLE_KINDS2.has(asset.kind) || hasClassificationConflict)) {
+      diagnostics.push({ path: `assets.${asset.id}.recommendationEligible`, message: "recommendation-eligible assets require known OS and architecture, an installable kind, and no unresolved classification conflict" });
+    }
     for (const field of Object.keys(asset.evidence)) {
       if (!EVIDENCE_FIELDS.has(field)) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a supported asset field" });
-      else if (asset[field] === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a populated asset field" });
+      else if (field !== "libc" && asset[field] === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a populated asset field" });
     }
   }
   for (const asset of manifest.assets) if (asset.signatureFor !== void 0) {
     const target = assets.get(asset.signatureFor);
-    if (target === void 0 || target.kind !== "artifact") diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: "signatureFor must reference an existing artifact" });
+    if (target === void 0 || !["installer", "portable", "archive"].includes(target.kind)) diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: "signatureFor must reference an existing artifact" });
   }
   return diagnostics;
+}
+
+// src/config/load-facade-config.ts
+var import_promises = require("fs/promises");
+var import_yaml = __toESM(require_dist(), 1);
+async function loadFacadeConfig(path6) {
+  let sourceText;
+  try {
+    sourceText = await (0, import_promises.readFile)(path6, "utf8");
+  } catch (cause) {
+    throw new FacadeError("CONFIG_READ_FAILED", "Unable to read the Facade configuration file.", { cause });
+  }
+  try {
+    return { config: FacadeConfigInputSchema.parse((0, import_yaml.parse)(sourceText)), sourceText };
+  } catch (cause) {
+    throw new FacadeError("CONFIG_INVALID", "The Facade configuration file is invalid.", { cause });
+  }
 }
 
 // src/build/offline-build.ts
@@ -48098,34 +48524,35 @@ var OUTPUT_MARKER = ".facade-output";
 var OUTPUT_MARKER_CONTENT = "facade-output-v1\n";
 async function prepareRelease(snapshot, options) {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
-  const manifest = compileReleaseSnapshot(snapshot);
+  const resolution = resolveRelease(snapshot, options);
+  const manifest = resolution.manifest;
   const diagnostics = validateManifestSemantics(manifest);
   if (diagnostics.length > 0) throw new FacadeError("BUILD_INVALID_MANIFEST", "The compiled release manifest failed semantic validation.");
   const basePath = normalizeBasePath(options.basePath ?? "/");
   const outDir = (0, import_node_path.resolve)(options.outDir);
-  await (0, import_promises.mkdir)((0, import_node_path.dirname)(outDir), { recursive: true });
-  const staging = await (0, import_promises.mkdtemp)((0, import_node_path.join)((0, import_node_path.dirname)(outDir), ".facade-build-"));
+  await (0, import_promises2.mkdir)((0, import_node_path.dirname)(outDir), { recursive: true });
+  const staging = await (0, import_promises2.mkdtemp)((0, import_node_path.join)((0, import_node_path.dirname)(outDir), ".facade-build-"));
   try {
     await Promise.all([
-      (0, import_promises.writeFile)((0, import_node_path.join)(staging, "index.html"), "<!doctype html>" + K2(k(ReleasePage, { manifest, basePath })), "utf8"),
-      (0, import_promises.writeFile)((0, import_node_path.join)(staging, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", "utf8"),
-      (0, import_promises.writeFile)((0, import_node_path.join)(staging, "install.md"), renderInstall(manifest.releaseTag, manifest.assets), "utf8"),
-      (0, import_promises.writeFile)((0, import_node_path.join)(staging, "llms.txt"), renderLlms(manifest.releaseTag, manifest.assets, basePath), "utf8"),
-      (0, import_promises.writeFile)((0, import_node_path.join)(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, "utf8")
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "index.html"), "<!doctype html>" + K2(k(ReleasePage, { manifest, basePath })), "utf8"),
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", "utf8"),
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "install.md"), renderInstall(manifest.releaseTag, manifest.assets), "utf8"),
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "llms.txt"), renderLlms(manifest.releaseTag, manifest.assets, basePath), "utf8"),
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, "utf8")
     ]);
     let published = false;
     return {
       publish: async () => {
         const cleanupRequired = await replaceDirectory(staging, outDir);
         published = true;
-        return { basePath, files: ["index.html", "manifest.json", "install.md", "llms.txt"], ...cleanupRequired ? { cleanupRequired: true } : {} };
+        return { basePath, files: ["index.html", "manifest.json", "install.md", "llms.txt"], ...cleanupRequired ? { cleanupRequired: true } : {}, ...resolution.inspect.diagnostics.length === 0 ? {} : { diagnostics: resolution.inspect.diagnostics } };
       },
       dispose: async () => {
-        if (!published) await (0, import_promises.rm)(staging, { recursive: true, force: true });
+        if (!published) await (0, import_promises2.rm)(staging, { recursive: true, force: true });
       }
     };
   } catch (error62) {
-    await (0, import_promises.rm)(staging, { recursive: true, force: true });
+    await (0, import_promises2.rm)(staging, { recursive: true, force: true });
     throw error62;
   }
 }
@@ -48136,7 +48563,7 @@ function normalizeBasePath(value) {
 async function replaceDirectory(staging, outDir) {
   const lock = outDir + ".facade-lock";
   try {
-    await (0, import_promises.mkdir)(lock);
+    await (0, import_promises2.mkdir)(lock);
   } catch (cause) {
     if (isAlreadyExists(cause)) throw new FacadeError("BUILD_OUTPUT_LOCKED", "Another or interrupted build blocks output replacement.", { cause });
     throw cause;
@@ -48149,7 +48576,7 @@ async function replaceDirectory(staging, outDir) {
     throw error62;
   }
   try {
-    await (0, import_promises.rm)(lock, { recursive: true });
+    await (0, import_promises2.rm)(lock, { recursive: true });
   } catch {
     cleanupRequired = true;
   }
@@ -48161,20 +48588,20 @@ async function replaceDirectoryWhileLocked(staging, outDir) {
   if (await exists2(outDir) && !await isFacadeOutput(outDir)) throw new FacadeError("BUILD_UNOWNED_OUTPUT", "Refusing to replace a directory not owned by Facade.");
   let hadOutput = false;
   try {
-    await (0, import_promises.rename)(outDir, backup);
+    await (0, import_promises2.rename)(outDir, backup);
     hadOutput = true;
   } catch (error62) {
     if (!isMissing(error62)) throw error62;
   }
   try {
-    await (0, import_promises.rename)(staging, outDir);
+    await (0, import_promises2.rename)(staging, outDir);
   } catch (error62) {
-    if (hadOutput) await (0, import_promises.rename)(backup, outDir);
+    if (hadOutput) await (0, import_promises2.rename)(backup, outDir);
     throw error62;
   }
   if (!hadOutput) return false;
   try {
-    await (0, import_promises.rm)(backup, { recursive: true, force: true });
+    await (0, import_promises2.rm)(backup, { recursive: true, force: true });
     return false;
   } catch {
     return true;
@@ -48188,7 +48615,7 @@ function isAlreadyExists(error62) {
 }
 async function exists2(path6) {
   try {
-    await (0, import_promises.access)(path6);
+    await (0, import_promises2.access)(path6);
     return true;
   } catch {
     return false;
@@ -48196,14 +48623,14 @@ async function exists2(path6) {
 }
 async function isFacadeOutput(path6) {
   try {
-    return await (0, import_promises.readFile)((0, import_node_path.join)(path6, OUTPUT_MARKER), "utf8") === OUTPUT_MARKER_CONTENT;
+    return await (0, import_promises2.readFile)((0, import_node_path.join)(path6, OUTPUT_MARKER), "utf8") === OUTPUT_MARKER_CONTENT;
   } catch {
     return false;
   }
 }
 async function removeLockAfterFailure(lock) {
   try {
-    await (0, import_promises.rm)(lock, { recursive: true });
+    await (0, import_promises2.rm)(lock, { recursive: true });
   } catch {
   }
 }
@@ -48221,41 +48648,6 @@ function escapeMarkdownText(value) {
 }
 function escapeMarkdownUrl(value) {
   return singleLine(value).replace(/</g, "%3C").replace(/>/g, "%3E");
-}
-
-// src/config/load-facade-config.ts
-var import_promises2 = require("fs/promises");
-var import_yaml = __toESM(require_dist(), 1);
-
-// src/config/facade-config.ts
-var ReleaseSelectionSchema = external_exports.discriminatedUnion("strategy", [
-  external_exports.object({ strategy: external_exports.literal("github-latest") }).strict(),
-  external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1) }).strict()
-]);
-var FacadeConfigSchema = external_exports.object({
-  schema: external_exports.number().int().positive(),
-  repository: external_exports.string().regex(/^[^/]+\/[^/]+$/),
-  release: ReleaseSelectionSchema
-}).strict();
-var FacadeConfigInputSchema = external_exports.object({
-  schema: external_exports.number().int().positive(),
-  repository: external_exports.string().regex(/^[^/]+\/[^/]+$/).optional(),
-  release: ReleaseSelectionSchema.optional()
-}).strict();
-
-// src/config/load-facade-config.ts
-async function loadFacadeConfig(path6) {
-  let sourceText;
-  try {
-    sourceText = await (0, import_promises2.readFile)(path6, "utf8");
-  } catch (cause) {
-    throw new FacadeError("CONFIG_READ_FAILED", "Unable to read the Facade configuration file.", { cause });
-  }
-  try {
-    return { config: FacadeConfigInputSchema.parse((0, import_yaml.parse)(sourceText)), sourceText };
-  } catch (cause) {
-    throw new FacadeError("CONFIG_INVALID", "The Facade configuration file is invalid.", { cause });
-  }
 }
 
 // src/source/github/github-release-source.ts
@@ -48448,7 +48840,7 @@ function parseStrategy(value) {
 async function buildFreshRelease(dependencies) {
   for (const attempts of [1, 2]) {
     const before = await dependencies.capture();
-    const prepared = await dependencies.prepare(before.snapshot);
+    const prepared = await dependencies.prepare(before.snapshot, before.config, before.selection);
     try {
       const after = await dependencies.capture();
       if (before.fingerprint === after.fingerprint) {
@@ -48469,9 +48861,12 @@ async function buildFreshGitHubRelease(options) {
   const sourceFactory = options.sourceFactory ?? ((sourceOptions) => new GitHubReleaseSource(sourceOptions));
   return buildFreshRelease({
     capture: async () => captureGitHubInput(options, sourceFactory),
-    prepare: (snapshot) => prepareRelease(snapshot, {
+    prepare: (snapshot, config2, selection) => prepareRelease(snapshot, {
       outDir: options.outDir,
-      ...options.basePath === void 0 ? {} : { basePath: options.basePath === "" ? "/" : options.basePath }
+      ...options.basePath === void 0 ? {} : { basePath: options.basePath === "" ? "/" : options.basePath },
+      ...config2 === void 0 ? {} : { config: config2 },
+      provider: "github",
+      ...selection === void 0 ? {} : { selection }
     }),
     ...options.onInputChanged === void 0 ? {} : { onInputChanged: options.onInputChanged }
   });
@@ -48483,7 +48878,9 @@ async function captureGitHubInput(options, sourceFactory) {
   const snapshot = sourceOptions.strategy === "tag" ? await source.getSnapshot(sourceOptions.strategy, sourceOptions.tag) : await source.getSnapshot(sourceOptions.strategy);
   return {
     fingerprint: fingerprint(loaded.sourceText, sourceOptions, snapshot),
-    snapshot
+    snapshot,
+    config: loaded.config,
+    selection: sourceOptions.strategy
   };
 }
 function toAdapterOptions(options, apiUrl) {
@@ -48529,6 +48926,13 @@ async function runAction(core, dependencies = {}) {
       core.warning(
         "The site was built successfully, but Facade recovery directories require manual cleanup before the next build.",
         { title: "FACADE_OUTPUT_CLEANUP_REQUIRED" }
+      );
+    }
+    for (const diagnostic of result.diagnostics ?? []) {
+      if (diagnostic.severity !== "warning") continue;
+      core.warning(
+        diagnostic.message + (diagnostic.configPath === void 0 ? "" : ` (${diagnostic.configPath})`),
+        { title: diagnostic.code }
       );
     }
     core.setOutput("output-path", outDir);

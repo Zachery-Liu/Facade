@@ -1,9 +1,11 @@
 import { buildRelease, type OfflineBuildResult } from '../../build/offline-build.js';
 import type { GitHubReleaseSource } from './github-release-source.js';
+import type { FacadeConfigInput } from '../../config/facade-config.js';
 
 interface GitHubBuildBaseOptions {
   readonly outDir: string;
   readonly basePath?: string;
+  readonly config?: FacadeConfigInput;
 }
 
 export type GitHubBuildOptions = GitHubBuildBaseOptions & (
@@ -15,5 +17,11 @@ export async function buildGitHubRelease(source: GitHubReleaseSource, options: G
   const snapshot = options.strategy === 'tag'
     ? await source.getSnapshot(options.strategy, options.tag)
     : await source.getSnapshot(options.strategy);
-  return buildRelease(snapshot, { outDir: options.outDir, ...(options.basePath === undefined ? {} : { basePath: options.basePath }) });
+  return buildRelease(snapshot, {
+    outDir: options.outDir,
+    ...(options.basePath === undefined ? {} : { basePath: options.basePath }),
+    ...(options.config === undefined ? {} : { config: options.config }),
+    provider: 'github',
+    selection: options.strategy,
+  });
 }
