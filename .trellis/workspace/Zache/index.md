@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
-- **Last Active**: 2026-09-12
+- **Total Sessions**: 8
+- **Last Active**: 2026-09-16
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~254 | Active |
+| `journal-1.md` | ~287 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-09-16 | Complete T08 Agent Interface | `fa69779` | `codex/t08-agent-interface` |
 | 7 | 2026-09-12 | Review T06 and prepare pull request | `dd0cfa0`, `fe776c0` | `feat/t06-classification-inspect` |
 | 6 | 2026-09-11 | Complete T06 classification and inspect | `9d85611` | `feat/t06-classification-inspect` |
 | 5 | 2026-09-11 | Fix main review findings | `16e58e3` | `codex/fix-main-review` |

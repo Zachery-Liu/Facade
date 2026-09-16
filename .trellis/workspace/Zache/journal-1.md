@@ -252,3 +252,36 @@ Fixed compound architecture token boundaries and unknown-OS libc build/inspect c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: Complete T08 Agent Interface
+
+**Date**: 2026-09-16
+**Task**: Complete T08 Agent Interface
+**Branch**: `codex/t08-agent-interface`
+
+### Summary
+
+Implemented and verified the schema-version-1 Agent Interface with channel metadata, JSON-Pointer evidence, digest and verification-material references, safe install.md/llms.txt generation, JSON Schema validation, checked examples, and a read-only consumer; all quality gates passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fa69779` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
