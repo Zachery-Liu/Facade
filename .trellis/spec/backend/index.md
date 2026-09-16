@@ -11,6 +11,7 @@ These guidelines document the Facade workspace through the T04 GitHub Source int
 | [Source Contracts](./source-contracts.md) | defining or consuming raw repository, release, or asset data |
 | [Action and Pages Contracts](./action-pages-contracts.md) | changing the bundled Action, freshness checks, or Pages templates |
 | [Quality Guidelines](./quality-guidelines.md) | writing or reviewing backend code |
+| [Shared Selection](./selection.md) | installation conditions, ranking, source policy or browser/consumer integration |
 
 ## Pre-Development Checklist
 

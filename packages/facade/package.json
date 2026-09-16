@@ -6,6 +6,9 @@
     "node": ">=22.13.0"
   },
   "type": "module",
+  "exports": {
+    "./selection": { "types": "./dist/selection.d.ts", "import": "./dist/selection.js" }
+  },
   "bin": {
     "facade": "./dist/index.js"
   },

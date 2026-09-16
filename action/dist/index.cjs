@@ -15425,8 +15425,8 @@ var require_cache = __commonJS({
                 }));
               } else if (response.headersList.contains("vary")) {
                 const fieldValues = getFieldValues(response.headersList.get("vary"));
-                for (const fieldValue of fieldValues) {
-                  if (fieldValue === "*") {
+                for (const fieldValue2 of fieldValues) {
+                  if (fieldValue2 === "*") {
                     responsePromise.reject(webidl.errors.exception({
                       header: "Cache.addAll",
                       message: "invalid vary field value"
@@ -15508,8 +15508,8 @@ var require_cache = __commonJS({
         }
         if (innerResponse.headersList.contains("vary")) {
           const fieldValues = getFieldValues(innerResponse.headersList.get("vary"));
-          for (const fieldValue of fieldValues) {
-            if (fieldValue === "*") {
+          for (const fieldValue2 of fieldValues) {
+            if (fieldValue2 === "*") {
               throw webidl.errors.exception({
                 header: prefix,
                 message: "Got * vary field value"
@@ -15772,12 +15772,12 @@ var require_cache = __commonJS({
           return true;
         }
         const fieldValues = getFieldValues(response.headersList.get("vary"));
-        for (const fieldValue of fieldValues) {
-          if (fieldValue === "*") {
+        for (const fieldValue2 of fieldValues) {
+          if (fieldValue2 === "*") {
             return false;
           }
-          const requestValue = request.headersList.get(fieldValue);
-          const queryValue = requestQuery.headersList.get(fieldValue);
+          const requestValue = request.headersList.get(fieldValue2);
+          const queryValue = requestQuery.headersList.get(fieldValue2);
           if (requestValue !== queryValue) {
             return false;
           }
@@ -48194,9 +48194,20 @@ var ReleaseSelectionSchema = external_exports.discriminatedUnion("strategy", [
   external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1) }).strict()
 ]);
 var ConfigLibcFamilySchema = external_exports.enum(LIBC_FAMILIES);
+var NumericVersionSchema = external_exports.string().regex(/^\d+(?:\.\d+)*$/);
+var ConcreteArchitectureSchema = external_exports.enum(["arm64", "x64", "x86"]);
+var ConfigLibcSchema = external_exports.object({
+  family: ConfigLibcFamilySchema,
+  minimumVersion: NumericVersionSchema.optional()
+}).strict().superRefine((libc, context) => {
+  if (libc.minimumVersion !== void 0 && (libc.family === "none" || libc.family === "unknown")) {
+    context.addIssue({ code: "custom", path: ["minimumVersion"], message: "minimumVersion requires glibc or musl" });
+  }
+});
 var RuleRequirementsSchema = external_exports.object({
-  libc: external_exports.object({ family: ConfigLibcFamilySchema }).strict()
-}).strict();
+  minimumOsVersion: NumericVersionSchema.optional(),
+  libc: ConfigLibcSchema.optional()
+}).strict().refine((value) => Object.keys(value).length > 0, { message: "requirements must declare at least one field" });
 var DownloadRuleSetSchema = external_exports.object({
   os: external_exports.enum(OPERATING_SYSTEMS).optional(),
   arch: external_exports.enum(ARCHITECTURES).optional(),
@@ -48204,6 +48215,7 @@ var DownloadRuleSetSchema = external_exports.object({
   kind: external_exports.enum(ASSET_KINDS).optional(),
   label: external_exports.string().min(1).optional(),
   priority: external_exports.number().int().optional(),
+  supportedArchitectures: external_exports.array(ConcreteArchitectureSchema).min(1).refine((values) => new Set(values).size === values.length, { message: "supportedArchitectures must not contain duplicates" }).optional(),
   requirements: RuleRequirementsSchema.optional()
 }).strict().refine((value) => Object.keys(value).length > 0, { message: "set must override at least one field" });
 var DownloadRuleSchema = external_exports.object({
@@ -48215,7 +48227,7 @@ var DownloadRuleSchema = external_exports.object({
   if (rule.exclude === void 0 && rule.set === void 0) {
     context.addIssue({ code: "custom", message: "a download rule must provide exclude and/or set" });
   }
-  const family = rule.set?.requirements?.libc.family;
+  const family = rule.set?.requirements?.libc?.family;
   if (rule.set?.os !== void 0 && rule.set.os !== "linux" && family !== void 0 && family !== "unknown") {
     context.addIssue({ code: "custom", path: ["set", "requirements", "libc", "family"], message: "a non-Linux rule cannot declare a libc requirement" });
   }
@@ -48224,26 +48236,98 @@ var DownloadsConfigSchema = external_exports.object({
   auto: external_exports.boolean().default(true),
   rules: external_exports.array(DownloadRuleSchema).default([])
 }).strict();
+var InstallMethodConfigSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  platform: external_exports.enum(["macos", "windows", "linux", "all", "unknown"]),
+  name: external_exports.string().min(1),
+  command: external_exports.string().min(1),
+  prerequisites: external_exports.array(external_exports.object({ "command-available": external_exports.string().min(1) }).strict()).optional(),
+  versionBinding: external_exports.enum(["selected-release", "unverified"]).optional()
+}).strict();
+var InstallationPreferenceConfigSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  when: external_exports.object({
+    os: external_exports.enum(["macos", "windows", "linux"]),
+    arch: ConcreteArchitectureSchema.optional(),
+    libc: external_exports.enum(["glibc", "musl", "none"]).optional()
+  }).strict(),
+  prefer: external_exports.array(external_exports.union([
+    external_exports.object({ method: external_exports.string().min(1) }).strict(),
+    external_exports.object({ assetMatch: external_exports.string().min(1).refine(isValidFullNameGlob, { message: "assetMatch must be a valid full-name glob" }) }).strict()
+  ]))
+}).strict().superRefine((preference, context) => {
+  if (preference.when.libc !== void 0 && preference.when.os !== "linux") {
+    context.addIssue({ code: "custom", path: ["when", "libc"], message: "libc preference conditions require Linux" });
+  }
+});
+var AuthoringConfigShape = {
+  downloads: DownloadsConfigSchema.optional(),
+  install: external_exports.array(InstallMethodConfigSchema).optional(),
+  installationPreferences: external_exports.array(InstallationPreferenceConfigSchema).optional()
+};
+function validateAuthoringReferences(config2, context) {
+  const methodIds = /* @__PURE__ */ new Set();
+  for (const [index, method] of (config2.install ?? []).entries()) {
+    if (methodIds.has(method.id)) context.addIssue({ code: "custom", path: ["install", index, "id"], message: "install method IDs must be unique" });
+    methodIds.add(method.id);
+  }
+  const preferenceIds = /* @__PURE__ */ new Set();
+  for (const [index, preference] of (config2.installationPreferences ?? []).entries()) {
+    if (preferenceIds.has(preference.id)) context.addIssue({ code: "custom", path: ["installationPreferences", index, "id"], message: "installation preference IDs must be unique" });
+    preferenceIds.add(preference.id);
+    for (const [preferIndex, item] of preference.prefer.entries()) {
+      if ("method" in item && !methodIds.has(item.method)) {
+        context.addIssue({ code: "custom", path: ["installationPreferences", index, "prefer", preferIndex, "method"], message: "method must reference an existing install method" });
+      }
+    }
+  }
+}
 var FacadeConfigSchema = external_exports.object({
   schema: external_exports.number().int().positive(),
   repository: external_exports.string().regex(/^[^/]+\/[^/]+$/),
   release: ReleaseSelectionSchema,
-  downloads: DownloadsConfigSchema.optional()
-}).strict();
+  ...AuthoringConfigShape
+}).strict().superRefine(validateAuthoringReferences);
 var FacadeConfigInputSchema = external_exports.object({
   schema: external_exports.number().int().positive(),
   repository: external_exports.string().regex(/^[^/]+\/[^/]+$/).optional(),
   release: ReleaseSelectionSchema.optional(),
-  downloads: DownloadsConfigSchema.optional()
-}).strict();
+  ...AuthoringConfigShape
+}).strict().superRefine(validateAuthoringReferences);
 
 // src/manifest/release-page-manifest.ts
 var EvidenceSchema = external_exports.object({
   source: external_exports.enum(["github-api", "project-config", "filename-rule", "derived"]),
-  status: external_exports.enum(["explicit", "inferred", "unknown", "conflict"]),
+  status: external_exports.enum(["explicit", "provided", "inferred", "unknown", "conflict"]).optional(),
   detail: external_exports.string().min(1),
   ruleId: external_exports.string().min(1).optional(),
-  configPath: external_exports.string().min(1).optional()
+  configPath: external_exports.string().min(1).optional(),
+  derivedFrom: external_exports.array(external_exports.string().min(1)).optional()
+}).strict();
+var ArchitectureSchema = external_exports.enum(ARCHITECTURES);
+var PreferenceArchitectureSchema = ArchitectureSchema.exclude(["universal", "unknown"]);
+var NumericVersionSchema2 = external_exports.string().regex(/^\d+(?:\.\d+)*$/);
+var RequirementsSchema = external_exports.object({
+  minimumOsVersion: NumericVersionSchema2.optional(),
+  libc: external_exports.object({ family: external_exports.enum(LIBC_FAMILIES), minimumVersion: NumericVersionSchema2.optional() }).strict()
+}).strict();
+var InstallMethodSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  platform: external_exports.enum(["macos", "windows", "linux", "all", "unknown"]),
+  name: external_exports.string().min(1),
+  command: external_exports.string().min(1),
+  prerequisites: external_exports.array(external_exports.object({ "command-available": external_exports.string().min(1) }).strict()),
+  versionBinding: external_exports.enum(["selected-release", "unverified"]).default("unverified"),
+  evidence: external_exports.record(external_exports.string(), EvidenceSchema).optional()
+}).strict();
+var InstallationPreferenceSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  when: external_exports.object({ os: external_exports.enum(["macos", "windows", "linux"]), arch: PreferenceArchitectureSchema.optional(), libc: external_exports.enum(["glibc", "musl", "none"]).optional() }).strict(),
+  prefer: external_exports.array(external_exports.discriminatedUnion("type", [
+    external_exports.object({ type: external_exports.literal("method"), methodId: external_exports.string().min(1) }).strict(),
+    external_exports.object({ type: external_exports.literal("artifacts"), assetIds: external_exports.array(external_exports.string().min(1)) }).strict()
+  ])),
+  evidence: external_exports.record(external_exports.string(), EvidenceSchema).optional()
 }).strict();
 var ManifestAssetSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -48256,7 +48340,8 @@ var ManifestAssetSchema = external_exports.object({
   format: external_exports.enum(ASSET_FORMATS),
   kind: external_exports.enum(ASSET_KINDS),
   priority: external_exports.number().int(),
-  requirements: external_exports.object({ libc: external_exports.object({ family: external_exports.enum(LIBC_FAMILIES) }).strict() }).strict(),
+  supportedArchitectures: external_exports.array(external_exports.enum(["arm64", "x64", "x86"])).min(1).optional(),
+  requirements: RequirementsSchema,
   recommendationEligible: external_exports.boolean(),
   signatureFor: external_exports.string().min(1).optional(),
   evidence: external_exports.record(external_exports.string().min(1), EvidenceSchema)
@@ -48265,7 +48350,9 @@ var ReleasePageManifestV1Schema = external_exports.object({
   schemaVersion: external_exports.literal(1),
   productName: external_exports.string().min(1),
   releaseTag: external_exports.string().min(1),
-  assets: external_exports.array(ManifestAssetSchema)
+  assets: external_exports.array(ManifestAssetSchema),
+  installMethods: external_exports.array(InstallMethodSchema).optional(),
+  installationPreferences: external_exports.array(InstallationPreferenceSchema).optional()
 }).strict();
 var ReleasePageManifestSchema = external_exports.preprocess(normalizeLegacyManifest, ReleasePageManifestV1Schema);
 function normalizeLegacyManifest(input2) {
@@ -48285,10 +48372,14 @@ function normalizeLegacyAsset(input2) {
     format: typeof input2.format === "string" ? input2.format : "other",
     kind,
     priority: typeof input2.priority === "number" ? input2.priority : 0,
-    requirements: isRecord(input2.requirements) ? input2.requirements : { libc: { family: "unknown" } },
+    requirements: normalizeLegacyRequirements(input2.requirements),
     recommendationEligible: typeof input2.recommendationEligible === "boolean" ? input2.recommendationEligible : false,
     evidence
   };
+}
+function normalizeLegacyRequirements(input2) {
+  if (!isRecord(input2)) return { libc: { family: "unknown" } };
+  return { ...input2, libc: isRecord(input2.libc) ? input2.libc : { family: "unknown" } };
 }
 function normalizeLegacyEvidence(input2) {
   if (!isRecord(input2) || typeof input2.source !== "string") return input2;
@@ -48317,6 +48408,7 @@ function resolveRelease(snapshotInput, options = {}) {
       label: asset.name,
       priority: 0,
       evidence: downloads.auto ? { ...classified.evidence } : { os: disabledEvidence("os"), arch: disabledEvidence("arch"), format: disabledEvidence("format"), kind: disabledEvidence("kind"), libc: disabledEvidence("libc") },
+      additionalEvidence: {},
       diagnostics: downloads.auto ? classified.diagnostics.map((diagnostic) => ({ ...diagnostic, severity: "warning", assetId: asset.id })) : [],
       overrides: [],
       excluded: !downloads.auto,
@@ -48326,14 +48418,19 @@ function resolveRelease(snapshotInput, options = {}) {
   });
   const ruleDiagnostics = [];
   const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
-  reconcileFinalLibc(assets);
-  const diagnostics = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
+  reconcileFinalRequirements(assets);
   const inspectAssets = assets.map(finalizeAsset);
+  const includedAssets = inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final);
+  const installMethods = compileInstallMethods(config2.install ?? []);
+  const installationPreferences = compileInstallationPreferences(config2.installationPreferences ?? [], includedAssets, ruleDiagnostics);
+  const diagnostics = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
   const manifest = ReleasePageManifestSchema.parse({
     schemaVersion: 1,
     productName: snapshot.release.name,
     releaseTag: snapshot.release.tagName,
-    assets: inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final)
+    assets: includedAssets,
+    ...config2.install === void 0 ? {} : { installMethods },
+    ...config2.installationPreferences === void 0 ? {} : { installationPreferences }
   });
   return {
     manifest,
@@ -48392,7 +48489,12 @@ function applyRuleToAsset(asset, rule, ruleId) {
   if (set2.arch !== void 0) overrideClassification(asset, ruleId, "arch", set2.arch);
   if (set2.format !== void 0) overrideClassification(asset, ruleId, "format", set2.format);
   if (set2.kind !== void 0) overrideClassification(asset, ruleId, "kind", set2.kind);
-  if (set2.requirements !== void 0) overrideClassification(asset, ruleId, "libc", set2.requirements.libc.family);
+  if (set2.supportedArchitectures !== void 0) {
+    recordChange(asset, ruleId, "supportedArchitectures", asset.supportedArchitectures, set2.supportedArchitectures);
+    asset.supportedArchitectures = [...set2.supportedArchitectures];
+    asset.additionalEvidence.supportedArchitectures = configuredFieldEvidence(ruleId, "supportedArchitectures");
+  }
+  if (set2.requirements !== void 0) applyRequirements(asset, set2.requirements, ruleId);
   if (set2.label !== void 0) {
     recordChange(asset, ruleId, "label", asset.label, set2.label);
     asset.label = set2.label;
@@ -48401,6 +48503,36 @@ function applyRuleToAsset(asset, rule, ruleId) {
     recordChange(asset, ruleId, "priority", asset.priority, set2.priority);
     asset.priority = set2.priority;
   }
+}
+function applyRequirements(asset, requirements, ruleId) {
+  if (requirements.minimumOsVersion !== void 0) {
+    recordChange(asset, ruleId, "requirements.minimumOsVersion", asset.minimumOsVersion, requirements.minimumOsVersion);
+    asset.additionalEvidence["requirements.minimumOsVersion"] = configuredFieldEvidence(ruleId, "requirements.minimumOsVersion");
+  } else {
+    if (asset.minimumOsVersion !== void 0) recordChange(asset, ruleId, "requirements.minimumOsVersion", asset.minimumOsVersion, null);
+    delete asset.additionalEvidence["requirements.minimumOsVersion"];
+    delete asset.minimumOsVersion;
+  }
+  if (requirements.minimumOsVersion !== void 0) asset.minimumOsVersion = requirements.minimumOsVersion;
+  if (requirements.libc === void 0) {
+    recordChange(asset, ruleId, "libc", asset.libc, "unknown");
+    asset.libc = "unknown";
+    asset.evidence.libc = { source: "project-config", status: "unknown", detail: `Normalized omitted libc in ${ruleId}.set.requirements`, ruleId, configPath: `${ruleId}.set.requirements` };
+    if (asset.libcMinimumVersion !== void 0) recordChange(asset, ruleId, "requirements.libc.minimumVersion", asset.libcMinimumVersion, null);
+    delete asset.libcMinimumVersion;
+    delete asset.additionalEvidence["requirements.libc.minimumVersion"];
+    return;
+  }
+  overrideClassification(asset, ruleId, "libc", requirements.libc.family);
+  if (requirements.libc.minimumVersion !== void 0) {
+    recordChange(asset, ruleId, "requirements.libc.minimumVersion", asset.libcMinimumVersion, requirements.libc.minimumVersion);
+    asset.additionalEvidence["requirements.libc.minimumVersion"] = configuredFieldEvidence(ruleId, "requirements.libc.minimumVersion");
+  } else {
+    if (asset.libcMinimumVersion !== void 0) recordChange(asset, ruleId, "requirements.libc.minimumVersion", asset.libcMinimumVersion, null);
+    delete asset.additionalEvidence["requirements.libc.minimumVersion"];
+    delete asset.libcMinimumVersion;
+  }
+  if (requirements.libc.minimumVersion !== void 0) asset.libcMinimumVersion = requirements.libc.minimumVersion;
 }
 function overrideClassification(asset, ruleId, field, value) {
   const before = asset[field];
@@ -48414,7 +48546,8 @@ function recordChange(asset, ruleId, field, before, after) {
 }
 function finalizeAsset(asset) {
   const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === "conflict");
-  const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== "unknown" && asset.arch !== "unknown" && RECOMMENDABLE_KINDS.has(asset.kind);
+  const universalSupported = asset.arch !== "universal" || asset.os === "macos" && asset.supportedArchitectures !== void 0;
+  const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== "unknown" && asset.arch !== "unknown" && universalSupported && RECOMMENDABLE_KINDS.has(asset.kind);
   const sourceEvidence = { source: "github-api", status: "explicit", detail: "Preserved from the validated release source" };
   const labelTrace = findLastTrace(asset.overrides, "label");
   const priorityTrace = findLastTrace(asset.overrides, "priority");
@@ -48431,9 +48564,13 @@ function finalizeAsset(asset) {
     format: asset.format,
     kind: asset.kind,
     priority: asset.priority,
-    requirements: { libc: { family: asset.libc } },
+    ...asset.supportedArchitectures === void 0 ? {} : { supportedArchitectures: asset.supportedArchitectures },
+    requirements: {
+      ...asset.minimumOsVersion === void 0 ? {} : { minimumOsVersion: asset.minimumOsVersion },
+      libc: { family: asset.libc, ...asset.libcMinimumVersion === void 0 ? {} : { minimumVersion: asset.libcMinimumVersion } }
+    },
     recommendationEligible,
-    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc }
+    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...asset.additionalEvidence }
   });
   return {
     source: asset.source,
@@ -48452,7 +48589,68 @@ function findLastTrace(traces, field) {
 function configuredEvidence(trace) {
   return { source: "project-config", status: "explicit", detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
 }
-function reconcileFinalLibc(assets) {
+function configuredFieldEvidence(ruleId, field) {
+  return { source: "project-config", status: "explicit", detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field}` };
+}
+function compileInstallMethods(methods) {
+  return methods.map((method, index) => ({
+    id: method.id,
+    platform: method.platform,
+    name: method.name,
+    command: method.command,
+    prerequisites: method.prerequisites ?? [],
+    versionBinding: method.versionBinding ?? "unverified",
+    evidence: {
+      platform: authorEvidence(`install[${index}].platform`),
+      command: authorEvidence(`install[${index}].command`),
+      prerequisites: method.prerequisites === void 0 ? derivedEvidence(`Defaulted install[${index}].prerequisites to an empty list`) : authorEvidence(`install[${index}].prerequisites`),
+      versionBinding: method.versionBinding === void 0 ? derivedEvidence(`Defaulted install[${index}].versionBinding to unverified`) : authorEvidence(`install[${index}].versionBinding`)
+    }
+  }));
+}
+function compileInstallationPreferences(preferences, assets, diagnostics) {
+  return preferences.map((preference, preferenceIndex) => {
+    const prefer = preference.prefer.reduce((compiled, item, preferIndex) => {
+      if ("method" in item) {
+        compiled.push({ type: "method", methodId: item.method });
+        return compiled;
+      }
+      const assetIds = assets.filter((asset) => asset.recommendationEligible && matchesGlob(asset.name, item.assetMatch)).map((asset) => asset.id);
+      if (assetIds.length === 0) {
+        diagnostics.push({
+          code: "INSTALLATION_PREFERENCE_ASSET_NO_MATCH",
+          severity: "warning",
+          message: `Installation preference installationPreferences[${preferenceIndex}].prefer[${preferIndex}] matched no eligible assets.`,
+          configPath: `installationPreferences[${preferenceIndex}].prefer[${preferIndex}].assetMatch`
+        });
+        return compiled;
+      }
+      compiled.push({ type: "artifacts", assetIds });
+      return compiled;
+    }, []);
+    return {
+      id: preference.id,
+      when: preference.when,
+      prefer,
+      evidence: {
+        "when.os": authorEvidence(`installationPreferences[${preferenceIndex}].when.os`),
+        ...preference.when.arch === void 0 ? {} : { "when.arch": authorEvidence(`installationPreferences[${preferenceIndex}].when.arch`) },
+        ...preference.when.libc === void 0 ? {} : { "when.libc": authorEvidence(`installationPreferences[${preferenceIndex}].when.libc`) }
+      }
+    };
+  });
+}
+function authorEvidence(configPath) {
+  return { source: "project-config", status: "explicit", detail: "Declared in repository configuration", configPath };
+}
+function derivedEvidence(detail) {
+  return { source: "derived", status: "inferred", detail };
+}
+function reconcileFinalRequirements(assets) {
+  const invalidUniversal = assets.find((asset) => asset.additionalEvidence.supportedArchitectures !== void 0 && (asset.os !== "macos" || asset.arch !== "universal"));
+  if (invalidUniversal !== void 0) throw new FacadeError("CONFIG_INVALID", "Configured supported architectures require a macOS Universal asset.");
+  const unknownMinimumOs = assets.find((asset) => asset.minimumOsVersion !== void 0 && asset.additionalEvidence["requirements.minimumOsVersion"] !== void 0 && asset.os === "unknown");
+  if (unknownMinimumOs !== void 0) throw new FacadeError("CONFIG_INVALID", "A configured minimum OS version requires a known asset operating system.");
   const invalid = assets.find((asset) => asset.evidence.libc.source === "project-config" && asset.libc !== "unknown" && asset.os !== "linux");
   if (invalid !== void 0) throw new FacadeError("CONFIG_INVALID", "A configured libc requirement is incompatible with the asset operating system.");
   for (const asset of assets) {
@@ -48470,9 +48668,17 @@ function matchesGlob(value, glob) {
 }
 
 // src/manifest/semantic-validation.ts
-var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "name", "label", "downloadUrl", "size", "os", "arch", "format", "kind", "priority", "requirements", "libc", "signatureFor"]);
+var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "label", "name", "size", "downloadUrl", "os", "arch", "format", "kind", "priority", "requirements", "libc", "supportedArchitectures", "recommendationEligible", "signatureFor", "requirements.minimumOsVersion", "requirements.libc.family", "requirements.libc.minimumVersion"]);
 var RECOMMENDABLE_KINDS2 = /* @__PURE__ */ new Set(["installer", "portable", "archive"]);
-var CLASSIFICATION_EVIDENCE_FIELDS = ["os", "arch", "format", "kind", "requirements", "libc"];
+var CLASSIFICATION_EVIDENCE_FIELDS = ["os", "arch", "format", "kind", "requirements", "libc", "requirements.libc.family"];
+function fieldValue(value, path6) {
+  if (path6 === "libc" && typeof value === "object" && value !== null) path6 = "requirements.libc";
+  for (const part of path6.split(".")) {
+    if (typeof value !== "object" || value === null) return void 0;
+    value = Object.getOwnPropertyDescriptor(value, part)?.value;
+  }
+  return value;
+}
 function validateManifestSemantics(manifest) {
   const diagnostics = [];
   const ids = /* @__PURE__ */ new Set();
@@ -48487,17 +48693,40 @@ function validateManifestSemantics(manifest) {
     if (asset.kind !== "signature" && asset.signatureFor !== void 0) diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: "only signature assets may declare signatureFor" });
     if (asset.os !== "linux" && asset.requirements.libc.family !== "unknown") diagnostics.push({ path: `assets.${asset.id}.requirements.libc.family`, message: "non-Linux assets must keep libc unknown" });
     const hasClassificationConflict = CLASSIFICATION_EVIDENCE_FIELDS.some((field) => asset.evidence[field]?.status === "conflict");
-    if (asset.recommendationEligible && (asset.os === "unknown" || asset.arch === "unknown" || !RECOMMENDABLE_KINDS2.has(asset.kind) || hasClassificationConflict)) {
+    const invalidUniversal = asset.arch === "universal" && (asset.os !== "macos" || !asset.supportedArchitectures?.length);
+    if (asset.recommendationEligible && (asset.os === "unknown" || asset.arch === "unknown" || invalidUniversal || !RECOMMENDABLE_KINDS2.has(asset.kind) || hasClassificationConflict)) {
       diagnostics.push({ path: `assets.${asset.id}.recommendationEligible`, message: "recommendation-eligible assets require known OS and architecture, an installable kind, and no unresolved classification conflict" });
     }
     for (const field of Object.keys(asset.evidence)) {
       if (!EVIDENCE_FIELDS.has(field)) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a supported asset field" });
-      else if (field !== "libc" && asset[field] === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a populated asset field" });
+      else if (fieldValue(asset, field) === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a populated asset field" });
     }
   }
   for (const asset of manifest.assets) if (asset.signatureFor !== void 0) {
     const target = assets.get(asset.signatureFor);
     if (target === void 0 || !["installer", "portable", "archive"].includes(target.kind)) diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: "signatureFor must reference an existing artifact" });
+  }
+  for (const asset of manifest.assets) {
+    if (asset.supportedArchitectures && (asset.arch !== "universal" || asset.os !== "macos")) diagnostics.push({ path: `assets.${asset.id}.supportedArchitectures`, message: "supportedArchitectures requires a macOS Universal asset" });
+    const libc = asset.requirements?.libc;
+    if (libc?.minimumVersion && (libc.family === "none" || libc.family === "unknown")) diagnostics.push({ path: `assets.${asset.id}.requirements.libc.minimumVersion`, message: "minimum libc version requires glibc or musl" });
+  }
+  const methodIds = /* @__PURE__ */ new Set();
+  for (const method of manifest.installMethods ?? []) {
+    if (methodIds.has(method.id)) diagnostics.push({ path: `installMethods.${method.id}`, message: "method IDs must be unique" });
+    methodIds.add(method.id);
+    for (const field of Object.keys(method.evidence ?? {})) if (!["platform", "command", "prerequisites", "versionBinding"].includes(field)) diagnostics.push({ path: `installMethods.${method.id}.evidence.${field}`, message: "unsupported method evidence field" });
+  }
+  const preferenceIds = /* @__PURE__ */ new Set();
+  for (const preference of manifest.installationPreferences ?? []) {
+    if (preferenceIds.has(preference.id)) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: "preference IDs must be unique" });
+    preferenceIds.add(preference.id);
+    if (preference.when.libc !== void 0 && preference.when.os !== "linux") diagnostics.push({ path: `installationPreferences.${preference.id}.when.libc`, message: "libc preference conditions require Linux" });
+    for (const field of Object.keys(preference.evidence ?? {})) if (!["when.os", "when.arch", "when.libc"].includes(field) || fieldValue(preference, field) === void 0) diagnostics.push({ path: `installationPreferences.${preference.id}.evidence.${field}`, message: "evidence must reference a populated preference condition" });
+    for (const item of preference.prefer) {
+      if (item.type === "method" && !methodIds.has(item.methodId)) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: "preference must reference an existing method" });
+      if (item.type === "artifacts" && item.assetIds.some((id) => !assets.has(id))) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: "preference must reference existing assets" });
+    }
   }
   return diagnostics;
 }

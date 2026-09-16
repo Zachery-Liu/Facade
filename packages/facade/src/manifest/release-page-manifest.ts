@@ -3,10 +3,36 @@ import { ARCHITECTURES, ASSET_FORMATS, ASSET_KINDS, LIBC_FAMILIES, OPERATING_SYS
 
 export const EvidenceSchema = z.object({
   source: z.enum(['github-api', 'project-config', 'filename-rule', 'derived']),
-  status: z.enum(['explicit', 'inferred', 'unknown', 'conflict']),
+  status: z.enum(['explicit', 'provided', 'inferred', 'unknown', 'conflict']).optional(),
   detail: z.string().min(1),
   ruleId: z.string().min(1).optional(),
   configPath: z.string().min(1).optional(),
+  derivedFrom: z.array(z.string().min(1)).optional(),
+}).strict();
+export const ArchitectureSchema = z.enum(ARCHITECTURES);
+const PreferenceArchitectureSchema = ArchitectureSchema.exclude(['universal', 'unknown']);
+export const NumericVersionSchema = z.string().regex(/^\d+(?:\.\d+)*$/);
+export const RequirementsSchema = z.object({
+  minimumOsVersion: NumericVersionSchema.optional(),
+  libc: z.object({ family: z.enum(LIBC_FAMILIES), minimumVersion: NumericVersionSchema.optional() }).strict(),
+}).strict();
+export const InstallMethodSchema = z.object({
+  id: z.string().min(1),
+  platform: z.enum(['macos', 'windows', 'linux', 'all', 'unknown']),
+  name: z.string().min(1),
+  command: z.string().min(1),
+  prerequisites: z.array(z.object({ 'command-available': z.string().min(1) }).strict()),
+  versionBinding: z.enum(['selected-release', 'unverified']).default('unverified'),
+  evidence: z.record(z.string(), EvidenceSchema).optional(),
+}).strict();
+export const InstallationPreferenceSchema = z.object({
+  id: z.string().min(1),
+  when: z.object({ os: z.enum(['macos', 'windows', 'linux']), arch: PreferenceArchitectureSchema.optional(), libc: z.enum(['glibc', 'musl', 'none']).optional() }).strict(),
+  prefer: z.array(z.discriminatedUnion('type', [
+    z.object({ type: z.literal('method'), methodId: z.string().min(1) }).strict(),
+    z.object({ type: z.literal('artifacts'), assetIds: z.array(z.string().min(1)) }).strict(),
+  ])),
+  evidence: z.record(z.string(), EvidenceSchema).optional(),
 }).strict();
 export const ManifestAssetSchema = z.object({
   id: z.string().min(1),
@@ -19,7 +45,8 @@ export const ManifestAssetSchema = z.object({
   format: z.enum(ASSET_FORMATS),
   kind: z.enum(ASSET_KINDS),
   priority: z.number().int(),
-  requirements: z.object({ libc: z.object({ family: z.enum(LIBC_FAMILIES) }).strict() }).strict(),
+  supportedArchitectures: z.array(z.enum(['arm64', 'x64', 'x86'])).min(1).optional(),
+  requirements: RequirementsSchema,
   recommendationEligible: z.boolean(),
   signatureFor: z.string().min(1).optional(),
   evidence: z.record(z.string().min(1), EvidenceSchema),
@@ -27,6 +54,8 @@ export const ManifestAssetSchema = z.object({
 const ReleasePageManifestV1Schema = z.object({
   schemaVersion: z.literal(1),
   productName: z.string().min(1), releaseTag: z.string().min(1), assets: z.array(ManifestAssetSchema),
+  installMethods: z.array(InstallMethodSchema).optional(),
+  installationPreferences: z.array(InstallationPreferenceSchema).optional(),
 }).strict();
 export const ReleasePageManifestSchema = z.preprocess(normalizeLegacyManifest, ReleasePageManifestV1Schema);
 export type ManifestAsset = z.infer<typeof ManifestAssetSchema>;
@@ -52,10 +81,15 @@ function normalizeLegacyAsset(input: unknown): unknown {
     format: typeof input.format === 'string' ? input.format : 'other',
     kind,
     priority: typeof input.priority === 'number' ? input.priority : 0,
-    requirements: isRecord(input.requirements) ? input.requirements : { libc: { family: 'unknown' } },
+    requirements: normalizeLegacyRequirements(input.requirements),
     recommendationEligible: typeof input.recommendationEligible === 'boolean' ? input.recommendationEligible : false,
     evidence,
   };
+}
+
+function normalizeLegacyRequirements(input: unknown): unknown {
+  if (!isRecord(input)) return { libc: { family: 'unknown' } };
+  return { ...input, libc: isRecord(input.libc) ? input.libc : { family: 'unknown' } };
 }
 
 function normalizeLegacyEvidence(input: unknown): unknown {

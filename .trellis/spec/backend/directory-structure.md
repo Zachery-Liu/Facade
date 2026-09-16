@@ -1,11 +1,12 @@
 # Backend Directory Structure
 
-## Current layout through T04
+## Current layout through T07
 
 The primary package is `packages/facade`. Its source currently follows the product-plan boundaries:
 
 ```text
 packages/facade/src/
+├── action/              # bundled GitHub Action entry and adapter
 ├── build/               # validated snapshot-to-static-output boundary
 ├── cli/                 # commander entry and program construction
 ├── compiler/            # pure snapshot-to-manifest compilation
@@ -21,12 +22,13 @@ packages/facade/src/
 Examples: `src/cli/index.ts` is the executable boundary,
 `src/build/offline-build.ts` owns static output replacement,
 `src/compiler/release-compiler.ts` remains deterministic, and
+`src/core/select-installation.ts` owns dependency-free selection logic.
 `src/manifest/release-page-manifest.ts` owns the shared runtime contract. Tests
 mirror behavior in `test/`.
 
 `src/source/repository-snapshot.ts` owns the provider-neutral Source contract;
 GitHub field mapping and retry policy stay under `src/source/github/`.
 Configuration parsing belongs in `config/`, while build I/O and pure compilation
-remain separated under `build/` and `compiler/`. Add `agent-interface/` and
-Action code only when their documented work packages begin. Keep `core/` free
+remain separated under `build/` and `compiler/`. Add `agent-interface/` only
+when its documented work package begins. Keep `core/` free
 of network, environment, filesystem, and HTML concerns.

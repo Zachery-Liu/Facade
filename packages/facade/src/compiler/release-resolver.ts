@@ -1,5 +1,5 @@
 import { classifyAsset, type Architecture, type AssetFormat, type AssetKind, type ClassificationField, type FieldEvidence, type LibcFamily, type OperatingSystem } from '../classifier/asset-classifier.js';
-import { FacadeConfigInputSchema, type DownloadRule, type FacadeConfigInput } from '../config/facade-config.js';
+import { FacadeConfigInputSchema, type DownloadRule, type FacadeConfigInput, type InstallMethodConfig, type InstallationPreferenceConfig } from '../config/facade-config.js';
 import { compileFullNameGlob } from '../config/full-name-glob.js';
 import { ManifestAssetSchema, ReleasePageManifestSchema, type ManifestAsset, type ReleasePageManifest } from '../manifest/release-page-manifest.js';
 import { RepositorySnapshotSchema, type RepositorySnapshot } from '../source/repository-snapshot.js';
@@ -16,9 +16,9 @@ export interface BuildDiagnostic {
 export interface OverrideTrace {
   readonly ruleId: string;
   readonly configPath: string;
-  readonly field: 'exclude' | 'label' | 'priority' | ClassificationField;
-  readonly before: string | number | boolean;
-  readonly after: string | number | boolean;
+  readonly field: 'exclude' | 'label' | 'priority' | 'supportedArchitectures' | 'requirements.minimumOsVersion' | 'requirements.libc.minimumVersion' | ClassificationField;
+  readonly before: string | number | boolean | readonly string[] | undefined;
+  readonly after: string | number | boolean | readonly string[] | null | undefined;
 }
 
 export interface InspectAsset {
@@ -65,9 +65,13 @@ interface MutableAsset {
   format: AssetFormat;
   kind: AssetKind;
   libc: LibcFamily;
+  libcMinimumVersion?: string;
+  minimumOsVersion?: string;
+  supportedArchitectures?: Array<'arm64' | 'x64' | 'x86'>;
   label: string;
   priority: number;
   evidence: Record<ClassificationField, FieldEvidence>;
+  additionalEvidence: Record<string, ManifestAsset['evidence'][string]>;
   diagnostics: BuildDiagnostic[];
   overrides: OverrideTrace[];
   excluded: boolean;
@@ -94,6 +98,7 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
       label: asset.name,
       priority: 0,
       evidence: downloads.auto ? { ...classified.evidence } : { os: disabledEvidence('os'), arch: disabledEvidence('arch'), format: disabledEvidence('format'), kind: disabledEvidence('kind'), libc: disabledEvidence('libc') },
+      additionalEvidence: {},
       diagnostics: downloads.auto ? classified.diagnostics.map((diagnostic) => ({ ...diagnostic, severity: 'warning' as const, assetId: asset.id })) : [],
       overrides: [],
       excluded: !downloads.auto,
@@ -103,14 +108,19 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
   });
   const ruleDiagnostics: BuildDiagnostic[] = [];
   const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
-  reconcileFinalLibc(assets);
-  const diagnostics: BuildDiagnostic[] = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
+  reconcileFinalRequirements(assets);
   const inspectAssets = assets.map(finalizeAsset);
+  const includedAssets = inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final);
+  const installMethods = compileInstallMethods(config.install ?? []);
+  const installationPreferences = compileInstallationPreferences(config.installationPreferences ?? [], includedAssets, ruleDiagnostics);
+  const diagnostics: BuildDiagnostic[] = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
   const manifest = ReleasePageManifestSchema.parse({
     schemaVersion: 1,
     productName: snapshot.release.name,
     releaseTag: snapshot.release.tagName,
-    assets: inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final),
+    assets: includedAssets,
+    ...(config.install === undefined ? {} : { installMethods }),
+    ...(config.installationPreferences === undefined ? {} : { installationPreferences }),
   });
   return {
     manifest,
@@ -171,9 +181,47 @@ function applyRuleToAsset(asset: MutableAsset, rule: DownloadRule, ruleId: strin
   if (set.arch !== undefined) overrideClassification(asset, ruleId, 'arch', set.arch);
   if (set.format !== undefined) overrideClassification(asset, ruleId, 'format', set.format);
   if (set.kind !== undefined) overrideClassification(asset, ruleId, 'kind', set.kind);
-  if (set.requirements !== undefined) overrideClassification(asset, ruleId, 'libc', set.requirements.libc.family);
+  if (set.supportedArchitectures !== undefined) {
+    recordChange(asset, ruleId, 'supportedArchitectures', asset.supportedArchitectures, set.supportedArchitectures);
+    asset.supportedArchitectures = [...set.supportedArchitectures];
+    asset.additionalEvidence.supportedArchitectures = configuredFieldEvidence(ruleId, 'supportedArchitectures');
+  }
+  if (set.requirements !== undefined) applyRequirements(asset, set.requirements, ruleId);
   if (set.label !== undefined) { recordChange(asset, ruleId, 'label', asset.label, set.label); asset.label = set.label; }
   if (set.priority !== undefined) { recordChange(asset, ruleId, 'priority', asset.priority, set.priority); asset.priority = set.priority; }
+}
+
+function applyRequirements(asset: MutableAsset, requirements: NonNullable<NonNullable<DownloadRule['set']>['requirements']>, ruleId: string): void {
+  if (requirements.minimumOsVersion !== undefined) {
+    recordChange(asset, ruleId, 'requirements.minimumOsVersion', asset.minimumOsVersion, requirements.minimumOsVersion);
+    asset.additionalEvidence['requirements.minimumOsVersion'] = configuredFieldEvidence(ruleId, 'requirements.minimumOsVersion');
+  } else {
+    if (asset.minimumOsVersion !== undefined) recordChange(asset, ruleId, 'requirements.minimumOsVersion', asset.minimumOsVersion, null);
+    delete asset.additionalEvidence['requirements.minimumOsVersion'];
+    delete asset.minimumOsVersion;
+  }
+  if (requirements.minimumOsVersion !== undefined) asset.minimumOsVersion = requirements.minimumOsVersion;
+
+  if (requirements.libc === undefined) {
+    recordChange(asset, ruleId, 'libc', asset.libc, 'unknown');
+    asset.libc = 'unknown';
+    asset.evidence.libc = { source: 'project-config', status: 'unknown', detail: `Normalized omitted libc in ${ruleId}.set.requirements`, ruleId, configPath: `${ruleId}.set.requirements` };
+    if (asset.libcMinimumVersion !== undefined) recordChange(asset, ruleId, 'requirements.libc.minimumVersion', asset.libcMinimumVersion, null);
+    delete asset.libcMinimumVersion;
+    delete asset.additionalEvidence['requirements.libc.minimumVersion'];
+    return;
+  }
+
+  overrideClassification(asset, ruleId, 'libc', requirements.libc.family);
+  if (requirements.libc.minimumVersion !== undefined) {
+    recordChange(asset, ruleId, 'requirements.libc.minimumVersion', asset.libcMinimumVersion, requirements.libc.minimumVersion);
+    asset.additionalEvidence['requirements.libc.minimumVersion'] = configuredFieldEvidence(ruleId, 'requirements.libc.minimumVersion');
+  } else {
+    if (asset.libcMinimumVersion !== undefined) recordChange(asset, ruleId, 'requirements.libc.minimumVersion', asset.libcMinimumVersion, null);
+    delete asset.additionalEvidence['requirements.libc.minimumVersion'];
+    delete asset.libcMinimumVersion;
+  }
+  if (requirements.libc.minimumVersion !== undefined) asset.libcMinimumVersion = requirements.libc.minimumVersion;
 }
 
 function overrideClassification(asset: MutableAsset, ruleId: string, field: ClassificationField, value: OperatingSystem | Architecture | AssetFormat | AssetKind | LibcFamily): void {
@@ -190,7 +238,8 @@ function recordChange(asset: MutableAsset, ruleId: string, field: OverrideTrace[
 
 function finalizeAsset(asset: MutableAsset): InspectAsset {
   const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === 'conflict');
-  const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== 'unknown' && asset.arch !== 'unknown' && RECOMMENDABLE_KINDS.has(asset.kind);
+  const universalSupported = asset.arch !== 'universal' || (asset.os === 'macos' && asset.supportedArchitectures !== undefined);
+  const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== 'unknown' && asset.arch !== 'unknown' && universalSupported && RECOMMENDABLE_KINDS.has(asset.kind);
   const sourceEvidence = { source: 'github-api' as const, status: 'explicit' as const, detail: 'Preserved from the validated release source' };
   const labelTrace = findLastTrace(asset.overrides, 'label');
   const priorityTrace = findLastTrace(asset.overrides, 'priority');
@@ -209,9 +258,13 @@ function finalizeAsset(asset: MutableAsset): InspectAsset {
     format: asset.format,
     kind: asset.kind,
     priority: asset.priority,
-    requirements: { libc: { family: asset.libc } },
+    ...(asset.supportedArchitectures === undefined ? {} : { supportedArchitectures: asset.supportedArchitectures }),
+    requirements: {
+      ...(asset.minimumOsVersion === undefined ? {} : { minimumOsVersion: asset.minimumOsVersion }),
+      libc: { family: asset.libc, ...(asset.libcMinimumVersion === undefined ? {} : { minimumVersion: asset.libcMinimumVersion }) },
+    },
     recommendationEligible,
-    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc },
+    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...asset.additionalEvidence },
   });
   return {
     source: asset.source,
@@ -233,7 +286,84 @@ function configuredEvidence(trace: OverrideTrace) {
   return { source: 'project-config' as const, status: 'explicit' as const, detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
 }
 
-function reconcileFinalLibc(assets: readonly MutableAsset[]): void {
+function configuredFieldEvidence(ruleId: string, field: string) {
+  return { source: 'project-config' as const, status: 'explicit' as const, detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field}` };
+}
+
+function compileInstallMethods(methods: readonly InstallMethodConfig[]) {
+  return methods.map((method, index) => ({
+    id: method.id,
+    platform: method.platform,
+    name: method.name,
+    command: method.command,
+    prerequisites: method.prerequisites ?? [],
+    versionBinding: method.versionBinding ?? 'unverified' as const,
+    evidence: {
+      platform: authorEvidence(`install[${index}].platform`),
+      command: authorEvidence(`install[${index}].command`),
+      prerequisites: method.prerequisites === undefined
+        ? derivedEvidence(`Defaulted install[${index}].prerequisites to an empty list`)
+        : authorEvidence(`install[${index}].prerequisites`),
+      versionBinding: method.versionBinding === undefined
+        ? derivedEvidence(`Defaulted install[${index}].versionBinding to unverified`)
+        : authorEvidence(`install[${index}].versionBinding`),
+    },
+  }));
+}
+
+function compileInstallationPreferences(
+  preferences: readonly InstallationPreferenceConfig[],
+  assets: readonly ManifestAsset[],
+  diagnostics: BuildDiagnostic[],
+) {
+  type CompiledPreferenceItem = { type: 'method'; methodId: string } | { type: 'artifacts'; assetIds: string[] };
+  return preferences.map((preference, preferenceIndex) => {
+    const prefer = preference.prefer.reduce<CompiledPreferenceItem[]>((compiled, item, preferIndex) => {
+      if ('method' in item) {
+        compiled.push({ type: 'method', methodId: item.method });
+        return compiled;
+      }
+      const assetIds = assets
+        .filter((asset) => asset.recommendationEligible && matchesGlob(asset.name, item.assetMatch))
+        .map((asset) => asset.id);
+      if (assetIds.length === 0) {
+        diagnostics.push({
+          code: 'INSTALLATION_PREFERENCE_ASSET_NO_MATCH',
+          severity: 'warning',
+          message: `Installation preference installationPreferences[${preferenceIndex}].prefer[${preferIndex}] matched no eligible assets.`,
+          configPath: `installationPreferences[${preferenceIndex}].prefer[${preferIndex}].assetMatch`,
+        });
+        return compiled;
+      }
+      compiled.push({ type: 'artifacts', assetIds });
+      return compiled;
+    }, []);
+    return {
+      id: preference.id,
+      when: preference.when,
+      prefer,
+      evidence: {
+        'when.os': authorEvidence(`installationPreferences[${preferenceIndex}].when.os`),
+        ...(preference.when.arch === undefined ? {} : { 'when.arch': authorEvidence(`installationPreferences[${preferenceIndex}].when.arch`) }),
+        ...(preference.when.libc === undefined ? {} : { 'when.libc': authorEvidence(`installationPreferences[${preferenceIndex}].when.libc`) }),
+      },
+    };
+  });
+}
+
+function authorEvidence(configPath: string) {
+  return { source: 'project-config' as const, status: 'explicit' as const, detail: 'Declared in repository configuration', configPath };
+}
+
+function derivedEvidence(detail: string) {
+  return { source: 'derived' as const, status: 'inferred' as const, detail };
+}
+
+function reconcileFinalRequirements(assets: readonly MutableAsset[]): void {
+  const invalidUniversal = assets.find((asset) => asset.additionalEvidence.supportedArchitectures !== undefined && (asset.os !== 'macos' || asset.arch !== 'universal'));
+  if (invalidUniversal !== undefined) throw new FacadeError('CONFIG_INVALID', 'Configured supported architectures require a macOS Universal asset.');
+  const unknownMinimumOs = assets.find((asset) => asset.minimumOsVersion !== undefined && asset.additionalEvidence['requirements.minimumOsVersion'] !== undefined && asset.os === 'unknown');
+  if (unknownMinimumOs !== undefined) throw new FacadeError('CONFIG_INVALID', 'A configured minimum OS version requires a known asset operating system.');
   const invalid = assets.find((asset) => asset.evidence.libc.source === 'project-config' && asset.libc !== 'unknown' && asset.os !== 'linux');
   if (invalid !== undefined) throw new FacadeError('CONFIG_INVALID', 'A configured libc requirement is incompatible with the asset operating system.');
   for (const asset of assets) {
