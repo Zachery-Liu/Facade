@@ -23,9 +23,10 @@ describe('offline build', () => {
       expect(html).toContain('data-asset-id="' + asset.id + '"');
       expect(html).toContain(asset.downloadUrl);
       expect(install).toContain(asset.downloadUrl);
-      expect(llms).toContain(asset.downloadUrl);
     }
     expect(llms).toContain('Base path: /project/');
+    expect(llms).toContain('[Manifest](/project/manifest.json)');
+    expect(llms).toContain('[Installation guide](/project/install.md)');
     expect(html).toContain('href="/project/manifest.json"');
   });
 
@@ -129,7 +130,7 @@ describe('offline build', () => {
     expect(install).toContain('# Install v1 Injected heading');
     expect(install).toContain('tool \\[preview\\]\\(unsafe\\)\\.bin');
     expect(llms).toContain('# Release v1 Injected heading');
-    expect(llms).toContain('- asset Injected entry: https://example.test/tool%3Epreview');
+    expect(llms).not.toContain('Injected entry');
   });
 
   it('builds from the compiled CLI', async () => {

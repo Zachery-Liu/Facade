@@ -16,7 +16,7 @@ function asset(id = 'a', extra: Partial<ManifestAsset> = {}): ManifestAsset {
   return {
     id, name: id, label: id, downloadUrl: `https://example.test/${id}`, size: 1,
     os, arch, kind, format: 'dmg', priority: 0,
-    requirements: { libc: { family: 'unknown' } }, recommendationEligible, evidence: {}, ...extra,
+    requirements: { libc: { family: 'unknown' } }, recommendationEligible, verificationMaterials: { signatures: [], attestations: [] }, evidence: {}, ...extra,
   };
 }
 function manifest(assets = [asset()], extra = {}) { return { schemaVersion: 1, productName: 'Example', releaseTag: 'v1', assets, ...extra }; }

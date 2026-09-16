@@ -10,6 +10,7 @@ export const RawAssetSchema = z.object({
   name: z.string().min(1),
   downloadUrl: z.httpUrl(),
   size: z.number().int().nonnegative(),
+  digest: z.object({ algorithm: z.literal('sha256'), value: z.string().regex(/^[a-fA-F0-9]{64}$/) }).strict().optional(),
 }).strict();
 
 export const RawReleaseSchema = z.object({

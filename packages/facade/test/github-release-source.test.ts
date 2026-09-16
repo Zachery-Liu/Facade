@@ -31,6 +31,15 @@ describe('GitHubReleaseSource', () => {
     expect(requested).toHaveLength(4);
   });
 
+  it('preserves a GitHub sha256 digest as unverified source metadata', async () => {
+    const digest = 'a'.repeat(64);
+    const source = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async () => json([{ ...asset(1), digest: `sha256:${digest}` }]) });
+    await expect(source.getReleaseAssets('7')).resolves.toEqual([{
+      id: '1', name: 'asset-1', downloadUrl: 'https://example.test/asset-1', size: 1,
+      digest: { algorithm: 'sha256', value: digest },
+    }]);
+  });
+
   it('uses the exact requested tag and rejects draft releases', async () => {
     const source = new GitHubReleaseSource({ repository: 'owner/repository', fetch: async (url) => json({ ...release, draft: true, tag_name: url.endsWith('v1.2.3') ? 'v1.2.3' : 'wrong' }) });
     await expect(source.getReleaseByTag('v1.2.3')).rejects.toMatchObject({ code: 'SOURCE_DRAFT_RELEASE' });

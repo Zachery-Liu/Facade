@@ -8,6 +8,7 @@ This convention applies to internal development documentation, not to stable end
 
 ## Current documents
 
+- [`agent-interface.md`](./agent-interface.md) — public manifest validation, evidence, verification references, generated entry points, and the read-only consumer.
 - [`facade_product_plan.md`](./facade_product_plan.md) — broader product and architecture design baseline. Some implementation-level examples predate the current v0.1 contracts; use the precedence rules below before treating them as current requirements. Primarily maintained in Simplified Chinese.
 - [`implementation_plan.md`](./implementation_plan.md) — current v0.1 behavior freeze, work breakdown, and acceptance requirements. Primarily maintained in Simplified Chinese.
 - [`roadmap.md`](./roadmap.md) — public long-term roadmap covering the distribution metadata layer, portable protocol, Registry, Agent software discovery, and open ecosystem. Maintained together with its Chinese translation.
@@ -29,8 +30,8 @@ The repository is still in v0.1 development. At the current implementation point
 
 - the CLI supports live GitHub builds (`facade build`) and offline fixtures (`facade build --fixture ...`);
 - the bundled GitHub Action and [Pages templates](../examples/workflows/) support release publication and existing release CI; fresh builds verify staged input before replacing output;
-- the generated development manifest uses `schemaVersion: 0`; `schemaVersion: 1` is reserved for the v0.1 protocol freeze at release;
-- the full classifier/override model, shared selector, `inspect`, Product Theme, and final Agent contract are still planned v0.1 work.
+- the generated development manifest uses the pre-freeze `schemaVersion: 1` contract; final compatibility freeze remains part of the release task;
+- classifier/overrides, shared selection, `inspect`, and the read-only Agent Interface are implemented; the final Product Theme and release UX remain planned v0.1 work.
 
 Use the current code and tests to answer “what works now,” `implementation_plan.md` to answer “what v0.1 must still deliver,” and `roadmap.md` to answer “what may come after the v0.1 foundation.”
 

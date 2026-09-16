@@ -1,5 +1,5 @@
 import { classifyAsset, type Architecture, type AssetFormat, type AssetKind, type ClassificationField, type FieldEvidence, type LibcFamily, type OperatingSystem } from '../classifier/asset-classifier.js';
-import { FacadeConfigInputSchema, type DownloadRule, type FacadeConfigInput, type InstallMethodConfig, type InstallationPreferenceConfig } from '../config/facade-config.js';
+import { FacadeConfigInputSchema, type DownloadRule, type FacadeConfigInput, type InstallMethodConfig, type InstallationPreferenceConfig, type VerificationConfig } from '../config/facade-config.js';
 import { compileFullNameGlob } from '../config/full-name-glob.js';
 import { ManifestAssetSchema, ReleasePageManifestSchema, type ManifestAsset, type ReleasePageManifest } from '../manifest/release-page-manifest.js';
 import { RepositorySnapshotSchema, type RepositorySnapshot } from '../source/repository-snapshot.js';
@@ -22,7 +22,7 @@ export interface OverrideTrace {
 }
 
 export interface InspectAsset {
-  readonly source: { readonly id: string; readonly name: string; readonly size: number; readonly downloadUrl: string };
+  readonly source: { readonly id: string; readonly name: string; readonly size: number; readonly downloadUrl: string; readonly digest?: { readonly algorithm: 'sha256'; readonly value: string } | undefined };
   readonly final: ManifestAsset;
   readonly excluded: boolean;
   readonly exclusionReason?: string;
@@ -77,6 +77,7 @@ interface MutableAsset {
   excluded: boolean;
   exclusionReason?: string;
   matchedApplicableRule: boolean;
+  verification?: VerificationConfig;
 }
 
 const RECOMMENDABLE_KINDS = new Set<AssetKind>(['installer', 'portable', 'archive']);
@@ -109,23 +110,46 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
   const ruleDiagnostics: BuildDiagnostic[] = [];
   const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
   reconcileFinalRequirements(assets);
-  const inspectAssets = assets.map(finalizeAsset);
+  let publicIndex = 0;
+  const inspectAssets = assets.map((asset) => finalizeAsset(asset, asset.excluded ? 0 : publicIndex++));
   const includedAssets = inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final);
+  applyVerificationMaterials(assets.filter((asset) => !asset.excluded), includedAssets);
   const installMethods = compileInstallMethods(config.install ?? []);
   const installationPreferences = compileInstallationPreferences(config.installationPreferences ?? [], includedAssets, ruleDiagnostics);
   const diagnostics: BuildDiagnostic[] = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
+  const channel = config.release?.channel ?? (snapshot.release.prerelease ? 'prerelease' : 'stable');
+  if (channel === 'stable' && snapshot.release.prerelease) throw new FacadeError('CONFIG_INVALID', 'A prerelease source cannot be declared as the stable channel.');
+  const source = { provider: options.provider ?? 'unknown', repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
+  const release = { id: snapshot.release.id, tag: snapshot.release.tagName, name: snapshot.release.name, prerelease: snapshot.release.prerelease, channel };
+  const manifestEvidence = [
+    evidenceAt('/source/repository', 'github-api', 'provided', 'Preserved from the validated repository source'),
+    evidenceAt('/source/repositoryUrl', 'github-api', 'provided', 'Preserved from the validated repository source'),
+    evidenceAt('/release/id', 'github-api', 'provided', 'Preserved from the validated release source'),
+    evidenceAt('/release/tag', 'github-api', 'provided', 'Preserved from the validated release source'),
+    evidenceAt('/release/name', 'github-api', 'provided', 'Preserved from the validated release source'),
+    evidenceAt('/release/prerelease', 'github-api', 'provided', 'Preserved from the validated release source'),
+    config.release?.channel === undefined
+      ? { ...evidenceAt('/release/channel', 'derived', 'inferred', 'Derived only from the source prerelease flag'), derivedFrom: ['/release/prerelease'] }
+      : { ...evidenceAt('/release/channel', 'project-config', 'explicit', 'Declared in repository configuration'), configPath: 'release.channel' },
+    ...includedAssets.flatMap((asset) => Object.values(asset.evidence)),
+    ...installMethods.flatMap((method) => Object.values(method.evidence ?? {})),
+    ...installationPreferences.flatMap((preference) => Object.values(preference.evidence ?? {})),
+  ];
   const manifest = ReleasePageManifestSchema.parse({
     schemaVersion: 1,
     productName: snapshot.release.name,
     releaseTag: snapshot.release.tagName,
     assets: includedAssets,
+    source,
+    release,
+    evidence: manifestEvidence,
     ...(config.install === undefined ? {} : { installMethods }),
     ...(config.installationPreferences === undefined ? {} : { installationPreferences }),
   });
   return {
     manifest,
     inspect: {
-      source: { provider: options.provider ?? 'unknown', repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl },
+      source,
       release: {
         id: snapshot.release.id,
         tag: snapshot.release.tagName,
@@ -187,6 +211,7 @@ function applyRuleToAsset(asset: MutableAsset, rule: DownloadRule, ruleId: strin
     asset.additionalEvidence.supportedArchitectures = configuredFieldEvidence(ruleId, 'supportedArchitectures');
   }
   if (set.requirements !== undefined) applyRequirements(asset, set.requirements, ruleId);
+  if (set.verification !== undefined) asset.verification = set.verification;
   if (set.label !== undefined) { recordChange(asset, ruleId, 'label', asset.label, set.label); asset.label = set.label; }
   if (set.priority !== undefined) { recordChange(asset, ruleId, 'priority', asset.priority, set.priority); asset.priority = set.priority; }
 }
@@ -236,11 +261,12 @@ function recordChange(asset: MutableAsset, ruleId: string, field: OverrideTrace[
   asset.overrides.push({ ruleId, configPath, field, before, after });
 }
 
-function finalizeAsset(asset: MutableAsset): InspectAsset {
+function finalizeAsset(asset: MutableAsset, publicIndex: number): InspectAsset {
   const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === 'conflict');
   const universalSupported = asset.arch !== 'universal' || (asset.os === 'macos' && asset.supportedArchitectures !== undefined);
   const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== 'unknown' && asset.arch !== 'unknown' && universalSupported && RECOMMENDABLE_KINDS.has(asset.kind);
-  const sourceEvidence = { source: 'github-api' as const, status: 'explicit' as const, detail: 'Preserved from the validated release source' };
+  const assetPath = `/assets/${publicIndex}`;
+  const sourceEvidence = { path: '', source: 'github-api' as const, status: 'provided' as const, detail: 'Preserved from the validated release source' };
   const labelTrace = findLastTrace(asset.overrides, 'label');
   const priorityTrace = findLastTrace(asset.overrides, 'priority');
   const labelEvidence = labelTrace === undefined ? sourceEvidence : configuredEvidence(labelTrace);
@@ -264,7 +290,9 @@ function finalizeAsset(asset: MutableAsset): InspectAsset {
       libc: { family: asset.libc, ...(asset.libcMinimumVersion === undefined ? {} : { minimumVersion: asset.libcMinimumVersion }) },
     },
     recommendationEligible,
-    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...asset.additionalEvidence },
+    ...(asset.source.digest === undefined ? {} : { digest: asset.source.digest }),
+    verificationMaterials: { signatures: [], attestations: [] },
+    evidence: withEvidencePaths(assetPath, { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...(asset.source.digest === undefined ? {} : { digest: sourceEvidence }), ...asset.additionalEvidence }),
   });
   return {
     source: asset.source,
@@ -283,11 +311,11 @@ function findLastTrace(traces: readonly OverrideTrace[], field: OverrideTrace['f
 }
 
 function configuredEvidence(trace: OverrideTrace) {
-  return { source: 'project-config' as const, status: 'explicit' as const, detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
+  return { path: '', source: 'project-config' as const, status: 'explicit' as const, detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
 }
 
 function configuredFieldEvidence(ruleId: string, field: string) {
-  return { source: 'project-config' as const, status: 'explicit' as const, detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field}` };
+  return { path: '', source: 'project-config' as const, status: 'explicit' as const, detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field}` };
 }
 
 function compileInstallMethods(methods: readonly InstallMethodConfig[]) {
@@ -299,14 +327,14 @@ function compileInstallMethods(methods: readonly InstallMethodConfig[]) {
     prerequisites: method.prerequisites ?? [],
     versionBinding: method.versionBinding ?? 'unverified' as const,
     evidence: {
-      platform: authorEvidence(`install[${index}].platform`),
-      command: authorEvidence(`install[${index}].command`),
+      platform: authorEvidence(`install[${index}].platform`, `/installMethods/${index}/platform`),
+      command: authorEvidence(`install[${index}].command`, `/installMethods/${index}/command`),
       prerequisites: method.prerequisites === undefined
-        ? derivedEvidence(`Defaulted install[${index}].prerequisites to an empty list`)
-        : authorEvidence(`install[${index}].prerequisites`),
+        ? derivedEvidence(`Defaulted install[${index}].prerequisites to an empty list`, `/installMethods/${index}/prerequisites`)
+        : authorEvidence(`install[${index}].prerequisites`, `/installMethods/${index}/prerequisites`),
       versionBinding: method.versionBinding === undefined
-        ? derivedEvidence(`Defaulted install[${index}].versionBinding to unverified`)
-        : authorEvidence(`install[${index}].versionBinding`),
+        ? derivedEvidence(`Defaulted install[${index}].versionBinding to unverified`, `/installMethods/${index}/versionBinding`)
+        : authorEvidence(`install[${index}].versionBinding`, `/installMethods/${index}/versionBinding`),
     },
   }));
 }
@@ -343,20 +371,52 @@ function compileInstallationPreferences(
       when: preference.when,
       prefer,
       evidence: {
-        'when.os': authorEvidence(`installationPreferences[${preferenceIndex}].when.os`),
-        ...(preference.when.arch === undefined ? {} : { 'when.arch': authorEvidence(`installationPreferences[${preferenceIndex}].when.arch`) }),
-        ...(preference.when.libc === undefined ? {} : { 'when.libc': authorEvidence(`installationPreferences[${preferenceIndex}].when.libc`) }),
+        'when.os': authorEvidence(`installationPreferences[${preferenceIndex}].when.os`, `/installationPreferences/${preferenceIndex}/when/os`),
+        ...(preference.when.arch === undefined ? {} : { 'when.arch': authorEvidence(`installationPreferences[${preferenceIndex}].when.arch`, `/installationPreferences/${preferenceIndex}/when/arch`) }),
+        ...(preference.when.libc === undefined ? {} : { 'when.libc': authorEvidence(`installationPreferences[${preferenceIndex}].when.libc`, `/installationPreferences/${preferenceIndex}/when/libc`) }),
       },
     };
   });
 }
 
-function authorEvidence(configPath: string) {
-  return { source: 'project-config' as const, status: 'explicit' as const, detail: 'Declared in repository configuration', configPath };
+function authorEvidence(configPath: string, path: string) {
+  return { path, source: 'project-config' as const, status: 'explicit' as const, detail: 'Declared in repository configuration', configPath };
 }
 
-function derivedEvidence(detail: string) {
-  return { source: 'derived' as const, status: 'inferred' as const, detail };
+function derivedEvidence(detail: string, path: string) {
+  return { path, source: 'derived' as const, status: 'inferred' as const, detail };
+}
+
+function evidenceAt(path: string, source: 'github-api' | 'project-config' | 'filename-rule' | 'derived' | 'unknown', status: 'explicit' | 'provided' | 'inferred' | 'unknown' | 'conflict', detail: string) {
+  return { path, source, status, detail };
+}
+
+function withEvidencePaths(base: string, evidence: ManifestAsset['evidence']): ManifestAsset['evidence'] {
+  return Object.fromEntries(Object.entries(evidence).map(([field, entry]) => [field, { ...entry, path: `${base}/${evidenceFieldPointer(field)}` }]));
+}
+
+function evidenceFieldPointer(field: string): string { return field === 'libc' ? 'requirements/libc/family' : field.replaceAll('.', '/'); }
+
+function applyVerificationMaterials(mutableAssets: readonly MutableAsset[], assets: ManifestAsset[]): void {
+  for (let index = 0; index < mutableAssets.length; index += 1) {
+    const configured = mutableAssets[index]?.verification;
+    if (configured === undefined) continue;
+    const signatures = (configured.signatures ?? []).map((signature) => {
+      const matches = assets.filter((candidate) => candidate.kind === 'signature' && matchesGlob(candidate.name, signature.assetMatch));
+      if (matches.length !== 1) throw new FacadeError('CONFIG_INVALID', `Verification signature pattern ${signature.assetMatch} must match exactly one included signature asset.`);
+      return { assetId: matches[0]!.id, scheme: signature.scheme };
+    });
+    const target = assets[index];
+    if (target === undefined) continue;
+    target.verificationMaterials = {
+      signatures,
+      attestations: configured.attestations ?? [],
+      ...(configured.sourceCommit === undefined ? {} : { sourceCommit: configured.sourceCommit.toLowerCase() }),
+    };
+    target.evidence.verificationMaterials = {
+      path: `/assets/${index}/verificationMaterials`, source: 'project-config', status: 'explicit', detail: 'Declared in repository configuration', configPath: mutableAssets[index]!.evidence.os.configPath?.replace(/\.set\..*$/, '.set.verification') ?? 'downloads.rules.verification',
+    };
+  }
 }
 
 function reconcileFinalRequirements(assets: readonly MutableAsset[]): void {

@@ -1025,15 +1025,15 @@ var require_util = __commonJS({
         return (sTag === "Blob" || sTag === "File") && ("stream" in object2 && typeof object2.stream === "function" || "arrayBuffer" in object2 && typeof object2.arrayBuffer === "function");
       }
     }
-    function buildURL(url2, queryParams) {
-      if (url2.includes("?") || url2.includes("#")) {
+    function buildURL(url3, queryParams) {
+      if (url3.includes("?") || url3.includes("#")) {
         throw new Error('Query params cannot be passed when url already contains "?" or "#".');
       }
       const stringified = stringify(queryParams);
       if (stringified) {
-        url2 += "?" + stringified;
+        url3 += "?" + stringified;
       }
-      return url2;
+      return url3;
     }
     function isValidPort(port) {
       const value = parseInt(port, 10);
@@ -1042,39 +1042,39 @@ var require_util = __commonJS({
     function isHttpOrHttpsPrefixed(value) {
       return value != null && value[0] === "h" && value[1] === "t" && value[2] === "t" && value[3] === "p" && (value[4] === ":" || value[4] === "s" && value[5] === ":");
     }
-    function parseURL(url2) {
-      if (typeof url2 === "string") {
-        url2 = new URL(url2);
-        if (!isHttpOrHttpsPrefixed(url2.origin || url2.protocol)) {
+    function parseURL(url3) {
+      if (typeof url3 === "string") {
+        url3 = new URL(url3);
+        if (!isHttpOrHttpsPrefixed(url3.origin || url3.protocol)) {
           throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
         }
-        return url2;
+        return url3;
       }
-      if (!url2 || typeof url2 !== "object") {
+      if (!url3 || typeof url3 !== "object") {
         throw new InvalidArgumentError("Invalid URL: The URL argument must be a non-null object.");
       }
-      if (!(url2 instanceof URL)) {
-        if (url2.port != null && url2.port !== "" && isValidPort(url2.port) === false) {
+      if (!(url3 instanceof URL)) {
+        if (url3.port != null && url3.port !== "" && isValidPort(url3.port) === false) {
           throw new InvalidArgumentError("Invalid URL: port must be a valid integer or a string representation of an integer.");
         }
-        if (url2.path != null && typeof url2.path !== "string") {
+        if (url3.path != null && typeof url3.path !== "string") {
           throw new InvalidArgumentError("Invalid URL path: the path must be a string or null/undefined.");
         }
-        if (url2.pathname != null && typeof url2.pathname !== "string") {
+        if (url3.pathname != null && typeof url3.pathname !== "string") {
           throw new InvalidArgumentError("Invalid URL pathname: the pathname must be a string or null/undefined.");
         }
-        if (url2.hostname != null && typeof url2.hostname !== "string") {
+        if (url3.hostname != null && typeof url3.hostname !== "string") {
           throw new InvalidArgumentError("Invalid URL hostname: the hostname must be a string or null/undefined.");
         }
-        if (url2.origin != null && typeof url2.origin !== "string") {
+        if (url3.origin != null && typeof url3.origin !== "string") {
           throw new InvalidArgumentError("Invalid URL origin: the origin must be a string or null/undefined.");
         }
-        if (!isHttpOrHttpsPrefixed(url2.origin || url2.protocol)) {
+        if (!isHttpOrHttpsPrefixed(url3.origin || url3.protocol)) {
           throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
         }
-        const port = url2.port != null ? url2.port : url2.protocol === "https:" ? 443 : 80;
-        let origin = url2.origin != null ? url2.origin : `${url2.protocol || ""}//${url2.hostname || ""}:${port}`;
-        let path6 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
+        const port = url3.port != null ? url3.port : url3.protocol === "https:" ? 443 : 80;
+        let origin = url3.origin != null ? url3.origin : `${url3.protocol || ""}//${url3.hostname || ""}:${port}`;
+        let path6 = url3.path != null ? url3.path : `${url3.pathname || ""}${url3.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
@@ -1083,17 +1083,17 @@ var require_util = __commonJS({
         }
         return new URL(`${origin}${path6}`);
       }
-      if (!isHttpOrHttpsPrefixed(url2.origin || url2.protocol)) {
+      if (!isHttpOrHttpsPrefixed(url3.origin || url3.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
       }
-      return url2;
+      return url3;
     }
-    function parseOrigin(url2) {
-      url2 = parseURL(url2);
-      if (url2.pathname !== "/" || url2.search || url2.hash) {
+    function parseOrigin(url3) {
+      url3 = parseURL(url3);
+      if (url3.pathname !== "/" || url3.search || url3.hash) {
         throw new InvalidArgumentError("invalid url");
       }
-      return url2;
+      return url3;
     }
     function getHostname(host) {
       if (host[0] === "[") {
@@ -3284,12 +3284,12 @@ var require_data_url = __commonJS({
       }
       return { mimeType: mimeTypeRecord, body };
     }
-    function URLSerializer(url2, excludeFragment = false) {
+    function URLSerializer(url3, excludeFragment = false) {
       if (!excludeFragment) {
-        return url2.href;
+        return url3.href;
       }
-      const href = url2.href;
-      const hashLength = url2.hash.length;
+      const href = url3.href;
+      const hashLength = url3.hash.length;
       const serialized = hashLength === 0 ? href : href.substring(0, href.length - hashLength);
       if (!hashLength && href.endsWith("#")) {
         return serialized.slice(0, -1);
@@ -4051,9 +4051,9 @@ var require_util2 = __commonJS({
       }
       return location;
     }
-    function isValidEncodedURL(url2) {
-      for (let i3 = 0; i3 < url2.length; ++i3) {
-        const code = url2.charCodeAt(i3);
+    function isValidEncodedURL(url3) {
+      for (let i3 = 0; i3 < url3.length; ++i3) {
+        const code = url3.charCodeAt(i3);
         if (code > 126 || // Non-US-ASCII + DEL
         code < 32) {
           return false;
@@ -4068,8 +4068,8 @@ var require_util2 = __commonJS({
       return request.urlList[request.urlList.length - 1];
     }
     function requestBadPort(request) {
-      const url2 = requestCurrentURL(request);
-      if (urlIsHttpHttpsScheme(url2) && badPortsSet.has(url2.port)) {
+      const url3 = requestCurrentURL(request);
+      if (urlIsHttpHttpsScheme(url3) && badPortsSet.has(url3.port)) {
         return "blocked";
       }
       return "allowed";
@@ -4262,31 +4262,31 @@ var require_util2 = __commonJS({
           return isNonPotentiallyTrustWorthy ? "no-referrer" : referrerOrigin;
       }
     }
-    function stripURLForReferrer(url2, originOnly) {
-      assert2(url2 instanceof URL);
-      url2 = new URL(url2);
-      if (url2.protocol === "file:" || url2.protocol === "about:" || url2.protocol === "blank:") {
+    function stripURLForReferrer(url3, originOnly) {
+      assert2(url3 instanceof URL);
+      url3 = new URL(url3);
+      if (url3.protocol === "file:" || url3.protocol === "about:" || url3.protocol === "blank:") {
         return "no-referrer";
       }
-      url2.username = "";
-      url2.password = "";
-      url2.hash = "";
+      url3.username = "";
+      url3.password = "";
+      url3.hash = "";
       if (originOnly) {
-        url2.pathname = "";
-        url2.search = "";
+        url3.pathname = "";
+        url3.search = "";
       }
-      return url2;
+      return url3;
     }
-    function isURLPotentiallyTrustworthy(url2) {
-      if (!(url2 instanceof URL)) {
+    function isURLPotentiallyTrustworthy(url3) {
+      if (!(url3 instanceof URL)) {
         return false;
       }
-      if (url2.href === "about:blank" || url2.href === "about:srcdoc") {
+      if (url3.href === "about:blank" || url3.href === "about:srcdoc") {
         return true;
       }
-      if (url2.protocol === "data:") return true;
-      if (url2.protocol === "file:") return true;
-      return isOriginPotentiallyTrustworthy(url2.origin);
+      if (url3.protocol === "data:") return true;
+      if (url3.protocol === "file:") return true;
+      return isOriginPotentiallyTrustworthy(url3.origin);
       function isOriginPotentiallyTrustworthy(origin) {
         if (origin == null || origin === "null") return false;
         const originAsURL = new URL(origin);
@@ -4607,17 +4607,17 @@ var require_util2 = __commonJS({
         byteLength += chunk.length;
       }
     }
-    function urlIsLocal(url2) {
-      assert2("protocol" in url2);
-      const protocol = url2.protocol;
+    function urlIsLocal(url3) {
+      assert2("protocol" in url3);
+      const protocol = url3.protocol;
       return protocol === "about:" || protocol === "blob:" || protocol === "data:";
     }
-    function urlHasHttpsScheme(url2) {
-      return typeof url2 === "string" && url2[5] === ":" && url2[0] === "h" && url2[1] === "t" && url2[2] === "t" && url2[3] === "p" && url2[4] === "s" || url2.protocol === "https:";
+    function urlHasHttpsScheme(url3) {
+      return typeof url3 === "string" && url3[5] === ":" && url3[0] === "h" && url3[1] === "t" && url3[2] === "t" && url3[3] === "p" && url3[4] === "s" || url3.protocol === "https:";
     }
-    function urlIsHttpHttpsScheme(url2) {
-      assert2("protocol" in url2);
-      const protocol = url2.protocol;
+    function urlIsHttpHttpsScheme(url3) {
+      assert2("protocol" in url3);
+      const protocol = url3.protocol;
       return protocol === "http:" || protocol === "https:";
     }
     function simpleRangeHeaderValue(value, allowWhitespace) {
@@ -7587,7 +7587,7 @@ var require_client = __commonJS({
        * @param {string|URL} url
        * @param {import('../../types/client.js').Client.Options} options
        */
-      constructor(url2, {
+      constructor(url3, {
         interceptors,
         maxHeaderSize,
         headersTimeout,
@@ -7704,7 +7704,7 @@ var require_client = __commonJS({
         } else {
           this[kInterceptors] = [createRedirectInterceptor({ maxRedirections })];
         }
-        this[kUrl] = util.parseOrigin(url2);
+        this[kUrl] = util.parseOrigin(url3);
         this[kConnector] = connect2;
         this[kPipelining] = pipelining != null ? pipelining : 1;
         this[kMaxHeadersSize] = maxHeaderSize || http2.maxHeaderSize;
@@ -8680,8 +8680,8 @@ var require_proxy_agent = __commonJS({
           throw new InvalidArgumentError("Proxy opts.clientFactory must be a function.");
         }
         const { proxyTunnel = true } = opts;
-        const url2 = this.#getUrl(opts);
-        const { href, origin, port, protocol, username, password, hostname: proxyHostname } = url2;
+        const url3 = this.#getUrl(opts);
+        const { href, origin, port, protocol, username, password, hostname: proxyHostname } = url3;
         this[kProxy] = { uri: href, protocol };
         this[kInterceptors] = opts.interceptors?.ProxyAgent && Array.isArray(opts.interceptors.ProxyAgent) ? opts.interceptors.ProxyAgent : [];
         this[kRequestTls] = opts.requestTls;
@@ -8711,7 +8711,7 @@ var require_proxy_agent = __commonJS({
           }
           return agentFactory(origin2, options);
         };
-        this[kClient] = clientFactory(url2, { connect });
+        this[kClient] = clientFactory(url3, { connect });
         this[kAgent] = new Agent3({
           ...opts,
           factory,
@@ -8857,8 +8857,8 @@ var require_env_http_proxy_agent = __commonJS({
         this.#parseNoProxy();
       }
       [kDispatch](opts, handler) {
-        const url2 = new URL(opts.origin);
-        const agent = this.#getProxyAgentForUrl(url2);
+        const url3 = new URL(opts.origin);
+        const agent = this.#getProxyAgentForUrl(url3);
         return agent.dispatch(opts, handler);
       }
       async [kClose]() {
@@ -8879,8 +8879,8 @@ var require_env_http_proxy_agent = __commonJS({
           await this[kHttpsProxyAgent].destroy(err);
         }
       }
-      #getProxyAgentForUrl(url2) {
-        let { protocol, host: hostname3, port } = url2;
+      #getProxyAgentForUrl(url3) {
+        let { protocol, host: hostname3, port } = url3;
         hostname3 = hostname3.replace(/:\d*$/, "").toLowerCase();
         port = Number.parseInt(port, 10) || DEFAULT_PORTS[protocol] || 0;
         if (!this.#shouldProxy(hostname3, port)) {
@@ -10809,10 +10809,10 @@ var require_mock_utils = __commonJS({
       };
     }
     function checkNetConnect(netConnect, origin) {
-      const url2 = new URL(origin);
+      const url3 = new URL(origin);
       if (netConnect === true) {
         return true;
-      } else if (Array.isArray(netConnect) && netConnect.some((matcher) => matchValue(matcher, url2.host))) {
+      } else if (Array.isArray(netConnect) && netConnect.some((matcher) => matchValue(matcher, url3.host))) {
         return true;
       }
       return false;
@@ -12317,15 +12317,15 @@ var require_response = __commonJS({
         return responseObject;
       }
       // Creates a redirect Response that redirects to url with status status.
-      static redirect(url2, status = 302) {
+      static redirect(url3, status = 302) {
         webidl.argumentLengthCheck(arguments, 1, "Response.redirect");
-        url2 = webidl.converters.USVString(url2);
+        url3 = webidl.converters.USVString(url3);
         status = webidl.converters["unsigned short"](status);
         let parsedURL;
         try {
-          parsedURL = new URL(url2, relevantRealm.settingsObject.baseUrl);
+          parsedURL = new URL(url3, relevantRealm.settingsObject.baseUrl);
         } catch (err) {
-          throw new TypeError(`Failed to parse URL from ${url2}`, { cause: err });
+          throw new TypeError(`Failed to parse URL from ${url3}`, { cause: err });
         }
         if (!redirectStatusSet.has(status)) {
           throw new RangeError(`Invalid status code ${status}`);
@@ -12366,11 +12366,11 @@ var require_response = __commonJS({
       get url() {
         webidl.brandCheck(this, _Response);
         const urlList = this[kState].urlList;
-        const url2 = urlList[urlList.length - 1] ?? null;
-        if (url2 === null) {
+        const url3 = urlList[urlList.length - 1] ?? null;
+        if (url3 === null) {
           return "";
         }
-        return URLSerializer(url2, true);
+        return URLSerializer(url3, true);
       }
       // Returns whether response was obtained through a redirect.
       get redirected() {
@@ -14323,12 +14323,12 @@ var require_fetch = __commonJS({
       }
       return response;
       function dispatch({ body }) {
-        const url2 = requestCurrentURL(request);
+        const url3 = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
         return new Promise((resolve3, reject) => agent.dispatch(
           {
-            path: url2.pathname + url2.search,
-            origin: url2.origin,
+            path: url3.pathname + url3.search,
+            origin: url3.origin,
             method: request.method,
             body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body,
             headers: request.headersList.entries,
@@ -17077,9 +17077,9 @@ var require_connection = __commonJS({
       crypto2 = require("crypto");
     } catch {
     }
-    function establishWebSocketConnection(url2, protocols, client, ws, onEstablish, options) {
-      const requestURL = url2;
-      requestURL.protocol = url2.protocol === "ws:" ? "http:" : "https:";
+    function establishWebSocketConnection(url3, protocols, client, ws, onEstablish, options) {
+      const requestURL = url3;
+      requestURL.protocol = url3.protocol === "ws:" ? "http:" : "https:";
       const request = makeRequest({
         urlList: [requestURL],
         client,
@@ -17820,18 +17820,18 @@ var require_websocket = __commonJS({
        * @param {string} url
        * @param {string|string[]} protocols
        */
-      constructor(url2, protocols = []) {
+      constructor(url3, protocols = []) {
         super();
         webidl.util.markAsUncloneable(this);
         const prefix = "WebSocket constructor";
         webidl.argumentLengthCheck(arguments, 1, prefix);
         const options = webidl.converters["DOMString or sequence<DOMString> or WebSocketInit"](protocols, prefix, "options");
-        url2 = webidl.converters.USVString(url2, prefix, "url");
+        url3 = webidl.converters.USVString(url3, prefix, "url");
         protocols = options.protocols;
         const baseURL = environmentSettingsObject.settingsObject.baseUrl;
         let urlRecord;
         try {
-          urlRecord = new URL(url2, baseURL);
+          urlRecord = new URL(url3, baseURL);
         } catch (e2) {
           throw new DOMException(e2, "SyntaxError");
         }
@@ -18574,7 +18574,7 @@ var require_eventsource = __commonJS({
        * @param {EventSourceInit} [eventSourceInitDict]
        * @see https://html.spec.whatwg.org/multipage/server-sent-events.html#the-eventsource-interface
        */
-      constructor(url2, eventSourceInitDict = {}) {
+      constructor(url3, eventSourceInitDict = {}) {
         super();
         webidl.util.markAsUncloneable(this);
         const prefix = "EventSource constructor";
@@ -18585,7 +18585,7 @@ var require_eventsource = __commonJS({
             code: "UNDICI-ES"
           });
         }
-        url2 = webidl.converters.USVString(url2, prefix, "url");
+        url3 = webidl.converters.USVString(url3, prefix, "url");
         eventSourceInitDict = webidl.converters.EventSourceInitDict(eventSourceInitDict, prefix, "eventSourceInitDict");
         this.#dispatcher = eventSourceInitDict.dispatcher;
         this.#state = {
@@ -18595,7 +18595,7 @@ var require_eventsource = __commonJS({
         const settings = environmentSettingsObject;
         let urlRecord;
         try {
-          urlRecord = new URL(url2, settings.settingsObject.baseUrl);
+          urlRecord = new URL(url3, settings.settingsObject.baseUrl);
           this.#state.origin = urlRecord.origin;
         } catch (e2) {
           throw new DOMException(e2, "SyntaxError");
@@ -18879,12 +18879,12 @@ var require_undici = __commonJS({
       headerNameToString: util.headerNameToString
     };
     function makeDispatcher(fn) {
-      return (url2, opts, handler) => {
+      return (url3, opts, handler) => {
         if (typeof opts === "function") {
           handler = opts;
           opts = null;
         }
-        if (!url2 || typeof url2 !== "string" && typeof url2 !== "object" && !(url2 instanceof URL)) {
+        if (!url3 || typeof url3 !== "string" && typeof url3 !== "object" && !(url3 instanceof URL)) {
           throw new InvalidArgumentError("invalid url");
         }
         if (opts != null && typeof opts !== "object") {
@@ -18898,12 +18898,12 @@ var require_undici = __commonJS({
           if (!opts.path.startsWith("/")) {
             path6 = `/${path6}`;
           }
-          url2 = new URL(util.parseOrigin(url2).origin + path6);
+          url3 = new URL(util.parseOrigin(url3).origin + path6);
         } else {
           if (!opts) {
-            opts = typeof url2 === "object" ? url2 : {};
+            opts = typeof url3 === "object" ? url3 : {};
           }
-          url2 = util.parseURL(url2);
+          url3 = util.parseURL(url3);
         }
         const { agent, dispatcher = getGlobalDispatcher() } = opts;
         if (agent) {
@@ -18911,8 +18911,8 @@ var require_undici = __commonJS({
         }
         return fn.call(dispatcher, {
           ...opts,
-          origin: url2.origin,
-          path: url2.search ? `${url2.pathname}${url2.search}` : url2.pathname,
+          origin: url3.origin,
+          path: url3.search ? `${url3.pathname}${url3.search}` : url3.pathname,
           method: opts.method || (opts.body ? "PUT" : "GET")
         }, handler);
       };
@@ -19934,14 +19934,14 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
       if (!lineWidth || lineWidth < 0)
-        return text;
+        return text2;
       if (lineWidth < minContentWidth)
         minContentWidth = 0;
       const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
-      if (text.length <= endStep)
-        return text;
+      if (text2.length <= endStep)
+        return text2;
       const folds = [];
       const escapedFolds = {};
       let end = lineWidth - indent.length;
@@ -19958,14 +19958,14 @@ var require_foldFlowLines = __commonJS({
       let escStart = -1;
       let escEnd = -1;
       if (mode === FOLD_BLOCK) {
-        i3 = consumeMoreIndentedLines(text, i3, indent.length);
+        i3 = consumeMoreIndentedLines(text2, i3, indent.length);
         if (i3 !== -1)
           end = i3 + endStep;
       }
-      for (let ch; ch = text[i3 += 1]; ) {
+      for (let ch; ch = text2[i3 += 1]; ) {
         if (mode === FOLD_QUOTED && ch === "\\") {
           escStart = i3;
-          switch (text[i3 + 1]) {
+          switch (text2[i3 + 1]) {
             case "x":
               i3 += 3;
               break;
@@ -19982,12 +19982,12 @@ var require_foldFlowLines = __commonJS({
         }
         if (ch === "\n") {
           if (mode === FOLD_BLOCK)
-            i3 = consumeMoreIndentedLines(text, i3, indent.length);
+            i3 = consumeMoreIndentedLines(text2, i3, indent.length);
           end = i3 + indent.length + endStep;
           split = void 0;
         } else {
           if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-            const next = text[i3 + 1];
+            const next = text2[i3 + 1];
             if (next && next !== " " && next !== "\n" && next !== "	")
               split = i3;
           }
@@ -19999,12 +19999,12 @@ var require_foldFlowLines = __commonJS({
             } else if (mode === FOLD_QUOTED) {
               while (prev === " " || prev === "	") {
                 prev = ch;
-                ch = text[i3 += 1];
+                ch = text2[i3 += 1];
                 overflow = true;
               }
               const j2 = i3 > escEnd + 1 ? i3 - 2 : escStart - 1;
               if (escapedFolds[j2])
-                return text;
+                return text2;
               folds.push(j2);
               escapedFolds[j2] = true;
               end = j2 + endStep;
@@ -20019,39 +20019,39 @@ var require_foldFlowLines = __commonJS({
       if (overflow && onOverflow)
         onOverflow();
       if (folds.length === 0)
-        return text;
+        return text2;
       if (onFold)
         onFold();
-      let res = text.slice(0, folds[0]);
+      let res = text2.slice(0, folds[0]);
       for (let i4 = 0; i4 < folds.length; ++i4) {
         const fold = folds[i4];
-        const end2 = folds[i4 + 1] || text.length;
+        const end2 = folds[i4 + 1] || text2.length;
         if (fold === 0)
           res = `
-${indent}${text.slice(0, end2)}`;
+${indent}${text2.slice(0, end2)}`;
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text[fold]}\\`;
+            res += `${text2[fold]}\\`;
           res += `
-${indent}${text.slice(fold + 1, end2)}`;
+${indent}${text2.slice(fold + 1, end2)}`;
         }
       }
       return res;
     }
-    function consumeMoreIndentedLines(text, i3, indent) {
+    function consumeMoreIndentedLines(text2, i3, indent) {
       let end = i3;
       let start = i3 + 1;
-      let ch = text[start];
+      let ch = text2[start];
       while (ch === " " || ch === "	") {
         if (i3 < start + indent) {
-          ch = text[++i3];
+          ch = text2[++i3];
         } else {
           do {
-            ch = text[++i3];
+            ch = text2[++i3];
           } while (ch && ch !== "\n");
           end = i3;
           start = i3 + 1;
-          ch = text[start];
+          ch = text2[start];
         }
       }
       return end;
@@ -26499,8 +26499,8 @@ function isLoopbackAddress(host) {
   return hostLower === "localhost" || hostLower.startsWith("127.") || hostLower.startsWith("[::1]") || hostLower.startsWith("[0:0:0:0:0:0:0:1]");
 }
 var DecodedURL = class extends URL {
-  constructor(url2, base) {
-    super(url2, base);
+  constructor(url3, base) {
+    super(url3, base);
     this._decodedUsername = decodeURIComponent(super.username);
     this._decodedPassword = decodeURIComponent(super.password);
   }
@@ -27416,8 +27416,8 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addRaw(text, addEOL = false) {
-    this._buffer += text;
+  addRaw(text2, addEOL = false) {
+    this._buffer += text2;
     return addEOL ? this.addEOL() : this;
   }
   /**
@@ -27513,10 +27513,10 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addHeading(text, level) {
+  addHeading(text2, level) {
     const tag = `h${level}`;
     const allowedTag = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tag) ? tag : "h1";
-    const element = this.wrap(allowedTag, text);
+    const element = this.wrap(allowedTag, text2);
     return this.addRaw(element).addEOL();
   }
   /**
@@ -27545,9 +27545,9 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addQuote(text, cite) {
+  addQuote(text2, cite) {
     const attrs = Object.assign({}, cite && { cite });
-    const element = this.wrap("blockquote", text, attrs);
+    const element = this.wrap("blockquote", text2, attrs);
     return this.addRaw(element).addEOL();
   }
   /**
@@ -27558,8 +27558,8 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addLink(text, href) {
-    const element = this.wrap("a", text, { href });
+  addLink(text2, href) {
+    const element = this.wrap("a", text2, { href });
     return this.addRaw(element).addEOL();
   }
 };
@@ -31910,21 +31910,21 @@ var asciiTabOrNewline = /[\t\n\r]/g;
 function stripTabAndNewline(value) {
   return value.replace(asciiTabOrNewline, "");
 }
-function urlHostnameOk(url2, hostname3) {
+function urlHostnameOk(url3, hostname3) {
   hostname3.lastIndex = 0;
-  return hostname3.test(url2.hostname);
+  return hostname3.test(url3.hostname);
 }
-function urlProtocolOk(url2, protocol) {
+function urlProtocolOk(url3, protocol) {
   protocol.lastIndex = 0;
-  return protocol.test(url2.protocol.endsWith(":") ? url2.protocol.slice(0, -1) : url2.protocol);
+  return protocol.test(url3.protocol.endsWith(":") ? url3.protocol.slice(0, -1) : url3.protocol);
 }
 var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
   $ZodStringFormat.init(inst, def);
   inst._zod.check = (payload) => {
     try {
       const trimmed = payload.value.trim();
-      const url2 = parseURLObject(trimmed, def);
-      if (url2 === URL_BAD_FORMAT) {
+      const url3 = parseURLObject(trimmed, def);
+      if (url3 === URL_BAD_FORMAT) {
         payload.issues.push({
           code: "invalid_format",
           format: "url",
@@ -31935,7 +31935,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
         });
         return;
       }
-      if (url2 === URL_UNPARSEABLE) {
+      if (url3 === URL_UNPARSEABLE) {
         payload.issues.push({
           code: "invalid_format",
           format: "url",
@@ -31945,7 +31945,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
         });
         return;
       }
-      if (def.hostname && !urlHostnameOk(url2, def.hostname)) {
+      if (def.hostname && !urlHostnameOk(url3, def.hostname)) {
         payload.issues.push({
           code: "invalid_format",
           format: "url",
@@ -31956,7 +31956,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
           continue: !def.abort
         });
       }
-      if (def.protocol && !urlProtocolOk(url2, def.protocol)) {
+      if (def.protocol && !urlProtocolOk(url3, def.protocol)) {
         payload.issues.push({
           code: "invalid_format",
           format: "url",
@@ -31967,7 +31967,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
           continue: !def.abort
         });
       }
-      payload.value = def.normalize ? url2.href : stripTabAndNewline(trimmed);
+      payload.value = def.normalize ? url3.href : stripTabAndNewline(trimmed);
       return;
     } catch (_3) {
       payload.issues.push({
@@ -38183,8 +38183,8 @@ function ko_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.5.4/node_modules/zod/v4/locales/lt.js
-var capitalizeFirstCharacter = (text) => {
-  return text.charAt(0).toUpperCase() + text.slice(1);
+var capitalizeFirstCharacter = (text2) => {
+  return text2.charAt(0).toUpperCase() + text2.slice(1);
 };
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
@@ -47976,7 +47976,8 @@ var RawAssetSchema = external_exports.object({
   id: external_exports.string().min(1),
   name: external_exports.string().min(1),
   downloadUrl: external_exports.httpUrl(),
-  size: external_exports.number().int().nonnegative()
+  size: external_exports.number().int().nonnegative(),
+  digest: external_exports.object({ algorithm: external_exports.literal("sha256"), value: external_exports.string().regex(/^[a-fA-F0-9]{64}$/) }).strict().optional()
 }).strict();
 var RawReleaseSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -48189,9 +48190,10 @@ function isValidFullNameGlob(glob) {
 }
 
 // src/config/facade-config.ts
+var ReleaseChannelSchema = external_exports.enum(["stable", "prerelease", "beta", "nightly"]);
 var ReleaseSelectionSchema = external_exports.discriminatedUnion("strategy", [
-  external_exports.object({ strategy: external_exports.literal("github-latest") }).strict(),
-  external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1) }).strict()
+  external_exports.object({ strategy: external_exports.literal("github-latest"), channel: ReleaseChannelSchema.optional() }).strict(),
+  external_exports.object({ strategy: external_exports.literal("tag"), tag: external_exports.string().min(1), channel: ReleaseChannelSchema.optional() }).strict()
 ]);
 var ConfigLibcFamilySchema = external_exports.enum(LIBC_FAMILIES);
 var NumericVersionSchema = external_exports.string().regex(/^\d+(?:\.\d+)*$/);
@@ -48208,6 +48210,17 @@ var RuleRequirementsSchema = external_exports.object({
   minimumOsVersion: NumericVersionSchema.optional(),
   libc: ConfigLibcSchema.optional()
 }).strict().refine((value) => Object.keys(value).length > 0, { message: "requirements must declare at least one field" });
+var VerificationConfigSchema = external_exports.object({
+  signatures: external_exports.array(external_exports.object({
+    assetMatch: external_exports.string().min(1).refine(isValidFullNameGlob, { message: "assetMatch must be a valid full-name glob" }),
+    scheme: external_exports.enum(["openpgp", "minisign", "other"])
+  }).strict()).optional(),
+  attestations: external_exports.array(external_exports.object({
+    kind: external_exports.literal("github-attestation"),
+    repository: external_exports.string().regex(/^[^/]+\/[^/]+$/)
+  }).strict()).optional(),
+  sourceCommit: external_exports.string().regex(/^[a-fA-F0-9]{40}$/).optional()
+}).strict().refine((value) => Object.keys(value).length > 0, { message: "verification must declare at least one field" });
 var DownloadRuleSetSchema = external_exports.object({
   os: external_exports.enum(OPERATING_SYSTEMS).optional(),
   arch: external_exports.enum(ARCHITECTURES).optional(),
@@ -48216,7 +48229,8 @@ var DownloadRuleSetSchema = external_exports.object({
   label: external_exports.string().min(1).optional(),
   priority: external_exports.number().int().optional(),
   supportedArchitectures: external_exports.array(ConcreteArchitectureSchema).min(1).refine((values) => new Set(values).size === values.length, { message: "supportedArchitectures must not contain duplicates" }).optional(),
-  requirements: RuleRequirementsSchema.optional()
+  requirements: RuleRequirementsSchema.optional(),
+  verification: VerificationConfigSchema.optional()
 }).strict().refine((value) => Object.keys(value).length > 0, { message: "set must override at least one field" });
 var DownloadRuleSchema = external_exports.object({
   match: external_exports.string().min(1).refine(isValidFullNameGlob, { message: "match must be a valid full-name glob" }),
@@ -48226,6 +48240,9 @@ var DownloadRuleSchema = external_exports.object({
 }).strict().superRefine((rule, context) => {
   if (rule.exclude === void 0 && rule.set === void 0) {
     context.addIssue({ code: "custom", message: "a download rule must provide exclude and/or set" });
+  }
+  if (rule.set?.verification?.sourceCommit !== void 0 && rule.tag === void 0) {
+    context.addIssue({ code: "custom", path: ["set", "verification", "sourceCommit"], message: "sourceCommit requires an exact tag rule" });
   }
   const family = rule.set?.requirements?.libc?.family;
   if (rule.set?.os !== void 0 && rule.set.os !== "linux" && family !== void 0 && family !== "unknown") {
@@ -48297,7 +48314,8 @@ var FacadeConfigInputSchema = external_exports.object({
 
 // src/manifest/release-page-manifest.ts
 var EvidenceSchema = external_exports.object({
-  source: external_exports.enum(["github-api", "project-config", "filename-rule", "derived"]),
+  path: external_exports.string().regex(/^\/(?:[^~/]|~[01])*(?:\/(?:[^~/]|~[01])*)*$/).optional(),
+  source: external_exports.enum(["github-api", "project-config", "filename-rule", "derived", "unknown"]),
   status: external_exports.enum(["explicit", "provided", "inferred", "unknown", "conflict"]).optional(),
   detail: external_exports.string().min(1),
   ruleId: external_exports.string().min(1).optional(),
@@ -48310,6 +48328,21 @@ var NumericVersionSchema2 = external_exports.string().regex(/^\d+(?:\.\d+)*$/);
 var RequirementsSchema = external_exports.object({
   minimumOsVersion: NumericVersionSchema2.optional(),
   libc: external_exports.object({ family: external_exports.enum(LIBC_FAMILIES), minimumVersion: NumericVersionSchema2.optional() }).strict()
+}).strict();
+var DigestSchema = external_exports.object({
+  algorithm: external_exports.literal("sha256"),
+  value: external_exports.string().regex(/^[a-fA-F0-9]{64}$/)
+}).strict();
+var VerificationMaterialsSchema = external_exports.object({
+  signatures: external_exports.array(external_exports.object({
+    assetId: external_exports.string().min(1),
+    scheme: external_exports.enum(["openpgp", "minisign", "other"])
+  }).strict()),
+  attestations: external_exports.array(external_exports.object({
+    kind: external_exports.literal("github-attestation"),
+    repository: external_exports.string().regex(/^[^/]+\/[^/]+$/)
+  }).strict()),
+  sourceCommit: external_exports.string().regex(/^[a-fA-F0-9]{40}$/).optional()
 }).strict();
 var InstallMethodSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -48343,6 +48376,8 @@ var ManifestAssetSchema = external_exports.object({
   supportedArchitectures: external_exports.array(external_exports.enum(["arm64", "x64", "x86"])).min(1).optional(),
   requirements: RequirementsSchema,
   recommendationEligible: external_exports.boolean(),
+  digest: DigestSchema.optional(),
+  verificationMaterials: VerificationMaterialsSchema,
   signatureFor: external_exports.string().min(1).optional(),
   evidence: external_exports.record(external_exports.string().min(1), EvidenceSchema)
 }).strict();
@@ -48351,19 +48386,55 @@ var ReleasePageManifestV1Schema = external_exports.object({
   productName: external_exports.string().min(1),
   releaseTag: external_exports.string().min(1),
   assets: external_exports.array(ManifestAssetSchema),
+  source: external_exports.object({
+    provider: external_exports.enum(["github", "fixture", "unknown"]),
+    repository: external_exports.string().regex(/^[^/]+\/[^/]+$/),
+    repositoryUrl: external_exports.httpUrl()
+  }).strict(),
+  release: external_exports.object({
+    id: external_exports.string().min(1),
+    tag: external_exports.string().min(1),
+    name: external_exports.string().min(1),
+    prerelease: external_exports.boolean(),
+    channel: external_exports.enum(["stable", "prerelease", "beta", "nightly"])
+  }).strict(),
+  evidence: external_exports.array(EvidenceSchema),
   installMethods: external_exports.array(InstallMethodSchema).optional(),
   installationPreferences: external_exports.array(InstallationPreferenceSchema).optional()
 }).strict();
 var ReleasePageManifestSchema = external_exports.preprocess(normalizeLegacyManifest, ReleasePageManifestV1Schema);
 function normalizeLegacyManifest(input2) {
-  if (!isRecord(input2) || input2.schemaVersion !== 0 || !Array.isArray(input2.assets)) return input2;
-  return { ...input2, schemaVersion: 1, assets: input2.assets.map(normalizeLegacyAsset) };
+  if (!isRecord(input2) || ![0, 1].includes(input2.schemaVersion) || !Array.isArray(input2.assets)) return input2;
+  const releaseTag = typeof input2.releaseTag === "string" ? input2.releaseTag : "unknown";
+  const productName = typeof input2.productName === "string" ? input2.productName : releaseTag;
+  if (input2.schemaVersion === 1) {
+    return {
+      ...input2,
+      source: isRecord(input2.source) ? input2.source : { provider: "unknown", repository: "legacy/unknown", repositoryUrl: "https://example.invalid/legacy/unknown" },
+      release: isRecord(input2.release) ? input2.release : { id: releaseTag, tag: releaseTag, name: productName, prerelease: false, channel: "stable" },
+      evidence: Array.isArray(input2.evidence) ? input2.evidence : [],
+      assets: input2.assets.map((asset, index) => normalizeV1Asset(asset, index))
+    };
+  }
+  return {
+    ...input2,
+    schemaVersion: 1,
+    source: { provider: "unknown", repository: "legacy/unknown", repositoryUrl: "https://example.invalid/legacy/unknown" },
+    release: { id: releaseTag, tag: releaseTag, name: productName, prerelease: false, channel: "stable" },
+    evidence: [],
+    assets: input2.assets.map((asset, index) => normalizeLegacyAsset(asset, index))
+  };
 }
-function normalizeLegacyAsset(input2) {
+function normalizeV1Asset(input2, index) {
+  if (!isRecord(input2)) return input2;
+  const evidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`)])) : input2.evidence;
+  return { ...input2, verificationMaterials: input2.verificationMaterials ?? { signatures: [], attestations: [] }, evidence };
+}
+function normalizeLegacyAsset(input2, index) {
   if (!isRecord(input2)) return input2;
   const label = typeof input2.label === "string" ? input2.label : "Download";
   const kind = input2.kind === "artifact" ? "archive" : input2.kind === "other" ? "unknown" : input2.kind;
-  const evidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value)])) : input2.evidence;
+  const evidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`)])) : input2.evidence;
   return {
     ...input2,
     name: typeof input2.name === "string" ? input2.name : label,
@@ -48374,6 +48445,7 @@ function normalizeLegacyAsset(input2) {
     priority: typeof input2.priority === "number" ? input2.priority : 0,
     requirements: normalizeLegacyRequirements(input2.requirements),
     recommendationEligible: typeof input2.recommendationEligible === "boolean" ? input2.recommendationEligible : false,
+    verificationMaterials: { signatures: [], attestations: [] },
     evidence
   };
 }
@@ -48381,9 +48453,9 @@ function normalizeLegacyRequirements(input2) {
   if (!isRecord(input2)) return { libc: { family: "unknown" } };
   return { ...input2, libc: isRecord(input2.libc) ? input2.libc : { family: "unknown" } };
 }
-function normalizeLegacyEvidence(input2) {
+function normalizeLegacyEvidence(input2, path6) {
   if (!isRecord(input2) || typeof input2.source !== "string") return input2;
-  return { ...input2, status: typeof input2.status === "string" ? input2.status : input2.source === "project-config" ? "explicit" : "inferred" };
+  return { ...input2, path: path6, status: typeof input2.status === "string" ? input2.status : input2.source === "project-config" ? "explicit" : "inferred" };
 }
 function isRecord(value) {
   return typeof value === "object" && value !== null;
@@ -48419,23 +48491,44 @@ function resolveRelease(snapshotInput, options = {}) {
   const ruleDiagnostics = [];
   const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
   reconcileFinalRequirements(assets);
-  const inspectAssets = assets.map(finalizeAsset);
+  let publicIndex = 0;
+  const inspectAssets = assets.map((asset) => finalizeAsset(asset, asset.excluded ? 0 : publicIndex++));
   const includedAssets = inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final);
+  applyVerificationMaterials(assets.filter((asset) => !asset.excluded), includedAssets);
   const installMethods = compileInstallMethods(config2.install ?? []);
   const installationPreferences = compileInstallationPreferences(config2.installationPreferences ?? [], includedAssets, ruleDiagnostics);
   const diagnostics = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
+  const channel = config2.release?.channel ?? (snapshot.release.prerelease ? "prerelease" : "stable");
+  if (channel === "stable" && snapshot.release.prerelease) throw new FacadeError("CONFIG_INVALID", "A prerelease source cannot be declared as the stable channel.");
+  const source = { provider: options.provider ?? "unknown", repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
+  const release = { id: snapshot.release.id, tag: snapshot.release.tagName, name: snapshot.release.name, prerelease: snapshot.release.prerelease, channel };
+  const manifestEvidence = [
+    evidenceAt("/source/repository", "github-api", "provided", "Preserved from the validated repository source"),
+    evidenceAt("/source/repositoryUrl", "github-api", "provided", "Preserved from the validated repository source"),
+    evidenceAt("/release/id", "github-api", "provided", "Preserved from the validated release source"),
+    evidenceAt("/release/tag", "github-api", "provided", "Preserved from the validated release source"),
+    evidenceAt("/release/name", "github-api", "provided", "Preserved from the validated release source"),
+    evidenceAt("/release/prerelease", "github-api", "provided", "Preserved from the validated release source"),
+    config2.release?.channel === void 0 ? { ...evidenceAt("/release/channel", "derived", "inferred", "Derived only from the source prerelease flag"), derivedFrom: ["/release/prerelease"] } : { ...evidenceAt("/release/channel", "project-config", "explicit", "Declared in repository configuration"), configPath: "release.channel" },
+    ...includedAssets.flatMap((asset) => Object.values(asset.evidence)),
+    ...installMethods.flatMap((method) => Object.values(method.evidence ?? {})),
+    ...installationPreferences.flatMap((preference) => Object.values(preference.evidence ?? {}))
+  ];
   const manifest = ReleasePageManifestSchema.parse({
     schemaVersion: 1,
     productName: snapshot.release.name,
     releaseTag: snapshot.release.tagName,
     assets: includedAssets,
+    source,
+    release,
+    evidence: manifestEvidence,
     ...config2.install === void 0 ? {} : { installMethods },
     ...config2.installationPreferences === void 0 ? {} : { installationPreferences }
   });
   return {
     manifest,
     inspect: {
-      source: { provider: options.provider ?? "unknown", repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl },
+      source,
       release: {
         id: snapshot.release.id,
         tag: snapshot.release.tagName,
@@ -48495,6 +48588,7 @@ function applyRuleToAsset(asset, rule, ruleId) {
     asset.additionalEvidence.supportedArchitectures = configuredFieldEvidence(ruleId, "supportedArchitectures");
   }
   if (set2.requirements !== void 0) applyRequirements(asset, set2.requirements, ruleId);
+  if (set2.verification !== void 0) asset.verification = set2.verification;
   if (set2.label !== void 0) {
     recordChange(asset, ruleId, "label", asset.label, set2.label);
     asset.label = set2.label;
@@ -48544,11 +48638,12 @@ function recordChange(asset, ruleId, field, before, after) {
   const configPath = field === "exclude" ? `${ruleId}.exclude` : `${ruleId}.set.${field === "libc" ? "requirements.libc.family" : field}`;
   asset.overrides.push({ ruleId, configPath, field, before, after });
 }
-function finalizeAsset(asset) {
+function finalizeAsset(asset, publicIndex) {
   const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === "conflict");
   const universalSupported = asset.arch !== "universal" || asset.os === "macos" && asset.supportedArchitectures !== void 0;
   const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== "unknown" && asset.arch !== "unknown" && universalSupported && RECOMMENDABLE_KINDS.has(asset.kind);
-  const sourceEvidence = { source: "github-api", status: "explicit", detail: "Preserved from the validated release source" };
+  const assetPath = `/assets/${publicIndex}`;
+  const sourceEvidence = { path: "", source: "github-api", status: "provided", detail: "Preserved from the validated release source" };
   const labelTrace = findLastTrace(asset.overrides, "label");
   const priorityTrace = findLastTrace(asset.overrides, "priority");
   const labelEvidence = labelTrace === void 0 ? sourceEvidence : configuredEvidence(labelTrace);
@@ -48570,7 +48665,9 @@ function finalizeAsset(asset) {
       libc: { family: asset.libc, ...asset.libcMinimumVersion === void 0 ? {} : { minimumVersion: asset.libcMinimumVersion } }
     },
     recommendationEligible,
-    evidence: { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...asset.additionalEvidence }
+    ...asset.source.digest === void 0 ? {} : { digest: asset.source.digest },
+    verificationMaterials: { signatures: [], attestations: [] },
+    evidence: withEvidencePaths(assetPath, { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...asset.source.digest === void 0 ? {} : { digest: sourceEvidence }, ...asset.additionalEvidence })
   });
   return {
     source: asset.source,
@@ -48587,10 +48684,10 @@ function findLastTrace(traces, field) {
   return void 0;
 }
 function configuredEvidence(trace) {
-  return { source: "project-config", status: "explicit", detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
+  return { path: "", source: "project-config", status: "explicit", detail: `Set by ${trace.ruleId}`, ruleId: trace.ruleId, configPath: trace.configPath };
 }
 function configuredFieldEvidence(ruleId, field) {
-  return { source: "project-config", status: "explicit", detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field}` };
+  return { path: "", source: "project-config", status: "explicit", detail: `Set by ${ruleId}`, ruleId, configPath: `${ruleId}.set.${field}` };
 }
 function compileInstallMethods(methods) {
   return methods.map((method, index) => ({
@@ -48601,10 +48698,10 @@ function compileInstallMethods(methods) {
     prerequisites: method.prerequisites ?? [],
     versionBinding: method.versionBinding ?? "unverified",
     evidence: {
-      platform: authorEvidence(`install[${index}].platform`),
-      command: authorEvidence(`install[${index}].command`),
-      prerequisites: method.prerequisites === void 0 ? derivedEvidence(`Defaulted install[${index}].prerequisites to an empty list`) : authorEvidence(`install[${index}].prerequisites`),
-      versionBinding: method.versionBinding === void 0 ? derivedEvidence(`Defaulted install[${index}].versionBinding to unverified`) : authorEvidence(`install[${index}].versionBinding`)
+      platform: authorEvidence(`install[${index}].platform`, `/installMethods/${index}/platform`),
+      command: authorEvidence(`install[${index}].command`, `/installMethods/${index}/command`),
+      prerequisites: method.prerequisites === void 0 ? derivedEvidence(`Defaulted install[${index}].prerequisites to an empty list`, `/installMethods/${index}/prerequisites`) : authorEvidence(`install[${index}].prerequisites`, `/installMethods/${index}/prerequisites`),
+      versionBinding: method.versionBinding === void 0 ? derivedEvidence(`Defaulted install[${index}].versionBinding to unverified`, `/installMethods/${index}/versionBinding`) : authorEvidence(`install[${index}].versionBinding`, `/installMethods/${index}/versionBinding`)
     }
   }));
 }
@@ -48633,18 +48730,52 @@ function compileInstallationPreferences(preferences, assets, diagnostics) {
       when: preference.when,
       prefer,
       evidence: {
-        "when.os": authorEvidence(`installationPreferences[${preferenceIndex}].when.os`),
-        ...preference.when.arch === void 0 ? {} : { "when.arch": authorEvidence(`installationPreferences[${preferenceIndex}].when.arch`) },
-        ...preference.when.libc === void 0 ? {} : { "when.libc": authorEvidence(`installationPreferences[${preferenceIndex}].when.libc`) }
+        "when.os": authorEvidence(`installationPreferences[${preferenceIndex}].when.os`, `/installationPreferences/${preferenceIndex}/when/os`),
+        ...preference.when.arch === void 0 ? {} : { "when.arch": authorEvidence(`installationPreferences[${preferenceIndex}].when.arch`, `/installationPreferences/${preferenceIndex}/when/arch`) },
+        ...preference.when.libc === void 0 ? {} : { "when.libc": authorEvidence(`installationPreferences[${preferenceIndex}].when.libc`, `/installationPreferences/${preferenceIndex}/when/libc`) }
       }
     };
   });
 }
-function authorEvidence(configPath) {
-  return { source: "project-config", status: "explicit", detail: "Declared in repository configuration", configPath };
+function authorEvidence(configPath, path6) {
+  return { path: path6, source: "project-config", status: "explicit", detail: "Declared in repository configuration", configPath };
 }
-function derivedEvidence(detail) {
-  return { source: "derived", status: "inferred", detail };
+function derivedEvidence(detail, path6) {
+  return { path: path6, source: "derived", status: "inferred", detail };
+}
+function evidenceAt(path6, source, status, detail) {
+  return { path: path6, source, status, detail };
+}
+function withEvidencePaths(base, evidence) {
+  return Object.fromEntries(Object.entries(evidence).map(([field, entry]) => [field, { ...entry, path: `${base}/${evidenceFieldPointer(field)}` }]));
+}
+function evidenceFieldPointer(field) {
+  return field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/");
+}
+function applyVerificationMaterials(mutableAssets, assets) {
+  for (let index = 0; index < mutableAssets.length; index += 1) {
+    const configured = mutableAssets[index]?.verification;
+    if (configured === void 0) continue;
+    const signatures = (configured.signatures ?? []).map((signature) => {
+      const matches = assets.filter((candidate) => candidate.kind === "signature" && matchesGlob(candidate.name, signature.assetMatch));
+      if (matches.length !== 1) throw new FacadeError("CONFIG_INVALID", `Verification signature pattern ${signature.assetMatch} must match exactly one included signature asset.`);
+      return { assetId: matches[0].id, scheme: signature.scheme };
+    });
+    const target = assets[index];
+    if (target === void 0) continue;
+    target.verificationMaterials = {
+      signatures,
+      attestations: configured.attestations ?? [],
+      ...configured.sourceCommit === void 0 ? {} : { sourceCommit: configured.sourceCommit.toLowerCase() }
+    };
+    target.evidence.verificationMaterials = {
+      path: `/assets/${index}/verificationMaterials`,
+      source: "project-config",
+      status: "explicit",
+      detail: "Declared in repository configuration",
+      configPath: mutableAssets[index].evidence.os.configPath?.replace(/\.set\..*$/, ".set.verification") ?? "downloads.rules.verification"
+    };
+  }
 }
 function reconcileFinalRequirements(assets) {
   const invalidUniversal = assets.find((asset) => asset.additionalEvidence.supportedArchitectures !== void 0 && (asset.os !== "macos" || asset.arch !== "universal"));
@@ -48668,7 +48799,7 @@ function matchesGlob(value, glob) {
 }
 
 // src/manifest/semantic-validation.ts
-var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "label", "name", "size", "downloadUrl", "os", "arch", "format", "kind", "priority", "requirements", "libc", "supportedArchitectures", "recommendationEligible", "signatureFor", "requirements.minimumOsVersion", "requirements.libc.family", "requirements.libc.minimumVersion"]);
+var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "label", "name", "size", "downloadUrl", "os", "arch", "format", "kind", "priority", "requirements", "libc", "supportedArchitectures", "recommendationEligible", "signatureFor", "digest", "verificationMaterials", "requirements.minimumOsVersion", "requirements.libc.family", "requirements.libc.minimumVersion"]);
 var RECOMMENDABLE_KINDS2 = /* @__PURE__ */ new Set(["installer", "portable", "archive"]);
 var CLASSIFICATION_EVIDENCE_FIELDS = ["os", "arch", "format", "kind", "requirements", "libc", "requirements.libc.family"];
 function fieldValue(value, path6) {
@@ -48681,10 +48812,12 @@ function fieldValue(value, path6) {
 }
 function validateManifestSemantics(manifest) {
   const diagnostics = [];
+  if (manifest.releaseTag !== manifest.release.tag) diagnostics.push({ path: "releaseTag", message: "releaseTag must match release.tag" });
+  if (manifest.release.channel === "stable" && manifest.release.prerelease) diagnostics.push({ path: "release.channel", message: "a prerelease cannot use the stable channel" });
   const ids = /* @__PURE__ */ new Set();
   const urls = /* @__PURE__ */ new Set();
   const assets = /* @__PURE__ */ new Map();
-  for (const asset of manifest.assets) {
+  for (const [assetIndex, asset] of manifest.assets.entries()) {
     if (ids.has(asset.id)) diagnostics.push({ path: `assets.${asset.id}`, message: "asset IDs must be unique" });
     ids.add(asset.id);
     assets.set(asset.id, asset);
@@ -48700,6 +48833,11 @@ function validateManifestSemantics(manifest) {
     for (const field of Object.keys(asset.evidence)) {
       if (!EVIDENCE_FIELDS.has(field)) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a supported asset field" });
       else if (fieldValue(asset, field) === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a populated asset field" });
+      else if (asset.evidence[field]?.path !== `/assets/${assetIndex}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}.path`, message: "asset evidence path must reference its final manifest field" });
+    }
+    for (const signature of asset.verificationMaterials.signatures) {
+      const referenced = assets.get(signature.assetId) ?? manifest.assets.find((candidate) => candidate.id === signature.assetId);
+      if (referenced === void 0 || referenced.kind !== "signature") diagnostics.push({ path: `assets.${asset.id}.verificationMaterials.signatures`, message: "signature material must reference an existing signature asset" });
     }
   }
   for (const asset of manifest.assets) if (asset.signatureFor !== void 0) {
@@ -48710,6 +48848,10 @@ function validateManifestSemantics(manifest) {
     if (asset.supportedArchitectures && (asset.arch !== "universal" || asset.os !== "macos")) diagnostics.push({ path: `assets.${asset.id}.supportedArchitectures`, message: "supportedArchitectures requires a macOS Universal asset" });
     const libc = asset.requirements?.libc;
     if (libc?.minimumVersion && (libc.family === "none" || libc.family === "unknown")) diagnostics.push({ path: `assets.${asset.id}.requirements.libc.minimumVersion`, message: "minimum libc version requires glibc or musl" });
+  }
+  for (const [index, evidence] of manifest.evidence.entries()) {
+    if (evidence.path === void 0 || resolveJsonPointer(manifest, evidence.path) === void 0) diagnostics.push({ path: `evidence.${index}.path`, message: "evidence path must resolve in the final manifest" });
+    for (const derivedPath of evidence.derivedFrom ?? []) if (resolveJsonPointer(manifest, derivedPath) === void 0) diagnostics.push({ path: `evidence.${index}.derivedFrom`, message: "derived evidence must reference populated manifest fields" });
   }
   const methodIds = /* @__PURE__ */ new Set();
   for (const method of manifest.installMethods ?? []) {
@@ -48730,6 +48872,19 @@ function validateManifestSemantics(manifest) {
   }
   return diagnostics;
 }
+function resolveJsonPointer(root, pointer) {
+  let value = root;
+  for (const encoded of pointer.slice(1).split("/")) {
+    const part = encoded.replaceAll("~1", "/").replaceAll("~0", "~");
+    if (Array.isArray(value)) {
+      if (!/^\d+$/.test(part)) return void 0;
+      value = value[Number(part)];
+    } else if (typeof value === "object" && value !== null) value = Object.getOwnPropertyDescriptor(value, part)?.value;
+    else return void 0;
+    if (value === void 0) return void 0;
+  }
+  return value;
+}
 
 // src/config/load-facade-config.ts
 var import_promises = require("fs/promises");
@@ -48748,6 +48903,95 @@ async function loadFacadeConfig(path6) {
   }
 }
 
+// src/agent-interface/render-agent-files.ts
+function renderInstall(manifest) {
+  const lines = [
+    `# Install ${text(manifest.release.tag)}`,
+    "",
+    `Release: ${text(manifest.release.tag)}`,
+    `Channel: ${manifest.release.channel}`,
+    `Repository: [${text(manifest.source.repository)}](<${url2(manifest.source.repositoryUrl)}>)`,
+    "",
+    "> Safety: Facade publishes selection metadata and verification references only. Nothing listed here has been verified by Facade, and no command is authorized for automatic execution.",
+    "",
+    "## Downloads",
+    ""
+  ];
+  if (manifest.assets.length === 0) lines.push("No downloads are published for this release.", "");
+  for (const asset of manifest.assets) lines.push(...renderAsset(asset));
+  lines.push("## Installation methods", "");
+  if (!manifest.installMethods?.length) lines.push("No package-manager installation methods are declared.", "");
+  for (const method of manifest.installMethods ?? []) {
+    lines.push(`### ${text(method.name)} (${text(method.id)})`, "", `Platform: ${method.platform}`, `Version binding: ${method.versionBinding}`);
+    if (method.versionBinding === "unverified") lines.push("Warning: this command is not confirmed to install the selected release.");
+    lines.push("Command (display only): `" + inlineCode(method.command) + "`");
+    if (method.prerequisites.length) lines.push(`Prerequisites: ${method.prerequisites.map((entry) => `command ${text(entry["command-available"])} available`).join("; ")}`);
+    lines.push("");
+  }
+  lines.push("## Author installation preferences", "");
+  if (!manifest.installationPreferences?.length) lines.push("No author installation preferences are declared.", "");
+  for (const preference of manifest.installationPreferences ?? []) {
+    const when = [`os=${preference.when.os}`, ...preference.when.arch ? [`arch=${preference.when.arch}`] : [], ...preference.when.libc ? [`libc=${preference.when.libc}`] : []];
+    const prefer = preference.prefer.map((item) => item.type === "method" ? `method:${item.methodId}` : `artifacts:${item.assetIds.join(",")}`);
+    lines.push(`- ${text(preference.id)} when ${when.join(", ")}: ${prefer.length ? prefer.join(" \u2192 ") : "fall back to compatible downloads"}`);
+  }
+  lines.push("", "A consumer must validate the manifest schema and references, select against its actual environment, download separately, and independently verify any digest, signature, Attestation, and source identity before requesting permission to install.", "");
+  return lines.join("\n");
+}
+function renderLlms(manifest, basePath) {
+  const root = basePath === "/" ? "/" : basePath;
+  return [
+    `# Release ${singleLine(manifest.release.tag)}`,
+    "",
+    `Release: ${singleLine(manifest.release.tag)} (${manifest.release.channel})`,
+    `Repository: ${singleLine(manifest.source.repositoryUrl)}`,
+    `Base path: ${root}`,
+    "",
+    "## Agent resources",
+    "",
+    `- [Manifest](${root}manifest.json): structured release, download, provenance, and verification-reference data`,
+    `- [Installation guide](${root}install.md): human-readable selection and safety guidance`,
+    "",
+    "These resources are navigation and read-only metadata. They do not grant permission to download, execute, or install software, and verification references are not verification results.",
+    ""
+  ].join("\n");
+}
+function renderAsset(asset) {
+  const requirements = [
+    `OS ${asset.os}`,
+    `architecture ${asset.arch}`,
+    asset.requirements.minimumOsVersion ? `minimum OS ${asset.requirements.minimumOsVersion}` : "minimum OS unknown / undeclared",
+    asset.os === "linux" ? asset.requirements.libc.family === "unknown" ? "libc unknown / undeclared" : `libc ${asset.requirements.libc.family}${asset.requirements.libc.minimumVersion ? ` >= ${asset.requirements.libc.minimumVersion}` : " (minimum version unknown / undeclared)"}` : "libc not applicable"
+  ];
+  const lines = [
+    `### ${text(asset.label)} (${text(asset.id)})`,
+    "",
+    `URL: <${url2(asset.downloadUrl)}>`,
+    `Kind / format: ${asset.kind} / ${asset.format}`,
+    `Applies when: ${requirements.join("; ")}`,
+    `Digest: ${asset.digest ? `${asset.digest.algorithm}:${asset.digest.value} (provided, not verified)` : "unknown / not provided"}`
+  ];
+  const materials = asset.verificationMaterials;
+  if (materials.signatures.length) lines.push(`Signature references (not verified): ${materials.signatures.map((item) => `${text(item.assetId)} [${item.scheme}]`).join(", ")}`);
+  if (materials.attestations.length) lines.push(`Attestation expectations (not verified): ${materials.attestations.map((item) => `${item.kind} for ${text(item.repository)}`).join(", ")}`);
+  if (materials.sourceCommit) lines.push(`Declared source commit (not verified): ${materials.sourceCommit}`);
+  if (!materials.signatures.length && !materials.attestations.length && !materials.sourceCommit) lines.push("Verification materials: none declared; not verified.");
+  lines.push("");
+  return lines;
+}
+function singleLine(value) {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+function text(value) {
+  return singleLine(value).replace(/([\\`*_[\]{}()<>#+.!|-])/g, "\\$1");
+}
+function inlineCode(value) {
+  return singleLine(value).replace(/`/g, "&#96;");
+}
+function url2(value) {
+  return singleLine(value).replace(/</g, "%3C").replace(/>/g, "%3E");
+}
+
 // src/build/offline-build.ts
 var OUTPUT_MARKER = ".facade-output";
 var OUTPUT_MARKER_CONTENT = "facade-output-v1\n";
@@ -48756,7 +49000,7 @@ async function prepareRelease(snapshot, options) {
   const resolution = resolveRelease(snapshot, options);
   const manifest = resolution.manifest;
   const diagnostics = validateManifestSemantics(manifest);
-  if (diagnostics.length > 0) throw new FacadeError("BUILD_INVALID_MANIFEST", "The compiled release manifest failed semantic validation.");
+  if (diagnostics.length > 0) throw new FacadeError("BUILD_INVALID_MANIFEST", `The compiled release manifest failed semantic validation: ${diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`).join("; ")}`);
   const basePath = normalizeBasePath(options.basePath ?? "/");
   const outDir = (0, import_node_path.resolve)(options.outDir);
   await (0, import_promises2.mkdir)((0, import_node_path.dirname)(outDir), { recursive: true });
@@ -48765,8 +49009,8 @@ async function prepareRelease(snapshot, options) {
     await Promise.all([
       (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "index.html"), "<!doctype html>" + K2(k(ReleasePage, { manifest, basePath })), "utf8"),
       (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", "utf8"),
-      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "install.md"), renderInstall(manifest.releaseTag, manifest.assets), "utf8"),
-      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "llms.txt"), renderLlms(manifest.releaseTag, manifest.assets, basePath), "utf8"),
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "install.md"), renderInstall(manifest), "utf8"),
+      (0, import_promises2.writeFile)((0, import_node_path.join)(staging, "llms.txt"), renderLlms(manifest, basePath), "utf8"),
       (0, import_promises2.writeFile)((0, import_node_path.join)(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, "utf8")
     ]);
     let published = false;
@@ -48863,21 +49107,6 @@ async function removeLockAfterFailure(lock) {
   } catch {
   }
 }
-function renderInstall(tag, assets) {
-  return "# Install " + escapeMarkdownText(tag) + "\n\n" + assets.map((asset) => "- [" + escapeMarkdownText(asset.label + " (" + asset.id + ")") + "](<" + escapeMarkdownUrl(asset.downloadUrl) + ">)").join("\n") + "\n";
-}
-function renderLlms(tag, assets, basePath) {
-  return "# Release " + singleLine(tag) + "\n\nBase path: " + basePath + "\n\n" + assets.map((asset) => "- " + singleLine(asset.id) + ": " + singleLine(asset.downloadUrl)).join("\n") + "\n";
-}
-function singleLine(value) {
-  return value.replace(/[\r\n]+/g, " ");
-}
-function escapeMarkdownText(value) {
-  return singleLine(value).replace(/([-\\`*_[\]{}()<>#+.!|])/g, "\\$1");
-}
-function escapeMarkdownUrl(value) {
-  return singleLine(value).replace(/</g, "%3C").replace(/>/g, "%3E");
-}
 
 // src/source/github/github-release-source.ts
 var DEFAULT_API_URL = "https://api.github.com";
@@ -48896,7 +49125,8 @@ var AssetResponseSchema = external_exports.object({
   id: external_exports.number().int().nonnegative(),
   name: external_exports.string().min(1),
   browser_download_url: external_exports.string().url(),
-  size: external_exports.number().int().nonnegative()
+  size: external_exports.number().int().nonnegative(),
+  digest: external_exports.string().regex(/^sha256:[a-fA-F0-9]{64}$/).nullable().optional()
 }).passthrough();
 var GitHubReleaseSource = class {
   owner;
@@ -48938,7 +49168,13 @@ var GitHubReleaseSource = class {
     for (let page = 1; ; page += 1) {
       const response = await this.request("/repos/" + this.owner + "/" + this.repositoryName + "/releases/" + encodeURIComponent(releaseId) + "/assets?per_page=" + ASSETS_PER_PAGE + "&page=" + page, "assets");
       const parsed = parseResponse(external_exports.array(AssetResponseSchema), await parseJson(response, "assets"), "assets");
-      assets.push(...parsed.map((asset) => parseResponse(RawAssetSchema, { id: String(asset.id), name: asset.name, downloadUrl: asset.browser_download_url, size: asset.size }, "assets")));
+      assets.push(...parsed.map((asset) => parseResponse(RawAssetSchema, {
+        id: String(asset.id),
+        name: asset.name,
+        downloadUrl: asset.browser_download_url,
+        size: asset.size,
+        ...asset.digest == null ? {} : { digest: { algorithm: "sha256", value: asset.digest.slice("sha256:".length).toLowerCase() } }
+      }, "assets")));
       if (parsed.length < ASSETS_PER_PAGE) return assets;
     }
   }

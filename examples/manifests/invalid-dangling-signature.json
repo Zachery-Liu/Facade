@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "productName": "Invalid references",
+  "releaseTag": "v1",
+  "assets": [
+    {
+      "id": "download",
+      "name": "download.zip",
+      "label": "Download",
+      "downloadUrl": "https://example.test/download.zip",
+      "size": 1,
+      "os": "macos",
+      "arch": "arm64",
+      "format": "zip",
+      "kind": "archive",
+      "priority": 0,
+      "requirements": { "libc": { "family": "unknown" } },
+      "recommendationEligible": true,
+      "verificationMaterials": { "signatures": [{ "assetId": "missing", "scheme": "minisign" }], "attestations": [] },
+      "evidence": {}
+    }
+  ],
+  "source": { "provider": "github", "repository": "example/project", "repositoryUrl": "https://github.com/example/project" },
+  "release": { "id": "1", "tag": "v1", "name": "v1", "prerelease": false, "channel": "stable" },
+  "evidence": []
+}

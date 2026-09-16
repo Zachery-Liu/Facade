@@ -1,6 +1,6 @@
 # Backend Development Guidelines
 
-These guidelines document the Facade workspace through the T04 GitHub Source integration. They must continue evolving as full classification, the Agent Interface, and Action/Pages orchestration are implemented.
+These guidelines document the Facade workspace through the T08 Agent Interface. They must continue evolving as the Product Theme, initialization UX, and release workflow are completed.
 
 | Guide | Use when |
 | --- | --- |
@@ -12,6 +12,7 @@ These guidelines document the Facade workspace through the T04 GitHub Source int
 | [Action and Pages Contracts](./action-pages-contracts.md) | changing the bundled Action, freshness checks, or Pages templates |
 | [Quality Guidelines](./quality-guidelines.md) | writing or reviewing backend code |
 | [Shared Selection](./selection.md) | installation conditions, ranking, source policy or browser/consumer integration |
+| [Agent Interface](./agent-interface.md) | public manifest, evidence, verification references, Agent files, or read-only consumers |
 
 ## Pre-Development Checklist
 

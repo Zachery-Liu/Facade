@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 99,
+  "productName": "Unknown protocol",
+  "releaseTag": "v99",
+  "assets": [],
+  "source": { "provider": "unknown", "repository": "example/project", "repositoryUrl": "https://example.test/project" },
+  "release": { "id": "99", "tag": "v99", "name": "Unknown", "prerelease": false, "channel": "stable" },
+  "evidence": []
+}
