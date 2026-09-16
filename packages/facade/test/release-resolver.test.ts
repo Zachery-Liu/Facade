@@ -1,6 +1,11 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FacadeConfigInputSchema } from '../src/config/facade-config.js';
 import { matchesGlob, resolveRelease } from '../src/compiler/release-resolver.js';
+import { loadFacadeConfig } from '../src/config/load-facade-config.js';
+import { selectInstallation } from '../src/core/select-installation.js';
 import type { RepositorySnapshot } from '../src/source/repository-snapshot.js';
 
 const snapshot: RepositorySnapshot = {
@@ -86,6 +91,85 @@ describe('release resolver', () => {
     expect(result.inspect.assets[0]?.final).toMatchObject({ os: 'windows', requirements: { libc: { family: 'unknown' } }, recommendationEligible: false });
     expect(result.inspect.assets[0]?.final.evidence.libc).toMatchObject({ status: 'conflict' });
     expect(result.inspect.diagnostics).toContainEqual(expect.objectContaining({ code: 'CLASSIFICATION_LIBC_CONFLICT', assetId: 'gnu' }));
+  });
+
+  it('compiles YAML installation authoring through manifest selection end to end', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-selection-config-'));
+    const configPath = join(root, 'facade.yml');
+    try {
+      await writeFile(configPath, `schema: 1
+downloads:
+  rules:
+    - match: Tool-macos-universal.zip
+      set:
+        os: macos
+        arch: universal
+        kind: archive
+        supportedArchitectures: [arm64, x64]
+        requirements:
+          minimumOsVersion: '12.0'
+    - match: Tool-linux-x64.tar.gz
+      set:
+        requirements:
+          libc:
+            family: glibc
+            minimumVersion: '2.31'
+install:
+  - id: homebrew
+    platform: macos
+    name: Homebrew
+    command: brew install --cask tool
+    prerequisites:
+      - command-available: brew
+    versionBinding: selected-release
+installationPreferences:
+  - id: macos-default
+    when:
+      os: macos
+      arch: arm64
+    prefer:
+      - method: homebrew
+      - assetMatch: Tool-macos-universal.zip
+`, 'utf8');
+      const loaded = await loadFacadeConfig(configPath);
+      const input = { ...snapshot, assets: [...snapshot.assets, { id: 'mac', name: 'Tool-macos-universal.zip', downloadUrl: 'https://example.test/mac', size: 20 }] };
+      const resolution = resolveRelease(input, { config: loaded.config, provider: 'fixture', selection: 'fixture' });
+      expect(resolution.manifest.assets.find((asset) => asset.id === 'mac')).toMatchObject({
+        os: 'macos', arch: 'universal', supportedArchitectures: ['arm64', 'x64'],
+        requirements: { minimumOsVersion: '12.0', libc: { family: 'unknown' } },
+      });
+      expect(resolution.manifest.assets.find((asset) => asset.id === 'app')).toMatchObject({ requirements: { libc: { family: 'glibc', minimumVersion: '2.31' } } });
+      expect(resolution.manifest.installMethods).toHaveLength(1);
+      expect(resolution.manifest.installationPreferences?.[0]?.prefer).toEqual([
+        { type: 'method', methodId: 'homebrew' },
+        { type: 'artifacts', assetIds: ['mac'] },
+      ]);
+      const selected = selectInstallation(resolution.manifest, { os: 'macos', arch: 'arm64', osVersion: '13.0', commands: { brew: 'unavailable' } });
+      expect(selected.status).toBe('selected');
+      expect(selected.selected?.id).toBe('mac');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('removes zero-match or ineligible assetMatch entries with a stable warning', () => {
+    const config = FacadeConfigInputSchema.parse({
+      schema: 1,
+      installationPreferences: [{ id: 'linux', when: { os: 'linux' }, prefer: [{ assetMatch: '*checksums*' }, { assetMatch: 'missing-*' }] }],
+    });
+    const result = resolveRelease(snapshot, { config });
+    expect(result.manifest.installationPreferences?.[0]?.prefer).toEqual([]);
+    expect(result.inspect.diagnostics.filter((diagnostic) => diagnostic.code === 'INSTALLATION_PREFERENCE_ASSET_NO_MATCH')).toHaveLength(2);
+  });
+
+  it('rejects invalid authoring references and incompatible Universal metadata', () => {
+    expect(() => FacadeConfigInputSchema.parse({ schema: 1, installationPreferences: [{ id: 'mac', when: { os: 'macos' }, prefer: [{ method: 'missing' }] }] })).toThrow();
+    expect(() => FacadeConfigInputSchema.parse({ schema: 1, install: [
+      { id: 'duplicate', platform: 'macos', name: 'One', command: 'one' },
+      { id: 'duplicate', platform: 'macos', name: 'Two', command: 'two' },
+    ] })).toThrow();
+    const incompatibleUniversal = FacadeConfigInputSchema.parse({ schema: 1, downloads: { rules: [{ match: '*tar.gz', set: { supportedArchitectures: ['arm64'] } }] } });
+    expect(() => resolveRelease(snapshot, { config: incompatibleUniversal })).toThrowError(expect.objectContaining({ code: 'CONFIG_INVALID' }));
   });
 
   it('matches the complete asset name and preserves case', () => {

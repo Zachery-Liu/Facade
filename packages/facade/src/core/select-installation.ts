@@ -38,7 +38,7 @@ function assessAsset(asset: ManifestAsset, environment: SelectionEnvironment, po
     if (asset.os !== 'macos' || !asset.supportedArchitectures?.length) {
       conditions.push(unknown('arch', 'Universal requires macOS and an explicit supported architecture set'));
     } else if (!environment.arch || environment.arch === 'unknown') {
-      conditions.push({ field: 'arch', status: 'match', reason: 'Explicit macOS Universal support does not require a detected architecture' });
+      conditions.push(unknown('arch', 'Environment architecture is required to verify the declared Universal architecture set'));
     } else {
       conditions.push({ field: 'arch', status: asset.supportedArchitectures.includes(environment.arch) ? 'match' : 'mismatch', reason: 'Compare the explicitly supported Universal architecture set' });
     }

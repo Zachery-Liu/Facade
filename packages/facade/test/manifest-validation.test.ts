@@ -23,11 +23,13 @@ describe('manifest validation', () => {
       { ...base, id: 'windows-musl', downloadUrl: 'https://example.test/windows-musl', os: 'windows', arch: 'x64', kind: 'archive', requirements: { libc: { family: 'musl' } }, recommendationEligible: false, evidence: {} },
       { ...base, id: 'checksum', downloadUrl: 'https://example.test/checksum', os: 'linux', arch: 'x64', kind: 'checksum', requirements: { libc: { family: 'unknown' } }, recommendationEligible: true, evidence: {} },
       { ...base, id: 'conflict', downloadUrl: 'https://example.test/conflict', os: 'linux', arch: 'x64', kind: 'archive', requirements: { libc: { family: 'unknown' } }, recommendationEligible: true, evidence: { arch: { source: 'filename-rule', status: 'conflict', detail: 'x64 and arm64 tokens' } } },
+      { ...base, id: 'unbounded-universal', downloadUrl: 'https://example.test/unbounded-universal', os: 'macos', arch: 'universal', kind: 'archive', requirements: { libc: { family: 'unknown' } }, recommendationEligible: true, evidence: {} },
     ] });
     expect(validateManifestSemantics(manifest)).toEqual([
       { path: 'assets.windows-musl.requirements.libc.family', message: 'non-Linux assets must keep libc unknown' },
       { path: 'assets.checksum.recommendationEligible', message: 'recommendation-eligible assets require known OS and architecture, an installable kind, and no unresolved classification conflict' },
       { path: 'assets.conflict.recommendationEligible', message: 'recommendation-eligible assets require known OS and architecture, an installable kind, and no unresolved classification conflict' },
+      { path: 'assets.unbounded-universal.recommendationEligible', message: 'recommendation-eligible assets require known OS and architecture, an installable kind, and no unresolved classification conflict' },
     ]);
   });
   it('requires a tag when configuration selects tag strategy', () => { expect(() => FacadeConfigSchema.parse({ schema: 1, repository: 'owner/repo', release: { strategy: 'tag' } })).toThrow(); });

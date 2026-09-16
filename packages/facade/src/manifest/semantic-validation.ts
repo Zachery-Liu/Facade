@@ -23,7 +23,8 @@ export function validateManifestSemantics(manifest: ReleasePageManifest): Valida
     if (asset.kind !== 'signature' && asset.signatureFor !== undefined) diagnostics.push({ path: `assets.${asset.id}.signatureFor`, message: 'only signature assets may declare signatureFor' });
     if (asset.os !== 'linux' && asset.requirements.libc.family !== 'unknown') diagnostics.push({ path: `assets.${asset.id}.requirements.libc.family`, message: 'non-Linux assets must keep libc unknown' });
     const hasClassificationConflict = CLASSIFICATION_EVIDENCE_FIELDS.some((field) => asset.evidence[field]?.status === 'conflict');
-    if (asset.recommendationEligible && (asset.os === 'unknown' || asset.arch === 'unknown' || !RECOMMENDABLE_KINDS.has(asset.kind) || hasClassificationConflict)) {
+    const invalidUniversal = asset.arch === 'universal' && (asset.os !== 'macos' || !asset.supportedArchitectures?.length);
+    if (asset.recommendationEligible && (asset.os === 'unknown' || asset.arch === 'unknown' || invalidUniversal || !RECOMMENDABLE_KINDS.has(asset.kind) || hasClassificationConflict)) {
       diagnostics.push({ path: `assets.${asset.id}.recommendationEligible`, message: 'recommendation-eligible assets require known OS and architecture, an installable kind, and no unresolved classification conflict' });
     }
     for (const field of Object.keys(asset.evidence)) {

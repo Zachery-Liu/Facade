@@ -274,6 +274,11 @@ inspectGitHubRelease(options: InspectGitHubOptions): Promise<ReleaseResolution>
 renderInspectText(resolution: ReleaseResolution): string
 ```
 
+Repository YAML accepts `install`, `installationPreferences`, download-rule
+`supportedArchitectures`, and runtime minimum versions. `resolveRelease`
+compiles these authoring forms into manifest `installMethods`, stable artifact
+ID groups, and normalized asset requirements before any consumer selection.
+
 `ReleaseResolution` contains one public `manifest` plus an inspect-only report
 with every source asset, applicable rule result, diagnostic, exclusion state,
 recommendation eligibility, and ordered override trace.
@@ -307,6 +312,17 @@ recommendation eligibility, and ordered override trace.
   libc declarations still fail as `CONFIG_INVALID`.
 - Fresh GitHub capture carries the parsed configuration into publication so the
   fingerprinted source text is exactly the configuration used by the resolver.
+- Treat selection metadata as a produced cross-layer contract, not merely a
+  permissive Manifest input shape. Every selector field exposed for repository
+  authors must flow through `FacadeConfigInputSchema` and `resolveRelease`.
+- Resolve each preference `assetMatch` against the final, non-excluded,
+  recommendation-eligible download set. Preserve all matching stable IDs;
+  remove a zero-match item with `INSTALLATION_PREFERENCE_ASSET_NO_MATCH`.
+- Compile install methods and preference conditions with project-config
+  evidence. Defaults such as omitted `versionBinding` remain derived evidence.
+- A configured Universal architecture set is valid only for a final macOS
+  Universal asset. Minimum OS versions require a known final OS; libc minimum
+  versions require glibc or musl.
 
 ### 4. Validation & Error Matrix
 
@@ -319,6 +335,11 @@ recommendation eligibility, and ordered override trace.
 | Filename libc conflicts with the final non-Linux OS | Keep libc unknown/conflicted and emit `CLASSIFICATION_LIBC_CONFLICT` |
 | Auxiliary, unknown-platform, or conflicted asset claims eligibility | Semantic manifest diagnostic |
 | `downloads.auto: false` and no applicable rule matches | Exclude from build; retain the asset and reason in inspect |
+| Preference method references no configured install ID | Config parsing fails as `CONFIG_INVALID` |
+| Preference `assetMatch` has no eligible final match | Remove that preference item and emit `INSTALLATION_PREFERENCE_ASSET_NO_MATCH` |
+| `supportedArchitectures` resolves onto a non-macOS or non-Universal asset | Fail as `CONFIG_INVALID` |
+| Configured minimum OS version retains an unknown final OS | Fail as `CONFIG_INVALID` |
+| libc minimum version uses `none` or `unknown` | Config parsing fails as `CONFIG_INVALID` |
 
 ### 5. Good / Base / Bad Cases
 
@@ -326,10 +347,13 @@ recommendation eligibility, and ordered override trace.
   field evidence, and has identical final fields in build and inspect.
 - Good: ordered rules can set a field, reset exclusion, and leave all omitted
   fields untouched while recording each before/after change.
+- Good: YAML install preferences compile `assetMatch` into stable eligible asset
+  IDs, then the generated Manifest produces the expected selection result.
 - Base: an unrecognized file remains visible as an unknown non-eligible download
   without a build failure.
 - Bad: run a second classifier inside `facade inspect`, silently choose one side
-  of conflicting evidence, or let priority make a checksum eligible.
+  of conflicting evidence, let priority make a checksum eligible, or add a
+  selector-only Manifest field with no config/resolver producer.
 
 ### 6. Tests Required
 
@@ -341,16 +365,22 @@ recommendation eligibility, and ordered override trace.
   inputs, and verify fresh GitHub publication applies captured download rules.
 - Assert semantic rejection for unsafe eligibility and non-Linux libc, and assert
   Action warnings preserve stable codes/logical config paths without local paths.
+- Add a YAML config -> `resolveRelease` -> generated Manifest ->
+  `selectInstallation` test whenever selection authoring changes. Assert method
+  compilation, stable asset IDs, normalized requirements, evidence, and result.
+- Assert `assetMatch` cannot recover excluded or ineligible assets and that zero
+  matches surface the stable warning code and logical config path.
 
 ### 7. Wrong vs Correct
 
 #### Wrong
 
-Load the config to fingerprint inputs, discard it, and reload or omit it when
-publishing. Build and inspect can then resolve different facts from nominally
-the same input.
+Load the config only for source selection or fingerprinting, omit its selection
+authoring when publishing, or test new selector fields only with hand-written
+Manifest objects. The build output then has no producer for advertised behavior.
 
 #### Correct
 
 Carry the validated config captured with the snapshot into the shared resolver,
-then derive both public build output and inspect output from that one resolution.
+compile selection authoring against the final eligible download set, then derive
+public build output, inspect output, and consumer selection from that resolution.

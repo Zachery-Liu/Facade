@@ -16,7 +16,9 @@ const result = selectInstallation(manifest, {
 
 选择器直接消费 T06 解析器生成的 `schemaVersion: 1` Manifest，并在其分类字段上增加可选的 `supportedArchitectures`、`installMethods` 和 `installationPreferences`，以及 requirements 中的最低版本字段。输入的旧版 `schemaVersion: 0` Manifest 会先规范化为 v1；其他协议版本返回 needs-input 及诊断。旧构建产物缺少可信分类时保持不可推荐，不会猜测架构或用途。
 
-`requirements` 可声明 `minimumOsVersion` 及 `libc: { family, minimumVersion? }`。Linux 不比较系统版本；libc 只在 Linux 上参与判断，none 表示明确不依赖 libc，非 Linux 偏好不能声明 libc 条件。偏好的 arch 只能是具体架构，不能是 universal 或 unknown。macOS Universal 必须声明 supportedArchitectures；环境架构已知时必须在该集合内，架构未知时唯一的明确 Universal 首选仍可推荐。
+`requirements` 可声明 `minimumOsVersion` 及 `libc: { family, minimumVersion? }`。Linux 不比较系统版本；libc 只在 Linux 上参与判断，none 表示明确不依赖 libc，非 Linux 偏好不能声明 libc 条件。偏好的 arch 只能是具体架构，不能是 universal 或 unknown。macOS Universal 必须声明 supportedArchitectures；只有环境架构已知且包含于该集合时才是 match，环境架构缺失或 unknown 时返回 needs-input。
+
+仓库 YAML 可通过 download rule 的 `set.supportedArchitectures` 和 `set.requirements` 声明这些条件，通过 `install` 声明安装方法，并通过 `installationPreferences` 声明有序偏好。构建阶段在最终未排除且可推荐的下载集合中解析 `assetMatch`，写入稳定 assetIds；零匹配项被移除并产生 `INSTALLATION_PREFERENCE_ASSET_NO_MATCH` 警告。生成的 manifest.json 是浏览器和只读消费者共同使用的事实来源。
 
 结果有 selected、needs-input、no-match 三种状态。仅 selected 提供 `selected` 候选；`candidates` 保留已评估候选的条件、evidence、rank、rankingReasons 和 missingMetadata。`conditions` 记录已评估的偏好条件，顶层 missingMetadata 按候选 ID 汇总。明确不兼容候选仍可用于解释，但不能被选择。
 

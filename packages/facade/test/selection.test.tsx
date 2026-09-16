@@ -52,11 +52,13 @@ describe('shared installation selection', () => {
     expect(tied.status).toBe('needs-input');
     expect(tied.candidates.map((c) => c.id)).toEqual(['a', 'z']);
   });
-  it('requires an explicit Universal set and never treats it as arbitrary CPU support', () => {
+  it('requires a known environment architecture for an explicit Universal set', () => {
     const universal = asset('u', { arch: 'universal', supportedArchitectures: ['arm64', 'x64'] });
     expect(selectInstallation(manifest([universal]), { os: 'macos', arch: 'x86' }).status).toBe('no-match');
-    expect(selectInstallation(manifest([universal]), { os: 'macos' }).selected?.id).toBe('u');
-    expect(selectInstallation(manifest([universal]), { os: 'macos', arch: 'unknown' }).selected?.id).toBe('u');
+    expect(selectInstallation(manifest([universal]), { os: 'macos' }).status).toBe('needs-input');
+    expect(selectInstallation(manifest([universal]), { os: 'macos', arch: 'unknown' }).status).toBe('needs-input');
+    expect(selectInstallation(manifest([asset('arm-only', { arch: 'universal', supportedArchitectures: ['arm64'] })]), { os: 'macos', arch: 'unknown' }).status).toBe('needs-input');
+    expect(selectInstallation(manifest([universal]), { os: 'macos', arch: 'arm64' }).selected?.id).toBe('u');
     expect(selectInstallation(manifest([asset('u', { arch: 'universal' })]), mac).status).toBe('needs-input');
     expect(selectInstallation(manifest([universal]), { os: 'windows', arch: 'arm64' }).status).toBe('no-match');
   });
