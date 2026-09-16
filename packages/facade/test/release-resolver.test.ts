@@ -6,6 +6,7 @@ import { FacadeConfigInputSchema } from '../src/config/facade-config.js';
 import { matchesGlob, resolveRelease } from '../src/compiler/release-resolver.js';
 import { loadFacadeConfig } from '../src/config/load-facade-config.js';
 import { selectInstallation } from '../src/core/select-installation.js';
+import { renderInspectText } from '../src/inspect/inspect-release.js';
 import type { RepositorySnapshot } from '../src/source/repository-snapshot.js';
 
 const snapshot: RepositorySnapshot = {
@@ -19,6 +20,44 @@ const snapshot: RepositorySnapshot = {
 };
 
 describe('release resolver', () => {
+  it.each([
+    { minimumOsVersion: '6' },
+    { libc: { family: 'glibc' as const } },
+  ])('traces removal of libc minimum version when requirements become %j', (requirements) => {
+    const config = FacadeConfigInputSchema.parse({ schema: 1, downloads: { rules: [
+      { match: '*.tar.gz', set: { requirements: { libc: { family: 'glibc', minimumVersion: '2.31' } } } },
+      { match: '*.tar.gz', set: { requirements } },
+    ] } });
+    const result = resolveRelease(snapshot, { config });
+    const app = result.inspect.assets[0]!;
+    expect(app.final.requirements.libc.minimumVersion).toBeUndefined();
+    expect(app.final.evidence['requirements.libc.minimumVersion']).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(app.overrides))).toContainEqual({
+      ruleId: 'downloads.rules[1]', configPath: 'downloads.rules[1].set.requirements.libc.minimumVersion',
+      field: 'requirements.libc.minimumVersion', before: '2.31', after: null,
+    });
+    expect(renderInspectText(result)).toContain('Override downloads.rules[1]: requirements.libc.minimumVersion 2.31 -> null');
+  });
+
+  it('traces removal of minimum OS version without recording absent-to-absent changes', () => {
+    const config = FacadeConfigInputSchema.parse({ schema: 1, downloads: { rules: [
+      { match: '*.tar.gz', set: { os: 'macos', requirements: { minimumOsVersion: '13' } } },
+      { match: '*.tar.gz', set: { requirements: { libc: { family: 'unknown' } } } },
+      { match: '*.tar.gz', set: { requirements: { libc: { family: 'unknown' } } } },
+    ] } });
+    const result = resolveRelease(snapshot, { config });
+    const app = result.inspect.assets[0]!;
+    expect(app.final.requirements.minimumOsVersion).toBeUndefined();
+    expect(app.final.evidence['requirements.minimumOsVersion']).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(app.overrides))).toContainEqual({
+      ruleId: 'downloads.rules[1]', configPath: 'downloads.rules[1].set.requirements.minimumOsVersion',
+      field: 'requirements.minimumOsVersion', before: '13', after: null,
+    });
+    expect(app.overrides.filter((trace) => trace.field === 'requirements.minimumOsVersion')).toHaveLength(2);
+    expect(app.overrides.filter((trace) => trace.field === 'requirements.libc.minimumVersion')).toHaveLength(0);
+    expect(renderInspectText(result)).toContain('Override downloads.rules[1]: requirements.minimumOsVersion 13 -> null');
+  });
+
   it('applies full-name case-sensitive globs and ordered partial overrides', () => {
     const config = FacadeConfigInputSchema.parse({ schema: 1, downloads: { rules: [
       { match: 'Tool-*.tar.gz', exclude: true, set: { label: 'First label', priority: 10 } },

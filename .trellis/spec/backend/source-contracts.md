@@ -283,6 +283,10 @@ ID groups, and normalized asset requirements before any consumer selection.
 with every source asset, applicable rule result, diagnostic, exclusion state,
 recommendation eligibility, and ordered override trace.
 
+An `OverrideTrace` records `ruleId`, `configPath`, `field`, `before`, and `after`.
+Removal of a previously declared runtime minimum uses `after: null`, which
+survives JSON serialization and appears as `oldValue -> null` in inspect text.
+
 ### 3. Contracts
 
 - Classify each filename independently with bounded tokens and longest suffixes.
@@ -294,6 +298,10 @@ recommendation eligibility, and ordered override trace.
 - Apply case-sensitive full-name glob rules in configuration order. Later rules
   replace only fields they provide, and every provided field produces a stable
   before/after trace.
+- Nested requirements are replaced as a whole. Trace removal of an existing
+  minimum OS or libc version with the replacing rule's ID/path and `after: null`,
+  including when libc itself is omitted. Remove stale evidence and do not record
+  absent-to-absent version deletions.
 - Validate glob syntax while parsing configuration so malformed character
   classes fail as `CONFIG_INVALID` instead of surfacing a regular-expression
   error during release resolution.
@@ -340,6 +348,7 @@ recommendation eligibility, and ordered override trace.
 | `supportedArchitectures` resolves onto a non-macOS or non-Universal asset | Fail as `CONFIG_INVALID` |
 | Configured minimum OS version retains an unknown final OS | Fail as `CONFIG_INVALID` |
 | libc minimum version uses `none` or `unknown` | Config parsing fails as `CONFIG_INVALID` |
+| Replacement requirements omit a previously declared minimum | Remove the value/evidence; preserve an inspect deletion trace with `after: null` |
 
 ### 5. Good / Base / Bad Cases
 
@@ -347,6 +356,8 @@ recommendation eligibility, and ordered override trace.
   field evidence, and has identical final fields in build and inspect.
 - Good: ordered rules can set a field, reset exclusion, and leave all omitted
   fields untouched while recording each before/after change.
+- Good: replacing glibc >= 2.31 with glibc removes the minimum and records
+  `requirements.libc.minimumVersion: "2.31" -> null` under the replacing rule.
 - Good: YAML install preferences compile `assetMatch` into stable eligible asset
   IDs, then the generated Manifest produces the expected selection result.
 - Base: an unrecognized file remains visible as an unknown non-eligible download
@@ -361,6 +372,8 @@ recommendation eligibility, and ordered override trace.
   patterns, and OS/architecture/libc conflicts.
 - Cover ordered partial replacement, exclusion reset, exact tag skips,
   zero-match warnings, malformed globs, and auto-off inclusion.
+- Assert JSON round-trip and inspect text preserve minimum-version removals,
+  including omitted libc, without stale evidence or repeated deletion traces.
 - Compare fixture build manifest data with structured inspect data for identical
   inputs, and verify fresh GitHub publication applies captured download rules.
 - Assert semantic rejection for unsafe eligibility and non-Linux libc, and assert
@@ -384,3 +397,6 @@ Manifest objects. The build output then has no producer for advertised behavior.
 Carry the validated config captured with the snapshot into the shared resolver,
 compile selection authoring against the final eligible download set, then derive
 public build output, inspect output, and consumer selection from that resolution.
+
+Do not silently delete minimum versions while retaining only their original set
+trace; explicitly record each removal so inspect explains the final constraints.

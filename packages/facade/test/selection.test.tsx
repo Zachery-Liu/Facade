@@ -110,6 +110,44 @@ describe('shared installation selection', () => {
     const linux = asset('linux', { os: 'linux', format: 'tar.gz', requirements: { libc: { family: 'glibc' } }, evidence });
     expect(selectInstallation(manifest([linux]), { os: 'linux', arch: 'arm64', libc: { family: 'glibc' } }, { sources: 'strict' }).status).toBe('selected');
   });
+  it.each(['strict', 'default'] as const)('does not dismiss an unresolved priority under %s policy', (sources) => {
+    const declared = { source: 'project-config' as const, status: 'explicit' as const, detail: 'Author declaration' };
+    const evidence = Object.fromEntries(['os', 'arch', 'kind', 'downloadUrl', 'priority'].map((field) => [field, declared]));
+    const winner = asset('winner', { priority: 10, evidence });
+    const uncertain = asset('uncertain', { priority: 0, evidence: { ...evidence, priority: {
+      source: 'filename-rule', status: sources === 'strict' ? 'inferred' : 'unknown', detail: 'Unresolved priority',
+    } } });
+    for (const assets of [[winner, uncertain], [uncertain, winner]]) {
+      const result = selectInstallation(manifest(assets), mac, { sources });
+      expect(result.status).toBe('needs-input');
+      expect(result.selected).toBeUndefined();
+      expect(result.candidates.find((candidate) => candidate.id === 'uncertain')?.conditions).toContainEqual(expect.objectContaining({ field: 'evidence.priority', status: 'unknown' }));
+    }
+    expect(selectInstallation(manifest([winner, { ...uncertain, arch: 'x64' }]), mac, { sources }).selected?.id).toBe('winner');
+  });
+  it.each(['arch', 'kind'] as const)('considers unresolved %s evidence only when it can reach the first rank', (field) => {
+    const declared = { source: 'project-config' as const, detail: 'Author declaration' };
+    const evidence = Object.fromEntries(['os', 'arch', 'kind', 'downloadUrl', 'priority'].map((key) => [key, declared]));
+    const winner = asset('winner', { evidence });
+    const uncertain = asset('uncertain', {
+      ...(field === 'arch' ? { arch: 'universal', supportedArchitectures: ['arm64', 'x64'] } : { kind: 'archive' }),
+      evidence: { ...evidence, ...(field === 'arch' ? { supportedArchitectures: declared } : {}), [field]: { source: 'filename-rule', detail: 'Inferred rank field' } },
+    });
+    expect(selectInstallation(manifest([winner, uncertain]), mac, { sources: 'strict' }).status).toBe('needs-input');
+    expect(selectInstallation(manifest([{ ...winner, priority: 10 }, uncertain]), mac, { sources: 'strict' }).selected?.id).toBe('winner');
+  });
+  it('allows a lower trusted rank with unknown compatibility to remain below a known winner', () => {
+    const lower = asset('lower', { priority: -1, requirements: { minimumOsVersion: '13', libc: { family: 'unknown' } } });
+    const result = selectInstallation(manifest([asset(), lower]), mac);
+    expect(result.selected?.id).toBe('a');
+    expect(result.candidates.find((candidate) => candidate.id === 'lower')?.conditions).toContainEqual(expect.objectContaining({ field: 'requirements.minimumOsVersion', status: 'unknown' }));
+  });
+  it('accounts for an unresolved OS changing purpose rank', () => {
+    const declared = { source: 'project-config' as const, detail: 'Author declaration' };
+    const evidence = Object.fromEntries(['os', 'arch', 'kind', 'downloadUrl', 'priority'].map((field) => [field, declared]));
+    const uncertain = asset('uncertain', { os: 'linux', evidence: { ...evidence, os: { source: 'filename-rule', detail: 'Inferred OS' } } });
+    expect(selectInstallation(manifest([asset('winner', { evidence }), uncertain]), mac, { sources: 'strict' }).status).toBe('needs-input');
+  });
   it('handles preference when unknown, mismatch and first-match fallback', () => {
     const input = manifest([asset()], { installMethods: [method], installationPreferences: [preference] });
     expect(selectInstallation(input, {}).status).toBe('needs-input');

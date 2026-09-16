@@ -3,12 +3,15 @@
 Implementation, review repairs, and integration with the latest main are ready for PR acceptance. The task remains `in_progress` until the PR is accepted or merged.
 
 - Branch: feat/t07-selection; merged origin/main through d4927a5.
-- Validation: typecheck, lint, both CLI/selection and Action builds, 156 tests, coverage and branch diff checks passed.
-- Coverage: statements 94.77%, branches 88.60%, functions 95.53%, lines 96.91%.
+- Validation (2026-09-16): typecheck, lint, both CLI/selection and Action builds, 165 tests, coverage and branch diff checks passed.
+- Coverage: statements 95.31%, branches 89.07%, functions 95.62%, lines 97.23%.
 - Browser hook SSR and packaged consumer return identical selection results.
 - Review fixes: repository YAML now compiles install methods, preferences, Universal architecture sets, and minimum runtime versions into the real Manifest producer path; `assetMatch` resolves to stable eligible asset IDs with zero-match warnings.
 - Universal architecture membership now stays unknown when the environment architecture is missing or unknown; only a known declared member matches.
 - Earlier review fixes remain covered: rank-aware unknown blocking, concrete preference architectures, and Linux-only libc preference conditions.
+- Ranking evidence repairs: unresolved priority cannot prove a candidate has lower rank; unresolved architecture, OS, and kind are bounded conservatively. Explicit mismatches still exclude candidates, and accepted priority gaps still allow known winners.
+- Override trace repairs: whole-object requirements replacement records cleared OS/libc minimum versions as `after: null` in JSON and text inspect output, including when libc itself is omitted. No absent-to-absent deletion noise is added.
+- Regression evidence: seven new cases failed against the old implementation and passed after repair; nine total cases were added, including lower trusted rank and unresolved OS coverage.
 - T06 manifest/classification integration and the T07 authoring-to-selection path are covered end to end; T09 browser hydration remains a separate workstream.
 
 ## Proposed work commit

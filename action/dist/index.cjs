@@ -48509,6 +48509,7 @@ function applyRequirements(asset, requirements, ruleId) {
     recordChange(asset, ruleId, "requirements.minimumOsVersion", asset.minimumOsVersion, requirements.minimumOsVersion);
     asset.additionalEvidence["requirements.minimumOsVersion"] = configuredFieldEvidence(ruleId, "requirements.minimumOsVersion");
   } else {
+    if (asset.minimumOsVersion !== void 0) recordChange(asset, ruleId, "requirements.minimumOsVersion", asset.minimumOsVersion, null);
     delete asset.additionalEvidence["requirements.minimumOsVersion"];
     delete asset.minimumOsVersion;
   }
@@ -48517,6 +48518,7 @@ function applyRequirements(asset, requirements, ruleId) {
     recordChange(asset, ruleId, "libc", asset.libc, "unknown");
     asset.libc = "unknown";
     asset.evidence.libc = { source: "project-config", status: "unknown", detail: `Normalized omitted libc in ${ruleId}.set.requirements`, ruleId, configPath: `${ruleId}.set.requirements` };
+    if (asset.libcMinimumVersion !== void 0) recordChange(asset, ruleId, "requirements.libc.minimumVersion", asset.libcMinimumVersion, null);
     delete asset.libcMinimumVersion;
     delete asset.additionalEvidence["requirements.libc.minimumVersion"];
     return;
@@ -48526,6 +48528,7 @@ function applyRequirements(asset, requirements, ruleId) {
     recordChange(asset, ruleId, "requirements.libc.minimumVersion", asset.libcMinimumVersion, requirements.libc.minimumVersion);
     asset.additionalEvidence["requirements.libc.minimumVersion"] = configuredFieldEvidence(ruleId, "requirements.libc.minimumVersion");
   } else {
+    if (asset.libcMinimumVersion !== void 0) recordChange(asset, ruleId, "requirements.libc.minimumVersion", asset.libcMinimumVersion, null);
     delete asset.additionalEvidence["requirements.libc.minimumVersion"];
     delete asset.libcMinimumVersion;
   }

@@ -19,3 +19,8 @@ Implement docs/implementation_plan.md sections 2.1–2.3 and T07, as requested.
 
 ## Scope
 T08 complete Agent Interface and T09 theme hydration/design remain separate. Provide a read-only consumer and browser hook integration now.
+
+## Review repairs (2026-09-16)
+- User authorized fixing the two review findings on the existing T07 branch.
+- Reject a unique selection when a viable candidate's unresolved ranking evidence could let it tie or outrank the apparent winner. Preserve selection when accepted ranking facts prove an unknown candidate cannot reach first place; explicit incompatibility still excludes it.
+- Preserve whole-object requirements replacement. Record removed OS/libc minimum versions with their previous value, responsible rule/path, and `after: null`, including when the whole libc object is omitted. Verify JSON and text inspect output and avoid absent-to-absent deletion traces.

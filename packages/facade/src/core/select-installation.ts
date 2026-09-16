@@ -96,13 +96,26 @@ function compareRank(left: CandidateResult, right: CandidateResult): number {
 }
 function stableCompare(left: string, right: string): number { return left < right ? -1 : left > right ? 1 : 0; }
 
+function couldReachFirstRank(candidate: CandidateResult, first: CandidateResult): boolean {
+  const unresolved = new Set(candidate.conditions.filter((condition) => condition.status === 'unknown').map((condition) => condition.field));
+  const rank = [...candidate.rank];
+  // Rejected evidence cannot establish an upper bound using its reported value.
+  // These bounds are internal only; preserve the reported rank in the result.
+  if (unresolved.has('evidence.priority')) rank[0] = Infinity;
+  if (unresolved.has('evidence.arch')) rank[1] = 1;
+  if (unresolved.has('evidence.os') || (candidate.asset?.os !== 'linux' && unresolved.has('evidence.kind'))) {
+    rank[2] = Math.max(...kinds.values());
+  }
+  return compareRank({ ...candidate, rank }, first) <= 0;
+}
+
 function result(candidates: CandidateResult[], conditions: ConditionResult[], diagnostics: string[], blocked = false): SelectionResult {
   const ordered = [...candidates].sort((a, b) => compareRank(a, b) || stableCompare(a.asset?.name ?? a.asset?.label ?? a.id, b.asset?.name ?? b.asset?.label ?? b.id) || stableCompare(a.id, b.id));
   const viable = ordered.filter((candidate) => conditionStatus(candidate.conditions) !== 'mismatch');
   const first = viable[0];
   const tied = first && viable.some((candidate, i) => i > 0 && compareRank(first, candidate) === 0);
-  // Only an unresolved top-ranked candidate can affect the selection outcome.
-  const unresolved = first !== undefined && conditionStatus(first.conditions) === 'unknown';
+  // Ignore unknown candidates only when accepted ranking facts keep them below first place.
+  const unresolved = first !== undefined && viable.some((candidate) => conditionStatus(candidate.conditions) === 'unknown' && couldReachFirstRank(candidate, first));
   const selected = !blocked && !unresolved && !tied ? first : undefined;
   return {
     status: selected ? 'selected' : blocked || viable.length ? 'needs-input' : 'no-match',

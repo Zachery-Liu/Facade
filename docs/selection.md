@@ -24,6 +24,10 @@ const result = selectInstallation(manifest, {
 
 未声明最低版本、Linux libc 等限制进入 missingMetadata，不伪造 match，也不阻止推荐。已声明条件但环境未知会阻止自动选择。显示结果时应使用“符合已提供条件”。同分保留选择，名称只稳定排序；Linux 不依靠用途替用户选择包格式。排序先 priority，再精确架构，再用途。首位候选未知或同分候选未决时返回 needs-input；已无法影响首位结果的低排名 unknown 候选不会阻止唯一明确赢家。
 
+判断未知候选无法影响首位时，只能使用策略接受的排序依据。例如 priority 的来源不可信时，不能用其报告的低值跳过候选；只要它仍可能并列或超过首位，就返回 needs-input。返回的 rank 保留输入值对应的排序结果，相关不确定性保留在 conditions 和 evidence 中。
+
+下载规则的 requirements 按整个对象替换；新对象省略已有的最低版本时，该限制被清除。inspect 的覆盖记录会包含原值、执行删除的规则及字段路径，并用 `after: null` 表示删除，JSON 和文本输出均保留该信息。
+
 安装偏好按配置顺序检查 when，未知即停止；首条匹配规则按 prefer 顺序选择方法或 assetIds。命令明确 unavailable 才允许继续；当前列表全不可用或为空时转默认文件选择，不检查后续规则。空文件组产生诊断；不存在的引用是输入错误。`assetMatch` 属于配置编译阶段，选择器只消费解析后的 assetIds。
 
 方法结构为 `{ id, platform, name, command, prerequisites, versionBinding? }`，prerequisites 是 `{ "command-available": "brew" }` 数组。versionBinding 省略时为 unverified；默认允许只读展示，`requireVersionBinding: true` 会要求补充确认。自由文本 command 不影响结构化条件，也不产生执行授权。验证失败应由消费者停止流程，不调用选择器绕过失败。
