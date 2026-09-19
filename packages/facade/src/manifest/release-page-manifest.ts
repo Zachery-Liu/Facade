@@ -3,7 +3,7 @@ import { ARCHITECTURES, ASSET_FORMATS, ASSET_KINDS, LIBC_FAMILIES, OPERATING_SYS
 
 export const EvidenceSchema = z.object({
   path: z.string().regex(/^\/(?:[^~/]|~[01])*(?:\/(?:[^~/]|~[01])*)*$/).optional(),
-  source: z.enum(['github-api', 'project-config', 'filename-rule', 'derived', 'unknown']),
+  source: z.enum(['github-api', 'fixture', 'project-config', 'filename-rule', 'derived', 'unknown']),
   status: z.enum(['explicit', 'provided', 'inferred', 'unknown', 'conflict']).optional(),
   detail: z.string().min(1),
   ruleId: z.string().min(1).optional(),
@@ -95,43 +95,37 @@ export type ManifestEvidence = z.infer<typeof EvidenceSchema>;
 export type VerificationMaterials = z.infer<typeof VerificationMaterialsSchema>;
 
 function normalizeLegacyManifest(input: unknown): unknown {
-  if (!isRecord(input) || ![0, 1].includes(input.schemaVersion as number) || !Array.isArray(input.assets)) return input;
+  if (!isRecord(input) || input.schemaVersion !== 0 || !Array.isArray(input.assets)) return input;
   const releaseTag = typeof input.releaseTag === 'string' ? input.releaseTag : 'unknown';
   const productName = typeof input.productName === 'string' ? input.productName : releaseTag;
-  if (input.schemaVersion === 1) {
-    return {
-      ...input,
-      source: isRecord(input.source) ? input.source : { provider: 'unknown', repository: 'legacy/unknown', repositoryUrl: 'https://example.invalid/legacy/unknown' },
-      release: isRecord(input.release) ? input.release : { id: releaseTag, tag: releaseTag, name: productName, prerelease: false, channel: 'stable' },
-      evidence: Array.isArray(input.evidence) ? input.evidence : [],
-      assets: input.assets.map((asset, index) => normalizeV1Asset(asset, index)),
-    };
-  }
   return {
     ...input,
     schemaVersion: 1,
     source: { provider: 'unknown', repository: 'legacy/unknown', repositoryUrl: 'https://example.invalid/legacy/unknown' },
     release: { id: releaseTag, tag: releaseTag, name: productName, prerelease: false, channel: 'stable' },
-    evidence: [],
+    evidence: legacyManifestEvidence(),
     assets: input.assets.map((asset, index) => normalizeLegacyAsset(asset, index)),
   };
-}
-
-function normalizeV1Asset(input: unknown, index: number): unknown {
-  if (!isRecord(input)) return input;
-  const evidence = isRecord(input.evidence)
-    ? Object.fromEntries(Object.entries(input.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === 'libc' ? 'requirements/libc/family' : field.replaceAll('.', '/')}`)]))
-    : input.evidence;
-  return { ...input, verificationMaterials: input.verificationMaterials ?? { signatures: [], attestations: [] }, evidence };
 }
 
 function normalizeLegacyAsset(input: unknown, index: number): unknown {
   if (!isRecord(input)) return input;
   const label = typeof input.label === 'string' ? input.label : 'Download';
   const kind = input.kind === 'artifact' ? 'archive' : input.kind === 'other' ? 'unknown' : input.kind;
-  const evidence = isRecord(input.evidence)
+  const suppliedEvidence = isRecord(input.evidence)
     ? Object.fromEntries(Object.entries(input.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === 'libc' ? 'requirements/libc/family' : field.replaceAll('.', '/')}`)]))
-    : input.evidence;
+    : {};
+  const basePath = `/assets/${index}`;
+  const requiredFields = [
+    'id', 'name', 'label', 'downloadUrl', 'size', 'os', 'arch', 'format', 'kind', 'priority', 'requirements', 'libc', 'recommendationEligible', 'verificationMaterials',
+    ...(typeof input.signatureFor === 'string' ? ['signatureFor'] : []),
+  ];
+  const evidence = Object.fromEntries(requiredFields.map((field) => [
+    field,
+    suppliedEvidence[field] ?? (field === 'recommendationEligible'
+      ? { path: `${basePath}/recommendationEligible`, source: 'derived', status: 'inferred', detail: 'Legacy assets are not recommendation eligible by default' }
+      : legacyEvidence(`${basePath}/${field === 'libc' ? 'requirements/libc/family' : field}`)),
+  ]));
   return {
     ...input,
     name: typeof input.name === 'string' ? input.name : label,
@@ -143,7 +137,7 @@ function normalizeLegacyAsset(input: unknown, index: number): unknown {
     requirements: normalizeLegacyRequirements(input.requirements),
     recommendationEligible: typeof input.recommendationEligible === 'boolean' ? input.recommendationEligible : false,
     verificationMaterials: { signatures: [], attestations: [] },
-    evidence,
+    evidence: { ...evidence, ...suppliedEvidence },
   };
 }
 
@@ -155,6 +149,15 @@ function normalizeLegacyRequirements(input: unknown): unknown {
 function normalizeLegacyEvidence(input: unknown, path: string): unknown {
   if (!isRecord(input) || typeof input.source !== 'string') return input;
   return { ...input, path, status: typeof input.status === 'string' ? input.status : input.source === 'project-config' ? 'explicit' : 'inferred' };
+}
+
+function legacyEvidence(path: string) {
+  return { path, source: 'unknown' as const, status: 'unknown' as const, detail: 'Unavailable in the legacy manifest protocol' };
+}
+
+function legacyManifestEvidence() {
+  return ['/source/repository', '/source/repositoryUrl', '/release/id', '/release/tag', '/release/name', '/release/prerelease', '/release/channel']
+    .map((path) => legacyEvidence(path));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }

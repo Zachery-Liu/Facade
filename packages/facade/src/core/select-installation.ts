@@ -127,12 +127,13 @@ function result(candidates: CandidateResult[], conditions: ConditionResult[], di
 
 /** Read-only and deterministic: never probes a machine, fetches, downloads or executes. */
 export function selectInstallation(manifestInput: unknown, environmentInput: unknown, policyInput: unknown = {}): SelectionResult {
+  const isPublicV1 = typeof manifestInput === 'object' && manifestInput !== null && Object.getOwnPropertyDescriptor(manifestInput, 'schemaVersion')?.value === 1;
   const parsed = ReleasePageManifestSchema.safeParse(manifestInput);
   const environment = EnvironmentSchema.safeParse(environmentInput);
   const policy = SelectionPolicySchema.safeParse(policyInput);
   if (!parsed.success || !environment.success || !policy.success) return result([], [], ['Invalid manifest, environment or policy'], true);
   const manifest = parsed.data;
-  const errors = validateManifestSemantics(manifest);
+  const errors = validateManifestSemantics(manifest, { requireResolvedManifestEvidence: isPublicV1 });
   if (errors.length) return result([], [], errors.map((error) => `${error.path}: ${error.message}`), true);
   return selectValidated(manifest, environment.data, policy.data);
 }

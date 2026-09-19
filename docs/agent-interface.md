@@ -12,10 +12,10 @@ None of these files authorizes execution. Facade does not download artifacts, co
 
 Consumers must check both layers before making a selection:
 
-1. `ReleasePageManifestJsonSchema` checks the schema-version-1 structure, required fields, URL formats, enums, and JSON Pointer syntax.
+1. `ReleasePageManifestJsonSchema` checks the schema-version-1 structure, required fields (including evidence `path` and `status`), URL formats, enums, and JSON Pointer syntax.
 2. `validateReleasePageManifest` additionally checks semantic references, including unique IDs, installation preference targets, evidence paths, signature-asset purposes, channel consistency, and verification-material references.
 
-Both are exported by `@facade/cli/selection`. Unsupported schema versions and semantic errors fail closed.
+Both are exported by `@facade/cli/selection`. Schema-version-1 input is strict: missing source, release, evidence, or verification fields are never repaired with compatibility defaults. Unsupported versions, incomplete v1 input, and semantic errors fail closed.
 
 ```js
 import {
@@ -37,7 +37,9 @@ if (!validation.success) {
 
 ## Evidence and trust boundary
 
-Evidence entries point to final manifest values with RFC 6901 JSON Pointers. `source` distinguishes GitHub API data, repository configuration, filename inference, derived values, and unresolved values. Inferred filename facts are not author declarations.
+Evidence entries point to final manifest values with unique RFC 6901 JSON Pointers. Every selection and verification field requires evidence with a final-field path and a status compatible with its source: GitHub API and fixture values are `provided`, repository declarations are `explicit`, filename/derived values are `inferred`, and unresolved sources are `unknown`; applicable sources may also report `unknown` or `conflict`. Fixture builds identify fixture-supplied facts as `fixture/provided` rather than GitHub data. Required v1 repository and release evidence must be resolved, and its source must agree with `source.provider`.
+
+For GitHub manifests, the repository URL may point to GitHub.com or GitHub Enterprise, but its two path segments must identify the same `owner/repository` declared by `source.repository`. Different repositories, extra path prefixes, and encoded path separators fail semantic validation.
 
 `verificationMaterials` may name a signature asset and scheme, an expected GitHub Attestation repository, and an author-declared full source commit SHA. These are references only. Their presence never produces `verified: true`, a trust badge, or permission to continue after verification failure. GitHub-provided SHA-256 digests are preserved separately and are likewise not treated as locally verified.
 
@@ -49,6 +51,7 @@ A normal GitHub release defaults to `stable`; a GitHub prerelease defaults to `p
 
 - [`valid-agent-manifest.json`](../examples/manifests/valid-agent-manifest.json) is structurally and semantically valid.
 - [`invalid-unknown-version.json`](../examples/manifests/invalid-unknown-version.json) demonstrates an unsupported protocol version.
+- [`invalid-incomplete-v1.json`](../examples/manifests/invalid-incomplete-v1.json) demonstrates that v1 provenance fields are mandatory and are not synthesized.
 - [`invalid-dangling-signature.json`](../examples/manifests/invalid-dangling-signature.json) is structurally valid but fails semantic reference validation.
 
-Release notes and other author free text are not parsed into commands or compatibility conditions and are not inserted into Agent instructions. Only structured fields influence selection.
+Release notes and other author free text are not parsed into commands or compatibility conditions and are not inserted into Agent instructions. Dynamic identifiers, release tags, and displayed repository URLs are single-line Markdown-escaped in Agent text files. Only structured fields influence selection.

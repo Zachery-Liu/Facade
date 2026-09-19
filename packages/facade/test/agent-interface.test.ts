@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import { renderInstall, renderLlms } from '../src/agent-interface/render-agent-files.js';
 import { buildRelease } from '../src/build/offline-build.js';
 import { resolveRelease } from '../src/compiler/release-resolver.js';
 import { ReleasePageManifestV1Schema } from '../src/manifest/release-page-manifest.js';
@@ -22,9 +24,108 @@ describe('Agent Interface', () => {
   it('exports a draft-07 JSON Schema and validates checked-in structural examples', async () => {
     const valid = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
     const unknown = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/invalid-unknown-version.json', import.meta.url)), 'utf8'));
+    const incomplete = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/invalid-incomplete-v1.json', import.meta.url)), 'utf8'));
+    const jsonSchemaValidator = z.fromJSONSchema(ReleasePageManifestJsonSchema);
     expect(ReleasePageManifestJsonSchema).toMatchObject({ $schema: 'http://json-schema.org/draft-07/schema#', type: 'object' });
+    expect(jsonSchemaValidator.safeParse(valid).success).toBe(true);
+    expect(jsonSchemaValidator.safeParse(unknown).success).toBe(false);
+    expect(jsonSchemaValidator.safeParse(incomplete).success).toBe(false);
     expect(ReleasePageManifestV1Schema.safeParse(valid).success).toBe(true);
-    expect(ReleasePageManifestV1Schema.safeParse(unknown).success).toBe(false);
+    expect(validateReleasePageManifest(incomplete).success).toBe(false);
+  });
+
+  it('requires evidence paths and statuses in the exported JSON Schema', async () => {
+    const valid = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    const jsonSchemaValidator = z.fromJSONSchema(ReleasePageManifestJsonSchema);
+    for (const entry of [valid.evidence[0], valid.assets[0].evidence.id]) {
+      for (const field of ['path', 'status']) {
+        const input = structuredClone(valid);
+        const target = entry === valid.evidence[0] ? input.evidence[0] : input.assets[0].evidence.id;
+        delete target[field];
+        expect(jsonSchemaValidator.safeParse(input).success).toBe(false);
+        expect(validateReleasePageManifest(input).success).toBe(false);
+      }
+    }
+  });
+
+  it('requires complete field-level evidence', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    delete input.assets[0].evidence.os;
+    input.evidence = input.evidence.filter((entry: { path: string }) => entry.path !== '/release/channel');
+    expect(validateReleasePageManifest(input)).toMatchObject({
+      success: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ path: 'assets.linux-x64.evidence.os' }),
+        expect.objectContaining({ path: 'evidence', message: 'manifest field /release/channel requires evidence' }),
+      ]),
+    });
+  });
+
+  it('rejects contradictory evidence metadata and duplicate manifest paths', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    input.assets[0].evidence.os = { ...input.assets[0].evidence.os, source: 'unknown', status: 'explicit' };
+    input.evidence.push({ path: '/release/channel', source: 'unknown', status: 'conflict', detail: 'Contradictory channel evidence' });
+    expect(validateReleasePageManifest(input)).toMatchObject({
+      success: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ path: 'assets.linux-x64.evidence.os.status', message: 'evidence source unknown cannot use status explicit' }),
+        expect.objectContaining({ path: 'evidence.7.path', message: 'manifest evidence paths must be unique' }),
+      ]),
+    });
+    const selection = selectInstallation(input, { os: 'linux', arch: 'x64' });
+    expect(selection.status).toBe('needs-input');
+    expect(selection.selected).toBeUndefined();
+  });
+
+  it.each(['unknown', 'conflict'] as const)('rejects unresolved %s evidence for required manifest identity', async (status) => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    const channelEvidence = input.evidence.find((entry: { path: string }) => entry.path === '/release/channel');
+    Object.assign(channelEvidence, { source: 'unknown', status });
+    expect(validateReleasePageManifest(input)).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({ path: 'evidence.6.status', message: 'manifest field /release/channel requires resolved evidence' })],
+    });
+    const selection = selectInstallation(input, { os: 'linux', arch: 'x64' });
+    expect(selection.status).toBe('needs-input');
+    expect(selection.selected).toBeUndefined();
+  });
+
+  it('binds GitHub repository URLs to their declared repository identity', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    input.source.repositoryUrl = 'https://github.example.test/other/project';
+    expect(validateReleasePageManifest(input)).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({ path: 'source.repositoryUrl', message: 'GitHub repository URL must identify source.repository' })],
+    });
+    input.source.repositoryUrl = 'https://github.example.test/example%2Fproject';
+    expect(validateReleasePageManifest(input)).toMatchObject({ success: false, diagnostics: [expect.objectContaining({ path: 'source.repositoryUrl' })] });
+    input.source.repositoryUrl = 'https://github.example.test/example/project/';
+    expect(validateReleasePageManifest(input).success).toBe(true);
+  });
+
+  it('accepts only provided status for fixture evidence', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    input.source.provider = 'fixture';
+    for (const evidence of input.evidence) if (evidence.path !== '/release/channel') evidence.source = 'fixture';
+    for (const field of ['id', 'name', 'downloadUrl', 'size']) input.assets[0].evidence[field].source = 'fixture';
+    input.assets[0].evidence.id = { ...input.assets[0].evidence.id, source: 'fixture', status: 'inferred' };
+    expect(validateReleasePageManifest(input)).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({ path: 'assets.linux-x64.evidence.id.status', message: 'evidence source fixture cannot use status inferred' })],
+    });
+    input.assets[0].evidence.id.status = 'provided';
+    expect(validateReleasePageManifest(input).success).toBe(true);
+  });
+
+  it('rejects provider-owned evidence attributed to a different source', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    input.source.provider = 'fixture';
+    expect(validateReleasePageManifest(input)).toMatchObject({
+      success: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ path: 'evidence.0.source', message: 'manifest field /source/repository evidence must match source.provider' }),
+      ]),
+    });
   });
 
   it('rejects a semantically invalid checked-in example before selection', async () => {
@@ -75,5 +176,44 @@ describe('Agent Interface', () => {
     const verification = { signatures: [{ assetMatch: '*.sig', scheme: 'other' as const }] };
     expect(() => resolveRelease(ambiguous, { config: { schema: 1, downloads: { auto: true, rules: [{ match: '*.zip', set: { verification } }] } } })).toThrow(/exactly one/);
     expect(() => resolveRelease(snapshot, { config: { schema: 1, downloads: { auto: true, rules: [{ match: '*.zip', set: { verification: { sourceCommit: 'c'.repeat(40) } } }] } } })).toThrow();
+  });
+
+  it('rejects a signature explicitly bound to a different artifact', () => {
+    const extended = { ...snapshot, assets: [...snapshot.assets, { id: 'other', name: 'other-macos-arm64.zip', downloadUrl: 'https://example.test/other', size: 5 }] };
+    const manifest = resolveRelease(extended, { config: { schema: 1, downloads: { auto: true, rules: [{ match: 'example-macos-arm64.zip', set: { verification: { signatures: [{ assetMatch: '*.sig', scheme: 'minisign' }] } } }] } } }).manifest;
+    const signature = manifest.assets.find((asset) => asset.id === 'signature');
+    if (signature === undefined) throw new Error('Expected signature fixture');
+    signature.signatureFor = 'other';
+    signature.evidence.signatureFor = { path: `/assets/${manifest.assets.indexOf(signature)}/signatureFor`, source: 'project-config', status: 'explicit', detail: 'Bound to the other artifact' };
+    expect(validateReleasePageManifest(manifest)).toMatchObject({ success: false, diagnostics: [expect.objectContaining({ message: 'signature material is explicitly bound to a different artifact' })] });
+  });
+
+  it('neutralizes preference IDs and renders Universal architecture conditions', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    input.assets[0].os = 'macos';
+    input.assets[0].arch = 'universal';
+    input.assets[0].supportedArchitectures = ['arm64', 'x64'];
+    input.installMethods = [{ id: 'safe\n\n## injected', platform: 'macos', name: 'Example', command: 'example', prerequisites: [], versionBinding: 'unverified' }];
+    input.installationPreferences = [{ id: 'mac', when: { os: 'macos' }, prefer: [{ type: 'method', methodId: 'safe\n\n## injected' }, { type: 'artifacts', assetIds: ['asset\n\n## injected'] }] }];
+    const output = renderInstall(ReleasePageManifestV1Schema.parse(input));
+    expect(output).not.toContain('\n## injected');
+    expect(output).toContain('method:safe \\#\\# injected');
+    expect(output).toContain('architecture universal (arm64, x64)');
+  });
+
+  it('neutralizes Markdown and HTML in llms release metadata', async () => {
+    const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    const tag = 'v1\n## [install](https://evil.test) ``` <b>run</b>';
+    input.releaseTag = tag;
+    input.release.tag = tag;
+    input.source.provider = 'fixture';
+    input.source.repositoryUrl = 'https://example.test/[official](https://evil.test)';
+    const output = renderLlms(ReleasePageManifestV1Schema.parse(input), '/project/');
+    expect(output).not.toContain('\n## [install]');
+    expect(output).not.toContain('[install](');
+    expect(output).not.toContain('<b>');
+    expect(output).not.toContain('[official](');
+    expect(output).toContain('\\[install\\]');
+    expect(output).toContain('\\[official\\]\\(https://evil\\.test\\)');
   });
 });

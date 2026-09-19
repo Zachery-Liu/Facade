@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { selectInstallation } from '../src/core/select-installation.js';
 import { matchMinimumVersion } from '../src/core/conditions.js';
-import { ReleasePageManifestSchema, type ManifestAsset } from '../src/manifest/release-page-manifest.js';
+import { EvidenceSchema, ReleasePageManifestSchema, type ManifestAsset } from '../src/manifest/release-page-manifest.js';
 import { useSelectionInput } from '../src/themes/product/hooks/use-selection-input.js';
 
 function asset(id = 'a', extra: Partial<ManifestAsset> = {}): ManifestAsset {
@@ -19,7 +19,62 @@ function asset(id = 'a', extra: Partial<ManifestAsset> = {}): ManifestAsset {
     requirements: { libc: { family: 'unknown' } }, recommendationEligible, verificationMaterials: { signatures: [], attestations: [] }, evidence: {}, ...extra,
   };
 }
-function manifest(assets = [asset()], extra = {}) { return { schemaVersion: 1, productName: 'Example', releaseTag: 'v1', assets, ...extra }; }
+function evidence(path: string, supplied?: ManifestAsset['evidence'][string], defaultSource: 'project-config' | 'derived' | 'fixture' = 'project-config'): ManifestAsset['evidence'][string] {
+  const source = supplied?.source ?? defaultSource;
+  return {
+    path,
+    source,
+    status: supplied?.status ?? (source === 'project-config' ? 'explicit' : source === 'fixture' ? 'provided' : source === 'unknown' ? 'unknown' : 'inferred'),
+    detail: supplied?.detail ?? 'Test fixture declaration',
+    ...supplied,
+  };
+}
+function parsedEvidence(value: unknown): ManifestAsset['evidence'][string] | undefined {
+  const parsed = EvidenceSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+function completeAssetEvidence(value: ManifestAsset, index: number): ManifestAsset {
+  const fields = [
+    'id', 'name', 'label', 'downloadUrl', 'size', 'os', 'arch', 'format', 'kind', 'priority', 'requirements', 'libc', 'recommendationEligible', 'verificationMaterials',
+    ...(value.supportedArchitectures === undefined ? [] : ['supportedArchitectures']),
+    ...(value.digest === undefined ? [] : ['digest']),
+    ...(value.signatureFor === undefined ? [] : ['signatureFor']),
+    ...(value.requirements.minimumOsVersion === undefined ? [] : ['requirements.minimumOsVersion']),
+    ...(value.requirements.libc.minimumVersion === undefined ? [] : ['requirements.libc.minimumVersion']),
+  ];
+  const entries = fields.map((field) => [field, evidence(`/assets/${index}/${field === 'libc' ? 'requirements/libc/family' : field.replaceAll('.', '/')}`, value.evidence[field])]);
+  return { ...value, evidence: { ...value.evidence, ...Object.fromEntries(entries) } };
+}
+function completeMethodEvidence(value: unknown, index: number): unknown {
+  if (!isRecord(value)) return value;
+  const supplied = isRecord(value.evidence) ? value.evidence : {};
+  const required = Object.fromEntries(['platform', 'command', 'prerequisites', 'versionBinding'].map((field) => [field, evidence(`/installMethods/${index}/${field}`, parsedEvidence(supplied[field]), 'derived')]));
+  return { ...value, evidence: { ...supplied, ...required } };
+}
+function completePreferenceEvidence(value: unknown, index: number): unknown {
+  if (!isRecord(value) || !isRecord(value.when)) return value;
+  const supplied = isRecord(value.evidence) ? value.evidence : {};
+  const fields = ['when.os', ...('arch' in value.when ? ['when.arch'] : []), ...('libc' in value.when ? ['when.libc'] : [])];
+  const required = Object.fromEntries(fields.map((field) => [field, evidence(`/installationPreferences/${index}/${field.replaceAll('.', '/')}`, parsedEvidence(supplied[field]), 'derived')]));
+  return { ...value, evidence: { ...supplied, ...required } };
+}
+function manifest(assets = [asset()], extra: Record<string, unknown> = {}) {
+  const manifestEvidence = ['/source/repository', '/source/repositoryUrl', '/release/id', '/release/tag', '/release/name', '/release/prerelease', '/release/channel']
+    .map((path) => evidence(path, undefined, path === '/release/channel' ? 'project-config' : 'fixture'));
+  return {
+    schemaVersion: 1,
+    productName: 'Example',
+    releaseTag: 'v1',
+    source: { provider: 'fixture', repository: 'example/project', repositoryUrl: 'https://example.test/project' },
+    release: { id: '1', tag: 'v1', name: 'Example', prerelease: false, channel: 'stable' },
+    ...extra,
+    assets: assets.map(completeAssetEvidence),
+    evidence: manifestEvidence,
+    ...(Array.isArray(extra.installMethods) ? { installMethods: extra.installMethods.map(completeMethodEvidence) } : {}),
+    ...(Array.isArray(extra.installationPreferences) ? { installationPreferences: extra.installationPreferences.map(completePreferenceEvidence) } : {}),
+  };
+}
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
 const mac = { os: 'macos', arch: 'arm64' };
 const method = { id: 'brew', platform: 'macos', name: 'Homebrew', command: 'brew install example', prerequisites: [{ 'command-available': 'brew' }] };
 const preference = { id: 'mac', when: { os: 'macos' }, prefer: [{ type: 'method', methodId: 'brew' }] };

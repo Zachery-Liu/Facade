@@ -84,6 +84,7 @@ const RECOMMENDABLE_KINDS = new Set<AssetKind>(['installer', 'portable', 'archiv
 
 export function resolveRelease(snapshotInput: RepositorySnapshot, options: ResolveReleaseOptions = {}): ReleaseResolution {
   const snapshot = RepositorySnapshotSchema.parse(snapshotInput);
+  const provider = options.provider ?? 'fixture';
   const config = FacadeConfigInputSchema.parse(options.config ?? { schema: 1 });
   const downloads = config.downloads ?? { auto: true, rules: [] };
   const assets = snapshot.assets.map((asset): MutableAsset => {
@@ -111,7 +112,7 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
   const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
   reconcileFinalRequirements(assets);
   let publicIndex = 0;
-  const inspectAssets = assets.map((asset) => finalizeAsset(asset, asset.excluded ? 0 : publicIndex++));
+  const inspectAssets = assets.map((asset) => finalizeAsset(asset, asset.excluded ? 0 : publicIndex++, provider));
   const includedAssets = inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final);
   applyVerificationMaterials(assets.filter((asset) => !asset.excluded), includedAssets);
   const installMethods = compileInstallMethods(config.install ?? []);
@@ -119,15 +120,16 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
   const diagnostics: BuildDiagnostic[] = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
   const channel = config.release?.channel ?? (snapshot.release.prerelease ? 'prerelease' : 'stable');
   if (channel === 'stable' && snapshot.release.prerelease) throw new FacadeError('CONFIG_INVALID', 'A prerelease source cannot be declared as the stable channel.');
-  const source = { provider: options.provider ?? 'unknown', repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
+  const source = { provider, repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
   const release = { id: snapshot.release.id, tag: snapshot.release.tagName, name: snapshot.release.name, prerelease: snapshot.release.prerelease, channel };
+  const providerEvidence = providedSourceEvidence(provider);
   const manifestEvidence = [
-    evidenceAt('/source/repository', 'github-api', 'provided', 'Preserved from the validated repository source'),
-    evidenceAt('/source/repositoryUrl', 'github-api', 'provided', 'Preserved from the validated repository source'),
-    evidenceAt('/release/id', 'github-api', 'provided', 'Preserved from the validated release source'),
-    evidenceAt('/release/tag', 'github-api', 'provided', 'Preserved from the validated release source'),
-    evidenceAt('/release/name', 'github-api', 'provided', 'Preserved from the validated release source'),
-    evidenceAt('/release/prerelease', 'github-api', 'provided', 'Preserved from the validated release source'),
+    evidenceAt('/source/repository', providerEvidence.source, providerEvidence.status, 'Preserved from the validated repository source'),
+    evidenceAt('/source/repositoryUrl', providerEvidence.source, providerEvidence.status, 'Preserved from the validated repository source'),
+    evidenceAt('/release/id', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
+    evidenceAt('/release/tag', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
+    evidenceAt('/release/name', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
+    evidenceAt('/release/prerelease', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
     config.release?.channel === undefined
       ? { ...evidenceAt('/release/channel', 'derived', 'inferred', 'Derived only from the source prerelease flag'), derivedFrom: ['/release/prerelease'] }
       : { ...evidenceAt('/release/channel', 'project-config', 'explicit', 'Declared in repository configuration'), configPath: 'release.channel' },
@@ -154,7 +156,7 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
         id: snapshot.release.id,
         tag: snapshot.release.tagName,
         name: snapshot.release.name,
-        selection: options.selection ?? (options.provider === 'fixture' ? 'fixture' : config.release?.strategy ?? 'github-latest'),
+        selection: options.selection ?? (provider === 'fixture' ? 'fixture' : config.release?.strategy ?? 'github-latest'),
       },
       assets: inspectAssets,
       rules,
@@ -261,18 +263,29 @@ function recordChange(asset: MutableAsset, ruleId: string, field: OverrideTrace[
   asset.overrides.push({ ruleId, configPath, field, before, after });
 }
 
-function finalizeAsset(asset: MutableAsset, publicIndex: number): InspectAsset {
+function finalizeAsset(asset: MutableAsset, publicIndex: number, provider: NonNullable<ResolveReleaseOptions['provider']>): InspectAsset {
   const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === 'conflict');
   const universalSupported = asset.arch !== 'universal' || (asset.os === 'macos' && asset.supportedArchitectures !== undefined);
   const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== 'unknown' && asset.arch !== 'unknown' && universalSupported && RECOMMENDABLE_KINDS.has(asset.kind);
   const assetPath = `/assets/${publicIndex}`;
-  const sourceEvidence = { path: '', source: 'github-api' as const, status: 'provided' as const, detail: 'Preserved from the validated release source' };
+  const sourceEvidence = { path: '', ...providedSourceEvidence(provider), detail: 'Preserved from the validated release source' };
   const labelTrace = findLastTrace(asset.overrides, 'label');
   const priorityTrace = findLastTrace(asset.overrides, 'priority');
   const labelEvidence = labelTrace === undefined ? sourceEvidence : configuredEvidence(labelTrace);
   const priorityEvidence = priorityTrace === undefined
     ? { source: 'derived' as const, status: 'inferred' as const, detail: 'Default priority 0' }
     : configuredEvidence(priorityTrace);
+  const recommendationEvidence = {
+    source: 'derived' as const,
+    status: 'inferred' as const,
+    detail: 'Derived from final compatibility classification, conflicts, exclusion state, and asset kind',
+    derivedFrom: [`${assetPath}/os`, `${assetPath}/arch`, `${assetPath}/format`, `${assetPath}/kind`, `${assetPath}/requirements/libc/family`],
+  };
+  const verificationEvidence = {
+    source: 'unknown' as const,
+    status: 'unknown' as const,
+    detail: 'No verification materials were declared',
+  };
   const final = ManifestAssetSchema.parse({
     id: asset.source.id,
     name: asset.source.name,
@@ -292,7 +305,7 @@ function finalizeAsset(asset: MutableAsset, publicIndex: number): InspectAsset {
     recommendationEligible,
     ...(asset.source.digest === undefined ? {} : { digest: asset.source.digest }),
     verificationMaterials: { signatures: [], attestations: [] },
-    evidence: withEvidencePaths(assetPath, { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...(asset.source.digest === undefined ? {} : { digest: sourceEvidence }), ...asset.additionalEvidence }),
+    evidence: withEvidencePaths(assetPath, { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, recommendationEligible: recommendationEvidence, verificationMaterials: verificationEvidence, ...(asset.source.digest === undefined ? {} : { digest: sourceEvidence }), ...asset.additionalEvidence }),
   });
   return {
     source: asset.source,
@@ -387,8 +400,17 @@ function derivedEvidence(detail: string, path: string) {
   return { path, source: 'derived' as const, status: 'inferred' as const, detail };
 }
 
-function evidenceAt(path: string, source: 'github-api' | 'project-config' | 'filename-rule' | 'derived' | 'unknown', status: 'explicit' | 'provided' | 'inferred' | 'unknown' | 'conflict', detail: string) {
+function evidenceAt(path: string, source: ManifestEvidenceSource, status: 'explicit' | 'provided' | 'inferred' | 'unknown' | 'conflict', detail: string) {
   return { path, source, status, detail };
+}
+
+type ManifestEvidenceSource = ManifestAsset['evidence'][string]['source'];
+
+function providedSourceEvidence(provider: NonNullable<ResolveReleaseOptions['provider']>):
+  { source: 'github-api' | 'fixture'; status: 'provided' } | { source: 'unknown'; status: 'unknown' } {
+  if (provider === 'github') return { source: 'github-api', status: 'provided' };
+  if (provider === 'fixture') return { source: 'fixture', status: 'provided' };
+  return { source: 'unknown', status: 'unknown' };
 }
 
 function withEvidencePaths(base: string, evidence: ManifestAsset['evidence']): ManifestAsset['evidence'] {

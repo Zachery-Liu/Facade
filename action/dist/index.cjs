@@ -48315,7 +48315,7 @@ var FacadeConfigInputSchema = external_exports.object({
 // src/manifest/release-page-manifest.ts
 var EvidenceSchema = external_exports.object({
   path: external_exports.string().regex(/^\/(?:[^~/]|~[01])*(?:\/(?:[^~/]|~[01])*)*$/).optional(),
-  source: external_exports.enum(["github-api", "project-config", "filename-rule", "derived", "unknown"]),
+  source: external_exports.enum(["github-api", "fixture", "project-config", "filename-rule", "derived", "unknown"]),
   status: external_exports.enum(["explicit", "provided", "inferred", "unknown", "conflict"]).optional(),
   detail: external_exports.string().min(1),
   ruleId: external_exports.string().min(1).optional(),
@@ -48404,37 +48404,45 @@ var ReleasePageManifestV1Schema = external_exports.object({
 }).strict();
 var ReleasePageManifestSchema = external_exports.preprocess(normalizeLegacyManifest, ReleasePageManifestV1Schema);
 function normalizeLegacyManifest(input2) {
-  if (!isRecord(input2) || ![0, 1].includes(input2.schemaVersion) || !Array.isArray(input2.assets)) return input2;
+  if (!isRecord(input2) || input2.schemaVersion !== 0 || !Array.isArray(input2.assets)) return input2;
   const releaseTag = typeof input2.releaseTag === "string" ? input2.releaseTag : "unknown";
   const productName = typeof input2.productName === "string" ? input2.productName : releaseTag;
-  if (input2.schemaVersion === 1) {
-    return {
-      ...input2,
-      source: isRecord(input2.source) ? input2.source : { provider: "unknown", repository: "legacy/unknown", repositoryUrl: "https://example.invalid/legacy/unknown" },
-      release: isRecord(input2.release) ? input2.release : { id: releaseTag, tag: releaseTag, name: productName, prerelease: false, channel: "stable" },
-      evidence: Array.isArray(input2.evidence) ? input2.evidence : [],
-      assets: input2.assets.map((asset, index) => normalizeV1Asset(asset, index))
-    };
-  }
   return {
     ...input2,
     schemaVersion: 1,
     source: { provider: "unknown", repository: "legacy/unknown", repositoryUrl: "https://example.invalid/legacy/unknown" },
     release: { id: releaseTag, tag: releaseTag, name: productName, prerelease: false, channel: "stable" },
-    evidence: [],
+    evidence: legacyManifestEvidence(),
     assets: input2.assets.map((asset, index) => normalizeLegacyAsset(asset, index))
   };
-}
-function normalizeV1Asset(input2, index) {
-  if (!isRecord(input2)) return input2;
-  const evidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`)])) : input2.evidence;
-  return { ...input2, verificationMaterials: input2.verificationMaterials ?? { signatures: [], attestations: [] }, evidence };
 }
 function normalizeLegacyAsset(input2, index) {
   if (!isRecord(input2)) return input2;
   const label = typeof input2.label === "string" ? input2.label : "Download";
   const kind = input2.kind === "artifact" ? "archive" : input2.kind === "other" ? "unknown" : input2.kind;
-  const evidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`)])) : input2.evidence;
+  const suppliedEvidence = isRecord(input2.evidence) ? Object.fromEntries(Object.entries(input2.evidence).map(([field, value]) => [field, normalizeLegacyEvidence(value, `/assets/${index}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`)])) : {};
+  const basePath = `/assets/${index}`;
+  const requiredFields = [
+    "id",
+    "name",
+    "label",
+    "downloadUrl",
+    "size",
+    "os",
+    "arch",
+    "format",
+    "kind",
+    "priority",
+    "requirements",
+    "libc",
+    "recommendationEligible",
+    "verificationMaterials",
+    ...typeof input2.signatureFor === "string" ? ["signatureFor"] : []
+  ];
+  const evidence = Object.fromEntries(requiredFields.map((field) => [
+    field,
+    suppliedEvidence[field] ?? (field === "recommendationEligible" ? { path: `${basePath}/recommendationEligible`, source: "derived", status: "inferred", detail: "Legacy assets are not recommendation eligible by default" } : legacyEvidence(`${basePath}/${field === "libc" ? "requirements/libc/family" : field}`))
+  ]));
   return {
     ...input2,
     name: typeof input2.name === "string" ? input2.name : label,
@@ -48446,7 +48454,7 @@ function normalizeLegacyAsset(input2, index) {
     requirements: normalizeLegacyRequirements(input2.requirements),
     recommendationEligible: typeof input2.recommendationEligible === "boolean" ? input2.recommendationEligible : false,
     verificationMaterials: { signatures: [], attestations: [] },
-    evidence
+    evidence: { ...evidence, ...suppliedEvidence }
   };
 }
 function normalizeLegacyRequirements(input2) {
@@ -48457,6 +48465,12 @@ function normalizeLegacyEvidence(input2, path6) {
   if (!isRecord(input2) || typeof input2.source !== "string") return input2;
   return { ...input2, path: path6, status: typeof input2.status === "string" ? input2.status : input2.source === "project-config" ? "explicit" : "inferred" };
 }
+function legacyEvidence(path6) {
+  return { path: path6, source: "unknown", status: "unknown", detail: "Unavailable in the legacy manifest protocol" };
+}
+function legacyManifestEvidence() {
+  return ["/source/repository", "/source/repositoryUrl", "/release/id", "/release/tag", "/release/name", "/release/prerelease", "/release/channel"].map((path6) => legacyEvidence(path6));
+}
 function isRecord(value) {
   return typeof value === "object" && value !== null;
 }
@@ -48465,6 +48479,7 @@ function isRecord(value) {
 var RECOMMENDABLE_KINDS = /* @__PURE__ */ new Set(["installer", "portable", "archive"]);
 function resolveRelease(snapshotInput, options = {}) {
   const snapshot = RepositorySnapshotSchema.parse(snapshotInput);
+  const provider = options.provider ?? "fixture";
   const config2 = FacadeConfigInputSchema.parse(options.config ?? { schema: 1 });
   const downloads = config2.downloads ?? { auto: true, rules: [] };
   const assets = snapshot.assets.map((asset) => {
@@ -48492,7 +48507,7 @@ function resolveRelease(snapshotInput, options = {}) {
   const rules = downloads.rules.map((rule, index) => applyRule(rule, index, snapshot.release.tagName, assets, ruleDiagnostics));
   reconcileFinalRequirements(assets);
   let publicIndex = 0;
-  const inspectAssets = assets.map((asset) => finalizeAsset(asset, asset.excluded ? 0 : publicIndex++));
+  const inspectAssets = assets.map((asset) => finalizeAsset(asset, asset.excluded ? 0 : publicIndex++, provider));
   const includedAssets = inspectAssets.filter((asset) => !asset.excluded).map((asset) => asset.final);
   applyVerificationMaterials(assets.filter((asset) => !asset.excluded), includedAssets);
   const installMethods = compileInstallMethods(config2.install ?? []);
@@ -48500,15 +48515,16 @@ function resolveRelease(snapshotInput, options = {}) {
   const diagnostics = [...assets.flatMap((asset) => asset.diagnostics), ...ruleDiagnostics];
   const channel = config2.release?.channel ?? (snapshot.release.prerelease ? "prerelease" : "stable");
   if (channel === "stable" && snapshot.release.prerelease) throw new FacadeError("CONFIG_INVALID", "A prerelease source cannot be declared as the stable channel.");
-  const source = { provider: options.provider ?? "unknown", repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
+  const source = { provider, repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
   const release = { id: snapshot.release.id, tag: snapshot.release.tagName, name: snapshot.release.name, prerelease: snapshot.release.prerelease, channel };
+  const providerEvidence = providedSourceEvidence(provider);
   const manifestEvidence = [
-    evidenceAt("/source/repository", "github-api", "provided", "Preserved from the validated repository source"),
-    evidenceAt("/source/repositoryUrl", "github-api", "provided", "Preserved from the validated repository source"),
-    evidenceAt("/release/id", "github-api", "provided", "Preserved from the validated release source"),
-    evidenceAt("/release/tag", "github-api", "provided", "Preserved from the validated release source"),
-    evidenceAt("/release/name", "github-api", "provided", "Preserved from the validated release source"),
-    evidenceAt("/release/prerelease", "github-api", "provided", "Preserved from the validated release source"),
+    evidenceAt("/source/repository", providerEvidence.source, providerEvidence.status, "Preserved from the validated repository source"),
+    evidenceAt("/source/repositoryUrl", providerEvidence.source, providerEvidence.status, "Preserved from the validated repository source"),
+    evidenceAt("/release/id", providerEvidence.source, providerEvidence.status, "Preserved from the validated release source"),
+    evidenceAt("/release/tag", providerEvidence.source, providerEvidence.status, "Preserved from the validated release source"),
+    evidenceAt("/release/name", providerEvidence.source, providerEvidence.status, "Preserved from the validated release source"),
+    evidenceAt("/release/prerelease", providerEvidence.source, providerEvidence.status, "Preserved from the validated release source"),
     config2.release?.channel === void 0 ? { ...evidenceAt("/release/channel", "derived", "inferred", "Derived only from the source prerelease flag"), derivedFrom: ["/release/prerelease"] } : { ...evidenceAt("/release/channel", "project-config", "explicit", "Declared in repository configuration"), configPath: "release.channel" },
     ...includedAssets.flatMap((asset) => Object.values(asset.evidence)),
     ...installMethods.flatMap((method) => Object.values(method.evidence ?? {})),
@@ -48533,7 +48549,7 @@ function resolveRelease(snapshotInput, options = {}) {
         id: snapshot.release.id,
         tag: snapshot.release.tagName,
         name: snapshot.release.name,
-        selection: options.selection ?? (options.provider === "fixture" ? "fixture" : config2.release?.strategy ?? "github-latest")
+        selection: options.selection ?? (provider === "fixture" ? "fixture" : config2.release?.strategy ?? "github-latest")
       },
       assets: inspectAssets,
       rules,
@@ -48638,16 +48654,27 @@ function recordChange(asset, ruleId, field, before, after) {
   const configPath = field === "exclude" ? `${ruleId}.exclude` : `${ruleId}.set.${field === "libc" ? "requirements.libc.family" : field}`;
   asset.overrides.push({ ruleId, configPath, field, before, after });
 }
-function finalizeAsset(asset, publicIndex) {
+function finalizeAsset(asset, publicIndex, provider) {
   const hasConflict = Object.values(asset.evidence).some((evidence) => evidence.status === "conflict");
   const universalSupported = asset.arch !== "universal" || asset.os === "macos" && asset.supportedArchitectures !== void 0;
   const recommendationEligible = !asset.excluded && !hasConflict && asset.os !== "unknown" && asset.arch !== "unknown" && universalSupported && RECOMMENDABLE_KINDS.has(asset.kind);
   const assetPath = `/assets/${publicIndex}`;
-  const sourceEvidence = { path: "", source: "github-api", status: "provided", detail: "Preserved from the validated release source" };
+  const sourceEvidence = { path: "", ...providedSourceEvidence(provider), detail: "Preserved from the validated release source" };
   const labelTrace = findLastTrace(asset.overrides, "label");
   const priorityTrace = findLastTrace(asset.overrides, "priority");
   const labelEvidence = labelTrace === void 0 ? sourceEvidence : configuredEvidence(labelTrace);
   const priorityEvidence = priorityTrace === void 0 ? { source: "derived", status: "inferred", detail: "Default priority 0" } : configuredEvidence(priorityTrace);
+  const recommendationEvidence = {
+    source: "derived",
+    status: "inferred",
+    detail: "Derived from final compatibility classification, conflicts, exclusion state, and asset kind",
+    derivedFrom: [`${assetPath}/os`, `${assetPath}/arch`, `${assetPath}/format`, `${assetPath}/kind`, `${assetPath}/requirements/libc/family`]
+  };
+  const verificationEvidence = {
+    source: "unknown",
+    status: "unknown",
+    detail: "No verification materials were declared"
+  };
   const final = ManifestAssetSchema.parse({
     id: asset.source.id,
     name: asset.source.name,
@@ -48667,7 +48694,7 @@ function finalizeAsset(asset, publicIndex) {
     recommendationEligible,
     ...asset.source.digest === void 0 ? {} : { digest: asset.source.digest },
     verificationMaterials: { signatures: [], attestations: [] },
-    evidence: withEvidencePaths(assetPath, { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, ...asset.source.digest === void 0 ? {} : { digest: sourceEvidence }, ...asset.additionalEvidence })
+    evidence: withEvidencePaths(assetPath, { id: sourceEvidence, name: sourceEvidence, label: labelEvidence, downloadUrl: sourceEvidence, size: sourceEvidence, os: asset.evidence.os, arch: asset.evidence.arch, format: asset.evidence.format, kind: asset.evidence.kind, priority: priorityEvidence, requirements: asset.evidence.libc, libc: asset.evidence.libc, recommendationEligible: recommendationEvidence, verificationMaterials: verificationEvidence, ...asset.source.digest === void 0 ? {} : { digest: sourceEvidence }, ...asset.additionalEvidence })
   });
   return {
     source: asset.source,
@@ -48746,6 +48773,11 @@ function derivedEvidence(detail, path6) {
 function evidenceAt(path6, source, status, detail) {
   return { path: path6, source, status, detail };
 }
+function providedSourceEvidence(provider) {
+  if (provider === "github") return { source: "github-api", status: "provided" };
+  if (provider === "fixture") return { source: "fixture", status: "provided" };
+  return { source: "unknown", status: "unknown" };
+}
 function withEvidencePaths(base, evidence) {
   return Object.fromEntries(Object.entries(evidence).map(([field, entry]) => [field, { ...entry, path: `${base}/${evidenceFieldPointer(field)}` }]));
 }
@@ -48800,6 +48832,17 @@ function matchesGlob(value, glob) {
 
 // src/manifest/semantic-validation.ts
 var EVIDENCE_FIELDS = /* @__PURE__ */ new Set(["id", "label", "name", "size", "downloadUrl", "os", "arch", "format", "kind", "priority", "requirements", "libc", "supportedArchitectures", "recommendationEligible", "signatureFor", "digest", "verificationMaterials", "requirements.minimumOsVersion", "requirements.libc.family", "requirements.libc.minimumVersion"]);
+var REQUIRED_ASSET_EVIDENCE_FIELDS = ["id", "name", "label", "downloadUrl", "size", "os", "arch", "format", "kind", "priority", "requirements", "libc", "recommendationEligible", "verificationMaterials"];
+var REQUIRED_MANIFEST_EVIDENCE_PATHS = ["/source/repository", "/source/repositoryUrl", "/release/id", "/release/tag", "/release/name", "/release/prerelease", "/release/channel"];
+var PROVIDER_OWNED_MANIFEST_EVIDENCE_PATHS = /* @__PURE__ */ new Set(["/source/repository", "/source/repositoryUrl", "/release/id", "/release/tag", "/release/name", "/release/prerelease"]);
+var EVIDENCE_SOURCE_STATUSES = {
+  "github-api": /* @__PURE__ */ new Set(["provided"]),
+  fixture: /* @__PURE__ */ new Set(["provided"]),
+  "project-config": /* @__PURE__ */ new Set(["explicit", "unknown", "conflict"]),
+  "filename-rule": /* @__PURE__ */ new Set(["inferred", "unknown", "conflict"]),
+  derived: /* @__PURE__ */ new Set(["inferred", "unknown", "conflict"]),
+  unknown: /* @__PURE__ */ new Set(["unknown", "conflict"])
+};
 var RECOMMENDABLE_KINDS2 = /* @__PURE__ */ new Set(["installer", "portable", "archive"]);
 var CLASSIFICATION_EVIDENCE_FIELDS = ["os", "arch", "format", "kind", "requirements", "libc", "requirements.libc.family"];
 function fieldValue(value, path6) {
@@ -48810,10 +48853,14 @@ function fieldValue(value, path6) {
   }
   return value;
 }
-function validateManifestSemantics(manifest) {
+function validateManifestSemantics(manifest, options = {}) {
   const diagnostics = [];
+  const expectedProviderEvidenceSource = evidenceSourceForProvider(manifest.source.provider);
   if (manifest.releaseTag !== manifest.release.tag) diagnostics.push({ path: "releaseTag", message: "releaseTag must match release.tag" });
   if (manifest.release.channel === "stable" && manifest.release.prerelease) diagnostics.push({ path: "release.channel", message: "a prerelease cannot use the stable channel" });
+  if (manifest.source.provider === "github" && !repositoryUrlMatchesIdentity(manifest.source.repositoryUrl, manifest.source.repository)) {
+    diagnostics.push({ path: "source.repositoryUrl", message: "GitHub repository URL must identify source.repository" });
+  }
   const ids = /* @__PURE__ */ new Set();
   const urls = /* @__PURE__ */ new Set();
   const assets = /* @__PURE__ */ new Map();
@@ -48834,10 +48881,23 @@ function validateManifestSemantics(manifest) {
       if (!EVIDENCE_FIELDS.has(field)) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a supported asset field" });
       else if (fieldValue(asset, field) === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "evidence must reference a populated asset field" });
       else if (asset.evidence[field]?.path !== `/assets/${assetIndex}/${field === "libc" ? "requirements/libc/family" : field.replaceAll(".", "/")}`) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}.path`, message: "asset evidence path must reference its final manifest field" });
+      validateEvidenceMetadata(asset.evidence[field], `assets.${asset.id}.evidence.${field}`, diagnostics);
+    }
+    const requiredEvidence = [
+      ...REQUIRED_ASSET_EVIDENCE_FIELDS,
+      ...asset.supportedArchitectures === void 0 ? [] : ["supportedArchitectures"],
+      ...asset.digest === void 0 ? [] : ["digest"],
+      ...asset.signatureFor === void 0 ? [] : ["signatureFor"],
+      ...asset.requirements.minimumOsVersion === void 0 ? [] : ["requirements.minimumOsVersion"],
+      ...asset.requirements.libc.minimumVersion === void 0 ? [] : ["requirements.libc.minimumVersion"]
+    ];
+    for (const field of requiredEvidence) {
+      if (asset.evidence[field] === void 0) diagnostics.push({ path: `assets.${asset.id}.evidence.${field}`, message: "selection and verification fields require evidence" });
     }
     for (const signature of asset.verificationMaterials.signatures) {
       const referenced = assets.get(signature.assetId) ?? manifest.assets.find((candidate) => candidate.id === signature.assetId);
       if (referenced === void 0 || referenced.kind !== "signature") diagnostics.push({ path: `assets.${asset.id}.verificationMaterials.signatures`, message: "signature material must reference an existing signature asset" });
+      else if (referenced.signatureFor !== void 0 && referenced.signatureFor !== asset.id) diagnostics.push({ path: `assets.${asset.id}.verificationMaterials.signatures`, message: "signature material is explicitly bound to a different artifact" });
     }
   }
   for (const asset of manifest.assets) if (asset.signatureFor !== void 0) {
@@ -48849,21 +48909,51 @@ function validateManifestSemantics(manifest) {
     const libc = asset.requirements?.libc;
     if (libc?.minimumVersion && (libc.family === "none" || libc.family === "unknown")) diagnostics.push({ path: `assets.${asset.id}.requirements.libc.minimumVersion`, message: "minimum libc version requires glibc or musl" });
   }
+  const manifestEvidencePaths = /* @__PURE__ */ new Set();
+  const manifestEvidenceByPath = /* @__PURE__ */ new Map();
   for (const [index, evidence] of manifest.evidence.entries()) {
+    if (evidence.path !== void 0) {
+      if (manifestEvidencePaths.has(evidence.path)) diagnostics.push({ path: `evidence.${index}.path`, message: "manifest evidence paths must be unique" });
+      manifestEvidencePaths.add(evidence.path);
+      if (!manifestEvidenceByPath.has(evidence.path)) manifestEvidenceByPath.set(evidence.path, { evidence, index });
+    }
     if (evidence.path === void 0 || resolveJsonPointer(manifest, evidence.path) === void 0) diagnostics.push({ path: `evidence.${index}.path`, message: "evidence path must resolve in the final manifest" });
+    validateEvidenceMetadata(evidence, `evidence.${index}`, diagnostics);
     for (const derivedPath of evidence.derivedFrom ?? []) if (resolveJsonPointer(manifest, derivedPath) === void 0) diagnostics.push({ path: `evidence.${index}.derivedFrom`, message: "derived evidence must reference populated manifest fields" });
   }
+  for (const path6 of REQUIRED_MANIFEST_EVIDENCE_PATHS) {
+    const entry = manifestEvidenceByPath.get(path6);
+    if (entry === void 0) diagnostics.push({ path: "evidence", message: `manifest field ${path6} requires evidence` });
+    else if (PROVIDER_OWNED_MANIFEST_EVIDENCE_PATHS.has(path6) && entry.evidence.source !== expectedProviderEvidenceSource) {
+      diagnostics.push({ path: `evidence.${entry.index}.source`, message: `manifest field ${path6} evidence must match source.provider` });
+    } else if (options.requireResolvedManifestEvidence && (entry.evidence.status === "unknown" || entry.evidence.status === "conflict")) {
+      diagnostics.push({ path: `evidence.${entry.index}.status`, message: `manifest field ${path6} requires resolved evidence` });
+    }
+  }
   const methodIds = /* @__PURE__ */ new Set();
-  for (const method of manifest.installMethods ?? []) {
+  for (const [methodIndex, method] of (manifest.installMethods ?? []).entries()) {
     if (methodIds.has(method.id)) diagnostics.push({ path: `installMethods.${method.id}`, message: "method IDs must be unique" });
     methodIds.add(method.id);
+    for (const field of ["platform", "command", "prerequisites", "versionBinding"]) {
+      const evidence = method.evidence?.[field];
+      if (evidence === void 0) diagnostics.push({ path: `installMethods.${method.id}.evidence.${field}`, message: "installation method fields require evidence" });
+      else if (evidence.path !== `/installMethods/${methodIndex}/${field}`) diagnostics.push({ path: `installMethods.${method.id}.evidence.${field}.path`, message: "method evidence path must reference its final manifest field" });
+      validateEvidenceMetadata(evidence, `installMethods.${method.id}.evidence.${field}`, diagnostics);
+    }
     for (const field of Object.keys(method.evidence ?? {})) if (!["platform", "command", "prerequisites", "versionBinding"].includes(field)) diagnostics.push({ path: `installMethods.${method.id}.evidence.${field}`, message: "unsupported method evidence field" });
   }
   const preferenceIds = /* @__PURE__ */ new Set();
-  for (const preference of manifest.installationPreferences ?? []) {
+  for (const [preferenceIndex, preference] of (manifest.installationPreferences ?? []).entries()) {
     if (preferenceIds.has(preference.id)) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: "preference IDs must be unique" });
     preferenceIds.add(preference.id);
     if (preference.when.libc !== void 0 && preference.when.os !== "linux") diagnostics.push({ path: `installationPreferences.${preference.id}.when.libc`, message: "libc preference conditions require Linux" });
+    const preferenceFields = ["when.os", ...preference.when.arch === void 0 ? [] : ["when.arch"], ...preference.when.libc === void 0 ? [] : ["when.libc"]];
+    for (const field of preferenceFields) {
+      const evidence = preference.evidence?.[field];
+      if (evidence === void 0) diagnostics.push({ path: `installationPreferences.${preference.id}.evidence.${field}`, message: "installation preference conditions require evidence" });
+      else if (evidence.path !== `/installationPreferences/${preferenceIndex}/${field.replaceAll(".", "/")}`) diagnostics.push({ path: `installationPreferences.${preference.id}.evidence.${field}.path`, message: "preference evidence path must reference its final manifest field" });
+      validateEvidenceMetadata(evidence, `installationPreferences.${preference.id}.evidence.${field}`, diagnostics);
+    }
     for (const field of Object.keys(preference.evidence ?? {})) if (!["when.os", "when.arch", "when.libc"].includes(field) || fieldValue(preference, field) === void 0) diagnostics.push({ path: `installationPreferences.${preference.id}.evidence.${field}`, message: "evidence must reference a populated preference condition" });
     for (const item of preference.prefer) {
       if (item.type === "method" && !methodIds.has(item.methodId)) diagnostics.push({ path: `installationPreferences.${preference.id}`, message: "preference must reference an existing method" });
@@ -48872,12 +48962,35 @@ function validateManifestSemantics(manifest) {
   }
   return diagnostics;
 }
+function evidenceSourceForProvider(provider) {
+  if (provider === "github") return "github-api";
+  return provider;
+}
+function repositoryUrlMatchesIdentity(repositoryUrl, repository) {
+  try {
+    const urlSegments = new URL(repositoryUrl).pathname.split("/").filter(Boolean);
+    const repositorySegments = repository.split("/");
+    return urlSegments.length === repositorySegments.length && urlSegments.every((segment, index) => decodeURIComponent(segment).toLowerCase() === repositorySegments[index]?.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+function validateEvidenceMetadata(evidence, path6, diagnostics) {
+  if (evidence === void 0) return;
+  if (evidence.status === void 0) {
+    diagnostics.push({ path: `${path6}.status`, message: "evidence status is required" });
+    return;
+  }
+  if (!EVIDENCE_SOURCE_STATUSES[evidence.source].has(evidence.status)) {
+    diagnostics.push({ path: `${path6}.status`, message: `evidence source ${evidence.source} cannot use status ${evidence.status}` });
+  }
+}
 function resolveJsonPointer(root, pointer) {
   let value = root;
   for (const encoded of pointer.slice(1).split("/")) {
     const part = encoded.replaceAll("~1", "/").replaceAll("~0", "~");
     if (Array.isArray(value)) {
-      if (!/^\d+$/.test(part)) return void 0;
+      if (!/^(?:0|[1-9]\d*)$/.test(part)) return void 0;
       value = value[Number(part)];
     } else if (typeof value === "object" && value !== null) value = Object.getOwnPropertyDescriptor(value, part)?.value;
     else return void 0;
@@ -48932,7 +49045,7 @@ function renderInstall(manifest) {
   if (!manifest.installationPreferences?.length) lines.push("No author installation preferences are declared.", "");
   for (const preference of manifest.installationPreferences ?? []) {
     const when = [`os=${preference.when.os}`, ...preference.when.arch ? [`arch=${preference.when.arch}`] : [], ...preference.when.libc ? [`libc=${preference.when.libc}`] : []];
-    const prefer = preference.prefer.map((item) => item.type === "method" ? `method:${item.methodId}` : `artifacts:${item.assetIds.join(",")}`);
+    const prefer = preference.prefer.map((item) => item.type === "method" ? `method:${text(item.methodId)}` : `artifacts:${item.assetIds.map(text).join(",")}`);
     lines.push(`- ${text(preference.id)} when ${when.join(", ")}: ${prefer.length ? prefer.join(" \u2192 ") : "fall back to compatible downloads"}`);
   }
   lines.push("", "A consumer must validate the manifest schema and references, select against its actual environment, download separately, and independently verify any digest, signature, Attestation, and source identity before requesting permission to install.", "");
@@ -48941,10 +49054,10 @@ function renderInstall(manifest) {
 function renderLlms(manifest, basePath) {
   const root = basePath === "/" ? "/" : basePath;
   return [
-    `# Release ${singleLine(manifest.release.tag)}`,
+    `# Release ${text(manifest.release.tag)}`,
     "",
-    `Release: ${singleLine(manifest.release.tag)} (${manifest.release.channel})`,
-    `Repository: ${singleLine(manifest.source.repositoryUrl)}`,
+    `Release: ${text(manifest.release.tag)} (${manifest.release.channel})`,
+    `Repository: ${text(manifest.source.repositoryUrl)}`,
     `Base path: ${root}`,
     "",
     "## Agent resources",
@@ -48959,7 +49072,7 @@ function renderLlms(manifest, basePath) {
 function renderAsset(asset) {
   const requirements = [
     `OS ${asset.os}`,
-    `architecture ${asset.arch}`,
+    asset.arch === "universal" ? `architecture universal (${asset.supportedArchitectures?.join(", ") ?? "supported architectures unknown / undeclared"})` : `architecture ${asset.arch}`,
     asset.requirements.minimumOsVersion ? `minimum OS ${asset.requirements.minimumOsVersion}` : "minimum OS unknown / undeclared",
     asset.os === "linux" ? asset.requirements.libc.family === "unknown" ? "libc unknown / undeclared" : `libc ${asset.requirements.libc.family}${asset.requirements.libc.minimumVersion ? ` >= ${asset.requirements.libc.minimumVersion}` : " (minimum version unknown / undeclared)"}` : "libc not applicable"
   ];
@@ -48999,7 +49112,7 @@ async function prepareRelease(snapshot, options) {
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const resolution = resolveRelease(snapshot, options);
   const manifest = resolution.manifest;
-  const diagnostics = validateManifestSemantics(manifest);
+  const diagnostics = validateManifestSemantics(manifest, { requireResolvedManifestEvidence: true });
   if (diagnostics.length > 0) throw new FacadeError("BUILD_INVALID_MANIFEST", `The compiled release manifest failed semantic validation: ${diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`).join("; ")}`);
   const basePath = normalizeBasePath(options.basePath ?? "/");
   const outDir = (0, import_node_path.resolve)(options.outDir);

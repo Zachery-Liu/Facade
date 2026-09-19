@@ -1,6 +1,6 @@
 # T08 delivery
 
-The complete read-only Agent Interface is implemented on `codex/t08-agent-interface`, based on merged `main` commit `4964c6e`.
+The complete read-only Agent Interface is implemented on `feat/t08-agent-interface`, based on merged `main` commit `4964c6e`.
 
 - Manifest v1 now carries source/release identity, safe channel metadata, JSON-Pointer evidence, SHA-256 source digests, and reference-only verification materials.
 - Repository YAML supports explicit channels and tag-scoped signature, Attestation, and source-commit declarations.

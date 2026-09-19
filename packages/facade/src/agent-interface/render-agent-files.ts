@@ -28,7 +28,7 @@ export function renderInstall(manifest: ReleasePageManifest): string {
   if (!manifest.installationPreferences?.length) lines.push('No author installation preferences are declared.', '');
   for (const preference of manifest.installationPreferences ?? []) {
     const when = [`os=${preference.when.os}`, ...(preference.when.arch ? [`arch=${preference.when.arch}`] : []), ...(preference.when.libc ? [`libc=${preference.when.libc}`] : [])];
-    const prefer = preference.prefer.map((item) => item.type === 'method' ? `method:${item.methodId}` : `artifacts:${item.assetIds.join(',')}`);
+    const prefer = preference.prefer.map((item) => item.type === 'method' ? `method:${text(item.methodId)}` : `artifacts:${item.assetIds.map(text).join(',')}`);
     lines.push(`- ${text(preference.id)} when ${when.join(', ')}: ${prefer.length ? prefer.join(' → ') : 'fall back to compatible downloads'}`);
   }
   lines.push('', 'A consumer must validate the manifest schema and references, select against its actual environment, download separately, and independently verify any digest, signature, Attestation, and source identity before requesting permission to install.', '');
@@ -38,10 +38,10 @@ export function renderInstall(manifest: ReleasePageManifest): string {
 export function renderLlms(manifest: ReleasePageManifest, basePath: string): string {
   const root = basePath === '/' ? '/' : basePath;
   return [
-    `# Release ${singleLine(manifest.release.tag)}`,
+    `# Release ${text(manifest.release.tag)}`,
     '',
-    `Release: ${singleLine(manifest.release.tag)} (${manifest.release.channel})`,
-    `Repository: ${singleLine(manifest.source.repositoryUrl)}`,
+    `Release: ${text(manifest.release.tag)} (${manifest.release.channel})`,
+    `Repository: ${text(manifest.source.repositoryUrl)}`,
     `Base path: ${root}`,
     '',
     '## Agent resources',
@@ -57,7 +57,9 @@ export function renderLlms(manifest: ReleasePageManifest, basePath: string): str
 function renderAsset(asset: ManifestAsset): string[] {
   const requirements = [
     `OS ${asset.os}`,
-    `architecture ${asset.arch}`,
+    asset.arch === 'universal'
+      ? `architecture universal (${asset.supportedArchitectures?.join(', ') ?? 'supported architectures unknown / undeclared'})`
+      : `architecture ${asset.arch}`,
     asset.requirements.minimumOsVersion ? `minimum OS ${asset.requirements.minimumOsVersion}` : 'minimum OS unknown / undeclared',
     asset.os === 'linux'
       ? asset.requirements.libc.family === 'unknown' ? 'libc unknown / undeclared' : `libc ${asset.requirements.libc.family}${asset.requirements.libc.minimumVersion ? ` >= ${asset.requirements.libc.minimumVersion}` : ' (minimum version unknown / undeclared)'}`

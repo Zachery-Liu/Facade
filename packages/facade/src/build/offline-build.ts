@@ -40,7 +40,7 @@ export async function prepareRelease(snapshot: RepositorySnapshot, options: Buil
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const resolution = resolveRelease(snapshot, options);
   const manifest = resolution.manifest;
-  const diagnostics = validateManifestSemantics(manifest);
+  const diagnostics = validateManifestSemantics(manifest, { requireResolvedManifestEvidence: true });
   if (diagnostics.length > 0) throw new FacadeError('BUILD_INVALID_MANIFEST', `The compiled release manifest failed semantic validation: ${diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`).join('; ')}`);
   const basePath = normalizeBasePath(options.basePath ?? '/');
   const outDir = resolve(options.outDir);
