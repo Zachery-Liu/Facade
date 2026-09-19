@@ -13,7 +13,7 @@ renderInstall(manifest: ReleasePageManifest): string
 renderLlms(manifest: ReleasePageManifest, basePath: string): string
 ```
 
-`ReleasePageManifestJsonSchema` is the distributable draft-07 structural schema exported by `@facade/cli/selection`. It requires both `path` and `status` on every evidence entry; the semantic validator checks that paths resolve and statuses agree with their sources.
+`ReleasePageManifestJsonSchema` is the distributable draft-07 structural schema exported by `@facade/cli/selection`. It requires both `path` and `status` on every evidence entry and HTTP(S) repository/download URLs; the semantic validator checks that paths resolve and statuses agree with their sources.
 
 ## 3. Contracts
 
@@ -63,6 +63,7 @@ renderLlms(manifest: ReleasePageManifest, basePath: string): string
 - Assert JSON Schema accepts the valid checked-in example and rejects the unknown-version example.
 - Execute the exported JSON Schema itself against valid, unknown-version, and incomplete-v1 checked-in examples; testing only the source Zod schema does not prove the exported artifact.
 - Remove `path` and `status` from both top-level and asset evidence in otherwise valid v1 examples and assert the exported JSON Schema rejects each case.
+- Replace repository and download URLs with `ftp://` values and assert the exported JSON Schema and runtime validator both reject them.
 - Assert shared semantic validation rejects dangling references, invalid evidence pointers, and channel conflicts.
 - Assert required evidence coverage/path/status, source/status compatibility, resolved and provider-matched top-level evidence, fixture provenance, GitHub repository URL identity (including encoded-separator rejection), unique top-level evidence paths, contradictory `signatureFor` bindings, escaped preference IDs/release tags/repository URLs, and Universal supported-architecture rendering.
 - Cover stable/prerelease defaults plus explicit beta/nightly behavior.

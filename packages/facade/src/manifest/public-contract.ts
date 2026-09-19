@@ -1,7 +1,7 @@
 import { ReleasePageManifestV1Schema, type ReleasePageManifest } from './release-page-manifest.js';
 import { validateManifestSemantics, type ValidationDiagnostic } from './semantic-validation.js';
 
-export const ReleasePageManifestJsonSchema = requireEvidenceMetadata(ReleasePageManifestV1Schema.toJSONSchema({ target: 'draft-7' }));
+export const ReleasePageManifestJsonSchema = alignPublicSchema(ReleasePageManifestV1Schema.toJSONSchema({ target: 'draft-7' }));
 
 export type ManifestValidationResult =
   | { readonly success: true; readonly manifest: ReleasePageManifest }
@@ -22,10 +22,10 @@ export function validateReleasePageManifest(input: unknown): ManifestValidationR
   return diagnostics.length === 0 ? { success: true, manifest: parsed.data } : { success: false, diagnostics };
 }
 
-function requireEvidenceMetadata<T extends object>(schema: T): T {
-  function visit(value: unknown): void {
+function alignPublicSchema<T extends object>(schema: T): T {
+  function visit(value: unknown, field?: string): void {
     if (typeof value !== 'object' || value === null) return;
-    if (Array.isArray(value)) { value.forEach(visit); return; }
+    if (Array.isArray(value)) { value.forEach((item) => visit(item)); return; }
     const record = value as Record<string, unknown>;
     const properties = record.properties;
     if (typeof properties === 'object' && properties !== null
@@ -33,7 +33,10 @@ function requireEvidenceMetadata<T extends object>(schema: T): T {
       && Array.isArray(record.required)) {
       record.required = [...new Set([...record.required, 'path', 'status'])];
     }
-    Object.values(record).forEach(visit);
+    if ((field === 'downloadUrl' || field === 'repositoryUrl') && record.format === 'uri' && record.type === 'string') {
+      record.pattern = '^[Hh][Tt][Tt][Pp][Ss]?://';
+    }
+    Object.entries(record).forEach(([key, child]) => visit(child, key));
   }
   visit(schema);
   return schema;

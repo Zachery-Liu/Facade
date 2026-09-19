@@ -48,6 +48,18 @@ describe('Agent Interface', () => {
     }
   });
 
+  it('rejects non-HTTP public URLs in the exported JSON Schema', async () => {
+    const valid = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    const jsonSchemaValidator = z.fromJSONSchema(ReleasePageManifestJsonSchema);
+    for (const field of ['downloadUrl', 'repositoryUrl']) {
+      const input = structuredClone(valid);
+      if (field === 'downloadUrl') input.assets[0].downloadUrl = 'ftp://example.test/archive';
+      else input.source.repositoryUrl = 'ftp://example.test/project';
+      expect(jsonSchemaValidator.safeParse(input).success).toBe(false);
+      expect(validateReleasePageManifest(input).success).toBe(false);
+    }
+  });
+
   it('requires complete field-level evidence', async () => {
     const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
     delete input.assets[0].evidence.os;

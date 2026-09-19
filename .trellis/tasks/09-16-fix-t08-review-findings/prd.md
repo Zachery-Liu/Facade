@@ -23,6 +23,7 @@ Close the remaining T08 Agent Interface validation and provenance gaps so genera
 * [x] Markdown syntax inside a repository URL cannot create an injected link in `llms.txt`.
 * [x] Tests, lint, type-check, build, and diff checks pass.
 * [x] The exported v1 JSON Schema rejects evidence entries missing `path` or `status`.
+* [x] The exported v1 JSON Schema rejects non-HTTP repository and download URLs.
 
 ## Definition of Done
 
