@@ -9,6 +9,7 @@ import { resolveRelease, type BuildDiagnostic } from '../compiler/release-resolv
 import { validateManifestSemantics } from '../manifest/semantic-validation.js';
 import { loadFacadeConfig } from '../config/load-facade-config.js';
 import type { FacadeConfigInput } from '../config/facade-config.js';
+import { renderInstall, renderLlms } from '../agent-interface/render-agent-files.js';
 
 export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; readonly configPath?: string; }
 export interface BuildReleaseOptions { readonly outDir: string; readonly basePath?: string; readonly config?: FacadeConfigInput; readonly provider?: 'fixture' | 'github' | 'unknown'; readonly selection?: 'fixture' | 'github-latest' | 'tag'; }
@@ -39,8 +40,8 @@ export async function prepareRelease(snapshot: RepositorySnapshot, options: Buil
   snapshot = RepositorySnapshotSchema.parse(snapshot);
   const resolution = resolveRelease(snapshot, options);
   const manifest = resolution.manifest;
-  const diagnostics = validateManifestSemantics(manifest);
-  if (diagnostics.length > 0) throw new FacadeError('BUILD_INVALID_MANIFEST', 'The compiled release manifest failed semantic validation.');
+  const diagnostics = validateManifestSemantics(manifest, { requireResolvedManifestEvidence: true });
+  if (diagnostics.length > 0) throw new FacadeError('BUILD_INVALID_MANIFEST', `The compiled release manifest failed semantic validation: ${diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`).join('; ')}`);
   const basePath = normalizeBasePath(options.basePath ?? '/');
   const outDir = resolve(options.outDir);
   await mkdir(dirname(outDir), { recursive: true });
@@ -49,8 +50,8 @@ export async function prepareRelease(snapshot: RepositorySnapshot, options: Buil
     await Promise.all([
       writeFile(join(staging, 'index.html'), '<!doctype html>' + render(h(ReleasePage, { manifest, basePath })), 'utf8'),
       writeFile(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8'),
-      writeFile(join(staging, 'install.md'), renderInstall(manifest.releaseTag, manifest.assets), 'utf8'),
-      writeFile(join(staging, 'llms.txt'), renderLlms(manifest.releaseTag, manifest.assets, basePath), 'utf8'),
+      writeFile(join(staging, 'install.md'), renderInstall(manifest), 'utf8'),
+      writeFile(join(staging, 'llms.txt'), renderLlms(manifest, basePath), 'utf8'),
       writeFile(join(staging, OUTPUT_MARKER), OUTPUT_MARKER_CONTENT, 'utf8'),
     ]);
     let published = false;
@@ -132,8 +133,3 @@ function isAlreadyExists(error: unknown): boolean { return typeof error === 'obj
 async function exists(path: string): Promise<boolean> { try { await access(path); return true; } catch { return false; } }
 async function isFacadeOutput(path: string): Promise<boolean> { try { return (await readFile(join(path, OUTPUT_MARKER), 'utf8')) === OUTPUT_MARKER_CONTENT; } catch { return false; } }
 async function removeLockAfterFailure(lock: string): Promise<void> { try { await rm(lock, { recursive: true }); } catch { /* Preserve the replacement error and leave the lock for manual recovery. */ } }
-function renderInstall(tag: string, assets: readonly { id: string; label: string; downloadUrl: string }[]): string { return '# Install ' + escapeMarkdownText(tag) + '\n\n' + assets.map((asset) => '- [' + escapeMarkdownText(asset.label + ' (' + asset.id + ')') + '](<' + escapeMarkdownUrl(asset.downloadUrl) + '>)').join('\n') + '\n'; }
-function renderLlms(tag: string, assets: readonly { id: string; downloadUrl: string }[], basePath: string): string { return '# Release ' + singleLine(tag) + '\n\nBase path: ' + basePath + '\n\n' + assets.map((asset) => '- ' + singleLine(asset.id) + ': ' + singleLine(asset.downloadUrl)).join('\n') + '\n'; }
-function singleLine(value: string): string { return value.replace(/[\r\n]+/g, ' '); }
-function escapeMarkdownText(value: string): string { return singleLine(value).replace(/([-\\`*_[\]{}()<>#+.!|])/g, '\\$1'); }
-function escapeMarkdownUrl(value: string): string { return singleLine(value).replace(/</g, '%3C').replace(/>/g, '%3E'); }

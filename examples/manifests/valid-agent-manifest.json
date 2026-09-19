@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "productName": "Example",
+  "releaseTag": "v1.0.0",
+  "assets": [
+    {
+      "id": "linux-x64",
+      "name": "example-linux-x64.tar.gz",
+      "label": "Linux x64",
+      "downloadUrl": "https://example.test/example-linux-x64.tar.gz",
+      "size": 1024,
+      "os": "linux",
+      "arch": "x64",
+      "format": "tar.gz",
+      "kind": "archive",
+      "priority": 0,
+      "requirements": { "libc": { "family": "unknown" } },
+      "recommendationEligible": true,
+      "verificationMaterials": { "signatures": [], "attestations": [] },
+      "evidence": {
+        "id": { "path": "/assets/0/id", "source": "github-api", "status": "provided", "detail": "Release asset identity" },
+        "name": { "path": "/assets/0/name", "source": "github-api", "status": "provided", "detail": "Release asset name" },
+        "label": { "path": "/assets/0/label", "source": "github-api", "status": "provided", "detail": "Release asset label" },
+        "downloadUrl": { "path": "/assets/0/downloadUrl", "source": "github-api", "status": "provided", "detail": "Release asset URL" },
+        "size": { "path": "/assets/0/size", "source": "github-api", "status": "provided", "detail": "Release asset size" },
+        "os": { "path": "/assets/0/os", "source": "filename-rule", "status": "inferred", "detail": "linux filename token" },
+        "arch": { "path": "/assets/0/arch", "source": "filename-rule", "status": "inferred", "detail": "x64 filename token" },
+        "format": { "path": "/assets/0/format", "source": "filename-rule", "status": "inferred", "detail": "tar.gz filename suffix" },
+        "kind": { "path": "/assets/0/kind", "source": "filename-rule", "status": "inferred", "detail": "archive filename suffix" },
+        "priority": { "path": "/assets/0/priority", "source": "derived", "status": "inferred", "detail": "Default priority" },
+        "requirements": { "path": "/assets/0/requirements", "source": "unknown", "status": "unknown", "detail": "No requirements declared" },
+        "libc": { "path": "/assets/0/requirements/libc/family", "source": "unknown", "status": "unknown", "detail": "No libc requirement declared" },
+        "recommendationEligible": { "path": "/assets/0/recommendationEligible", "source": "derived", "status": "inferred", "detail": "Derived from compatibility fields" },
+        "verificationMaterials": { "path": "/assets/0/verificationMaterials", "source": "unknown", "status": "unknown", "detail": "No verification materials declared" }
+      }
+    }
+  ],
+  "source": {
+    "provider": "github",
+    "repository": "example/project",
+    "repositoryUrl": "https://github.com/example/project"
+  },
+  "release": {
+    "id": "1",
+    "tag": "v1.0.0",
+    "name": "Example v1.0.0",
+    "prerelease": false,
+    "channel": "stable"
+  },
+  "evidence": [
+    { "path": "/source/repository", "source": "github-api", "status": "provided", "detail": "Repository identity" },
+    { "path": "/source/repositoryUrl", "source": "github-api", "status": "provided", "detail": "Repository URL" },
+    { "path": "/release/id", "source": "github-api", "status": "provided", "detail": "Release identity" },
+    { "path": "/release/tag", "source": "github-api", "status": "provided", "detail": "Release tag" },
+    { "path": "/release/name", "source": "github-api", "status": "provided", "detail": "Release name" },
+    { "path": "/release/prerelease", "source": "github-api", "status": "provided", "detail": "Prerelease flag" },
+    { "path": "/release/channel", "source": "derived", "status": "inferred", "detail": "Derived release channel", "derivedFrom": ["/release/prerelease"] }
+  ]
+}

@@ -647,7 +647,7 @@ interface VerificationMetadata {
 interface MetadataEvidence {
   // 指向 Manifest 最终值的 JSON Pointer，不引用易变日志文本
   path: string
-  source: 'github-api' | 'project-config' | 'filename-rule' | 'derived' | 'unknown'
+  source: 'github-api' | 'fixture' | 'project-config' | 'filename-rule' | 'derived' | 'unknown'
   status: 'provided' | 'inferred' | 'unknown' | 'conflict'
   ruleId?: string
   configPath?: string

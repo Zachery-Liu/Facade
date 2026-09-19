@@ -1,0 +1,9 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend checklist and routing"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Agent Interface module placement"}
+{"file": ".trellis/spec/backend/source-contracts.md", "reason": "Manifest validation and build boundaries"}
+{"file": ".trellis/spec/backend/selection.md", "reason": "Preserve T07 selector semantics"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Fail-closed boundary behavior"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Required local quality gate"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Runtime manifest contract consumers"}
+{"file": ".trellis/tasks/09-16-t08-agent-interface/research/agent-interface-contract.md", "reason": "T08 contract mapping and safety decisions"}

@@ -13,19 +13,31 @@ describe('offline build', () => {
   it('creates four consistent static outputs from a fixture', async () => {
     const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-test-')), 'site');
     await expect(buildOfflineRelease({ fixturePath, outDir, basePath: '/project/' })).resolves.toEqual({ basePath: '/project/', files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'] });
-    const manifest = JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8')) as { releaseTag: string; assets: Array<{ id: string; downloadUrl: string; os: string; kind: string }> };
+    const manifest = JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8')) as {
+      releaseTag: string;
+      source: { provider: string };
+      evidence: Array<{ path?: string; source: string; status?: string }>;
+      assets: Array<{ id: string; downloadUrl: string; os: string; kind: string; digest?: unknown; evidence: Record<string, { source: string; status?: string }> }>;
+    };
     const html = await readFile(join(outDir, 'index.html'), 'utf8');
     const install = await readFile(join(outDir, 'install.md'), 'utf8');
     const llms = await readFile(join(outDir, 'llms.txt'), 'utf8');
     expect(manifest.releaseTag).toBe('v2.100.0');
+    expect(manifest.source.provider).toBe('fixture');
+    expect(manifest.evidence.filter((entry) => entry.path?.startsWith('/source/') || (entry.path?.startsWith('/release/') && entry.path !== '/release/channel')).every((entry) => entry.source === 'fixture' && entry.status === 'provided')).toBe(true);
+    for (const asset of manifest.assets) {
+      for (const field of ['id', 'name', 'label', 'downloadUrl', 'size']) expect(asset.evidence[field]).toMatchObject({ source: 'fixture', status: 'provided' });
+      if (asset.digest !== undefined) expect(asset.evidence.digest).toMatchObject({ source: 'fixture', status: 'provided' });
+    }
     expect(manifest.assets.map((asset) => [asset.id, asset.os, asset.kind])).toEqual([['macos-arm64', 'macos', 'archive'], ['windows-x64', 'windows', 'installer'], ['linux-x64', 'linux', 'archive'], ['checksums', 'unknown', 'checksum']]);
     for (const asset of manifest.assets) {
       expect(html).toContain('data-asset-id="' + asset.id + '"');
       expect(html).toContain(asset.downloadUrl);
       expect(install).toContain(asset.downloadUrl);
-      expect(llms).toContain(asset.downloadUrl);
     }
     expect(llms).toContain('Base path: /project/');
+    expect(llms).toContain('[Manifest](/project/manifest.json)');
+    expect(llms).toContain('[Installation guide](/project/install.md)');
     expect(html).toContain('href="/project/manifest.json"');
   });
 
@@ -129,7 +141,7 @@ describe('offline build', () => {
     expect(install).toContain('# Install v1 Injected heading');
     expect(install).toContain('tool \\[preview\\]\\(unsafe\\)\\.bin');
     expect(llms).toContain('# Release v1 Injected heading');
-    expect(llms).toContain('- asset Injected entry: https://example.test/tool%3Epreview');
+    expect(llms).not.toContain('Injected entry');
   });
 
   it('builds from the compiled CLI', async () => {

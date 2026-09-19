@@ -30,6 +30,7 @@ const AssetResponseSchema = z.object({
   name: z.string().min(1),
   browser_download_url: z.string().url(),
   size: z.number().int().nonnegative(),
+  digest: z.string().regex(/^sha256:[a-fA-F0-9]{64}$/).nullable().optional(),
 }).passthrough();
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -88,7 +89,10 @@ export class GitHubReleaseSource implements ReleaseSource {
     for (let page = 1; ; page += 1) {
       const response = await this.request('/repos/' + this.owner + '/' + this.repositoryName + '/releases/' + encodeURIComponent(releaseId) + '/assets?per_page=' + ASSETS_PER_PAGE + '&page=' + page, 'assets');
       const parsed = parseResponse(z.array(AssetResponseSchema), await parseJson(response, 'assets'), 'assets');
-      assets.push(...parsed.map((asset) => parseResponse(RawAssetSchema, { id: String(asset.id), name: asset.name, downloadUrl: asset.browser_download_url, size: asset.size }, 'assets')));
+      assets.push(...parsed.map((asset) => parseResponse(RawAssetSchema, {
+        id: String(asset.id), name: asset.name, downloadUrl: asset.browser_download_url, size: asset.size,
+        ...(asset.digest == null ? {} : { digest: { algorithm: 'sha256', value: asset.digest.slice('sha256:'.length).toLowerCase() } }),
+      }, 'assets')));
       if (parsed.length < ASSETS_PER_PAGE) return assets;
     }
   }

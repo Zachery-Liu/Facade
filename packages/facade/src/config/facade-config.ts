@@ -2,9 +2,10 @@ import { z } from 'zod';
 import { ARCHITECTURES, ASSET_FORMATS, ASSET_KINDS, LIBC_FAMILIES, OPERATING_SYSTEMS } from '../classifier/asset-classifier.js';
 import { isValidFullNameGlob } from './full-name-glob.js';
 
+const ReleaseChannelSchema = z.enum(['stable', 'prerelease', 'beta', 'nightly']);
 const ReleaseSelectionSchema = z.discriminatedUnion('strategy', [
-  z.object({ strategy: z.literal('github-latest') }).strict(),
-  z.object({ strategy: z.literal('tag'), tag: z.string().min(1) }).strict(),
+  z.object({ strategy: z.literal('github-latest'), channel: ReleaseChannelSchema.optional() }).strict(),
+  z.object({ strategy: z.literal('tag'), tag: z.string().min(1), channel: ReleaseChannelSchema.optional() }).strict(),
 ]);
 
 const ConfigLibcFamilySchema = z.enum(LIBC_FAMILIES);
@@ -23,6 +24,19 @@ const RuleRequirementsSchema = z.object({
   libc: ConfigLibcSchema.optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, { message: 'requirements must declare at least one field' });
 
+export const VerificationConfigSchema = z.object({
+  signatures: z.array(z.object({
+    assetMatch: z.string().min(1).refine(isValidFullNameGlob, { message: 'assetMatch must be a valid full-name glob' }),
+    scheme: z.enum(['openpgp', 'minisign', 'other']),
+  }).strict()).optional(),
+  attestations: z.array(z.object({
+    kind: z.literal('github-attestation'),
+    repository: z.string().regex(/^[^/]+\/[^/]+$/),
+  }).strict()).optional(),
+  sourceCommit: z.string().regex(/^[a-fA-F0-9]{40}$/).optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, { message: 'verification must declare at least one field' });
+export type VerificationConfig = z.infer<typeof VerificationConfigSchema>;
+
 const DownloadRuleSetSchema = z.object({
   os: z.enum(OPERATING_SYSTEMS).optional(),
   arch: z.enum(ARCHITECTURES).optional(),
@@ -32,6 +46,7 @@ const DownloadRuleSetSchema = z.object({
   priority: z.number().int().optional(),
   supportedArchitectures: z.array(ConcreteArchitectureSchema).min(1).refine((values) => new Set(values).size === values.length, { message: 'supportedArchitectures must not contain duplicates' }).optional(),
   requirements: RuleRequirementsSchema.optional(),
+  verification: VerificationConfigSchema.optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, { message: 'set must override at least one field' });
 
 export const DownloadRuleSchema = z.object({
@@ -42,6 +57,9 @@ export const DownloadRuleSchema = z.object({
 }).strict().superRefine((rule, context) => {
   if (rule.exclude === undefined && rule.set === undefined) {
     context.addIssue({ code: 'custom', message: 'a download rule must provide exclude and/or set' });
+  }
+  if (rule.set?.verification?.sourceCommit !== undefined && rule.tag === undefined) {
+    context.addIssue({ code: 'custom', path: ['set', 'verification', 'sourceCommit'], message: 'sourceCommit requires an exact tag rule' });
   }
   const family = rule.set?.requirements?.libc?.family;
   if (rule.set?.os !== undefined && rule.set.os !== 'linux' && family !== undefined && family !== 'unknown') {
