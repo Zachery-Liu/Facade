@@ -26,6 +26,8 @@ buildFreshGitHubRelease({
   cleanupRequired?: true;
 }>
 
+fingerprintBrandAssets(config: FacadeConfigInput, configPath: string): Promise<string>
+
 runAction(core, dependencies?): Promise<void>
 ```
 
@@ -51,7 +53,7 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
   only through the source adapter. Mask an explicit Action token input before
   work begins; workflow templates pass `github.token` explicitly.
 * Freshness: fingerprint exact checked-out config bytes, resolved source options,
-  and the normalized snapshot before and after staging, before publication.
+  the normalized snapshot, and validated local brand image bytes before and after staging, before publication.
   One mismatch disposes staging and causes one rebuild; a mismatch on the second
   attempt fails. Verification errors preserve the prior complete output.
   This detects changes to
@@ -105,6 +107,7 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 | YAML or schema is invalid | `CONFIG_INVALID`; preserve cause internally |
 | Optional Action repository/token is omitted | pass no override; resolve environment/config normally |
 | Inputs differ after first build | warn `FACADE_INPUT_CHANGED`, rebuild once |
+| A configured icon or screenshot changes during staging | Treat the content change as an input mismatch; discard staging and retry once |
 | Inputs differ after second build | `BUILD_INPUT_CHANGED_REPEATEDLY`; previous output preserved; no upload/deploy |
 | Capture fails after staging | Failure; previous output preserved; staging disposed |
 | Non-default-branch configured-path push | Build skipped; run-specific concurrency group cannot displace site refreshes |
@@ -119,6 +122,7 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 * Good: a project-site workflow passes `/repository`, the snapshot is stable,
   the `github-pages` environment permits its release tag, and the Action
   returns the exact release tag after one build.
+* Good: an icon changes during the first staging attempt; the Action publishes the second attempt with the new image.
 * Base: no repository Action input is supplied; `FACADE_REPOSITORY` or the
   validated YAML repository remains authoritative. An empty Pages root path is
   normalized to `/`.
@@ -144,6 +148,7 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 * Unit-test stable input, one mutation, repeated mutation, YAML failures,
   `GITHUB_API_URL`, and the shared prepare/publish boundary. Assert previous
   files survive verification errors and mutations, and no staging remains.
+* Change an icon's bytes after the first capture and assert a second attempt publishes the changed bytes under `branding/`.
 * Run typecheck, lint, test, build, and coverage after regenerating the bundle.
   The CI build job must additionally prove the generated bundle has no diff.
 
@@ -159,6 +164,8 @@ The root Action declares inputs `config`, `repository`, `tag`, `base-path`,
 This invents an unpublished tag and assumes consumer tooling. Likewise, a
 separate `release.published` workflow is not a valid continuation for Releases
 created with the repository `GITHUB_TOKEN`.
+
+For freshness, hashing only the configured image path is wrong: the path can stay fixed while the bytes change. Hash the validated bytes from the same brand-image loader used by staging.
 
 #### Correct
 
