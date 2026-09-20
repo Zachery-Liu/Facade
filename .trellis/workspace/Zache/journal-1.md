@@ -319,3 +319,37 @@ Implemented the SSR Product Theme with safe notes, branding, browser selection, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: Fix T09 Product Theme review findings
+
+**Date**: 2026-09-20
+**Task**: Fix T09 Product Theme review findings
+**Branch**: `feat/t09-product-theme`
+
+### Summary
+
+Fixed custom accent contrast, brand image freshness, fenced release notes, and libc-none copy; typecheck, lint, 195 tests, build, and coverage passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8aa63fb` | (see git log) |
+| `2269b02` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
