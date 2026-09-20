@@ -1,4 +1,5 @@
 import { access, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { h } from 'preact';
 import { render } from 'preact-render-to-string';
@@ -10,7 +11,7 @@ import { validateManifestSemantics } from '../manifest/semantic-validation.js';
 import { loadFacadeConfig } from '../config/load-facade-config.js';
 import type { FacadeConfigInput } from '../config/facade-config.js';
 import { renderInstall, renderLlms } from '../agent-interface/render-agent-files.js';
-import { themeStyle } from '../themes/product/theme-style.js';
+import { renderThemeStyle } from '../themes/product/theme-style.js';
 import { browserBundle } from '../themes/product/browser-bundle.js';
 
 export interface OfflineBuildOptions { readonly fixturePath: string; readonly outDir: string; readonly basePath?: string; readonly configPath?: string; }
@@ -64,7 +65,7 @@ export async function prepareRelease(snapshot: RepositorySnapshot, options: Buil
     }
     const safeJson = JSON.stringify(manifest).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
     const favicon = manifest.product?.icon ?? 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#5265d8"/><path d="M19 44V20h26v7H27v4h15v7H27v6z" fill="white"/></svg>');
-    const html = '<!doctype html><html lang="en" data-appearance="' + (manifest.theme?.appearance ?? 'auto') + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><link rel="icon" href="' + escapeHtml(favicon) + '"><title>' + escapeHtml(manifest.productName) + ' · ' + escapeHtml(manifest.release.tag) + '</title><style>' + themeStyle.replace('--accent:#5265d8;', `--accent:${manifest.theme?.accent ?? '#5265d8'};`) + '</style></head><body>' + render(h(ReleasePage, { manifest, basePath })) + '<script id="facade-manifest" type="application/json">' + safeJson + '</script><script>' + browserBundle + '</script></body></html>';
+    const html = '<!doctype html><html lang="en" data-appearance="' + (manifest.theme?.appearance ?? 'auto') + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><link rel="icon" href="' + escapeHtml(favicon) + '"><title>' + escapeHtml(manifest.productName) + ' · ' + escapeHtml(manifest.release.tag) + '</title><style>' + renderThemeStyle(manifest.theme?.accent ?? '#5265d8') + '</style></head><body>' + render(h(ReleasePage, { manifest, basePath })) + '<script id="facade-manifest" type="application/json">' + safeJson + '</script><script>' + browserBundle + '</script></body></html>';
     await Promise.all([
       writeFile(join(staging, 'index.html'), html, 'utf8'),
       writeFile(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8'),
@@ -153,6 +154,15 @@ async function isFacadeOutput(path: string): Promise<boolean> { try { return (aw
 async function removeLockAfterFailure(lock: string): Promise<void> { try { await rm(lock, { recursive: true }); } catch { /* Preserve the replacement error and leave the lock for manual recovery. */ } }
 
 type BrandAsset = { name: 'icon' | 'screenshot'; extension: '.png' | '.jpg' | '.webp'; bytes: Buffer };
+export async function fingerprintBrandAssets(config: FacadeConfigInput, configPath: string): Promise<string> {
+  const assets = await loadBrandAssets({ outDir: '', config, configPath });
+  const hash = createHash('sha256');
+  for (const asset of assets) {
+    hash.update(asset.name).update(asset.extension).update(asset.bytes);
+  }
+  return hash.digest('hex');
+}
+
 async function loadBrandAssets(options: BuildReleaseOptions): Promise<BrandAsset[]> {
   const icon = options.config?.product?.icon;
   const screenshot = options.config?.product?.screenshot?.src;

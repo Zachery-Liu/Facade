@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { OfflineBuildResult, PreparedRelease } from './offline-build.js';
-import { prepareRelease } from './offline-build.js';
+import { fingerprintBrandAssets, prepareRelease } from './offline-build.js';
 import { loadFacadeConfig } from '../config/load-facade-config.js';
 import { FacadeError } from '../runtime/facade-error.js';
 import { GitHubReleaseSource, type GitHubReleaseSourceOptions } from '../source/github/github-release-source.js';
@@ -83,8 +83,9 @@ async function captureGitHubInput(
   const snapshot = sourceOptions.strategy === 'tag'
     ? await source.getSnapshot(sourceOptions.strategy, sourceOptions.tag)
     : await source.getSnapshot(sourceOptions.strategy);
+  const brandFingerprint = await fingerprintBrandAssets(loaded.config, options.configPath);
   return {
-    fingerprint: fingerprint(loaded.sourceText, sourceOptions, snapshot),
+    fingerprint: fingerprint(loaded.sourceText, sourceOptions, snapshot, brandFingerprint),
     snapshot,
     config: loaded.config,
     selection: sourceOptions.strategy,
@@ -99,6 +100,6 @@ function toAdapterOptions(options: GitHubSourceOptions, apiUrl: string | undefin
   };
 }
 
-function fingerprint(configSource: string, options: GitHubSourceOptions, snapshot: RepositorySnapshot): string {
-  return createHash('sha256').update(JSON.stringify({ configSource, options, snapshot })).digest('hex');
+function fingerprint(configSource: string, options: GitHubSourceOptions, snapshot: RepositorySnapshot, brandFingerprint: string): string {
+  return createHash('sha256').update(JSON.stringify({ configSource, options, snapshot, brandFingerprint })).digest('hex');
 }

@@ -1,22 +1,49 @@
 import type { ComponentChildren } from 'preact';
 
 type NotesProps = { content: string; repositoryUrl: string; tag: string };
+type NotesBlock =
+  | { type: 'heading'; level: number; text: string }
+  | { type: 'paragraph' | 'list' | 'code'; lines: string[] };
 
 // Only these Markdown constructs are rendered. Preact escapes every text node.
 export function ReleaseNotes({ content, repositoryUrl, tag }: NotesProps) {
-  const blocks = content.replace(/\r\n?/g, '\n').split(/\n\s*\n/).filter(Boolean);
+  const blocks = parseBlocks(content);
   return <section id="release-notes" aria-labelledby="notes-title"><h2 id="notes-title">Release notes</h2>{blocks.map((block, index) => {
-    const heading = /^(#{1,3})\s+(.+)$/.exec(block);
-    if (heading) {
-      const title = heading[2] ?? '';
-      const children = inline(title, repositoryUrl, tag);
-      const id = slug(title);
-      return heading[1]?.length === 1 ? <h3 id={id} key={index}>{children}</h3> : <h4 id={id} key={index}>{children}</h4>;
+    if (block.type === 'heading') {
+      const children = inline(block.text, repositoryUrl, tag);
+      const id = slug(block.text);
+      return block.level === 1 ? <h3 id={id} key={index}>{children}</h3> : <h4 id={id} key={index}>{children}</h4>;
     }
-    if (block.split('\n').every((line) => /^[-*]\s+/.test(line))) return <ul key={index}>{block.split('\n').map((line, item) => <li key={item}>{inline(line.replace(/^[-*]\s+/, ''), repositoryUrl, tag)}</li>)}</ul>;
-    if (/^```/.test(block)) return <pre key={index}><code>{block.replace(/^```[^\n]*\n?/, '').replace(/\n?```\s*$/, '')}</code></pre>;
-    return <p key={index}>{block.split('\n').flatMap((line, lineIndex) => lineIndex === 0 ? inline(line, repositoryUrl, tag) : [<br key={`br-${lineIndex}`} />, ...inline(line, repositoryUrl, tag)])}</p>;
+    if (block.type === 'list') return <ul key={index}>{block.lines.map((line, item) => <li key={item}>{inline(line.replace(/^[-*]\s+/, ''), repositoryUrl, tag)}</li>)}</ul>;
+    if (block.type === 'code') return <pre key={index}><code>{block.lines.join('\n')}</code></pre>;
+    return <p key={index}>{block.lines.flatMap((line, lineIndex) => lineIndex === 0 ? inline(line, repositoryUrl, tag) : [<br key={`br-${lineIndex}`} />, ...inline(line, repositoryUrl, tag)])}</p>;
   })}</section>;
+}
+
+function parseBlocks(content: string): NotesBlock[] {
+  const blocks: NotesBlock[] = [];
+  let current: Extract<NotesBlock, { lines: string[] }> | undefined;
+  const flush = () => { if (current) blocks.push(current); current = undefined; };
+  for (const line of content.replace(/\r\n?/g, '\n').split('\n')) {
+    if (current?.type === 'code') {
+      if (/^```\s*$/.test(line)) flush();
+      else current.lines.push(line);
+      continue;
+    }
+    if (/^```/.test(line)) { flush(); current = { type: 'code', lines: [] }; continue; }
+    if (line.trim() === '') { flush(); continue; }
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (heading) {
+      flush();
+      blocks.push({ type: 'heading', level: heading[1]?.length ?? 1, text: heading[2] ?? '' });
+      continue;
+    }
+    const type = /^[-*]\s+/.test(line) ? 'list' : 'paragraph';
+    if (current?.type !== type) { flush(); current = { type, lines: [] }; }
+    current?.lines.push(line);
+  }
+  flush();
+  return blocks;
 }
 
 function inline(value: string, repositoryUrl: string, tag: string): ComponentChildren[] {
