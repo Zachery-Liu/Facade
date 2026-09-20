@@ -13,7 +13,7 @@
   "createdAt": "2026-09-19",
   "completedAt": "2026-09-20",
   "branch": "feat/t09-product-theme",
-  "base_branch": "feat/t08-agent-interface",
+  "base_branch": "main",
   "worktree_path": null,
   "commit": null,
   "pr_url": null,
