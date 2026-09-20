@@ -353,3 +353,37 @@ Fixed custom accent contrast, brand image freshness, fenced release notes, and l
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Fix T09 follow-up review findings
+
+**Date**: 2026-09-20
+**Task**: Fix T09 follow-up review findings
+**Branch**: `feat/t09-product-theme`
+
+### Summary
+
+Preserved button contrast on hover, matched fenced-code delimiter lengths, and generated unique Unicode note anchors; typecheck, lint, 198 tests, build, coverage, and Chrome light/dark 360px checks passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a49f8b7` | (see git log) |
+| `ba58dba` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
