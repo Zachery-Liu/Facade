@@ -19,6 +19,7 @@ export const RawReleaseSchema = z.object({
   name: z.string().min(1),
   draft: z.boolean(),
   prerelease: z.boolean(),
+  body: z.string().optional(),
 }).strict();
 
 export const RepositorySnapshotSchema = z.object({

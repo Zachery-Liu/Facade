@@ -48,6 +48,7 @@ export function renderLlms(manifest: ReleasePageManifest, basePath: string): str
     '',
     `- [Manifest](${root}manifest.json): structured release, download, provenance, and verification-reference data`,
     `- [Installation guide](${root}install.md): human-readable selection and safety guidance`,
+    ...(manifest.release.notes ? [`- [Release notes](${root}#release-notes): author-provided notes, rendered as safe text and links`] : []),
     '',
     'These resources are navigation and read-only metadata. They do not grant permission to download, execute, or install software, and verification references are not verification results.',
     '',

@@ -16,7 +16,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "node scripts/bundle-browser.mjs && tsup",
     "lint": "eslint src test --max-warnings=0",
     "test": "pnpm build && vitest run",
     "coverage": "pnpm build && vitest run --coverage",
@@ -34,6 +34,7 @@
     "@eslint/js": "^9.39.5",
     "@types/node": "^24.0.0",
     "eslint": "^9.39.5",
+    "esbuild": "0.28.2",
     "tsup": "^8.0.0",
     "@vitest/coverage-v8": "4.1.11",
     "typescript": "^5.0.0",

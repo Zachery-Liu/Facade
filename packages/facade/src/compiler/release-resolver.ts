@@ -121,7 +121,7 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
   const channel = config.release?.channel ?? (snapshot.release.prerelease ? 'prerelease' : 'stable');
   if (channel === 'stable' && snapshot.release.prerelease) throw new FacadeError('CONFIG_INVALID', 'A prerelease source cannot be declared as the stable channel.');
   const source = { provider, repository: snapshot.repository.fullName, repositoryUrl: snapshot.repository.htmlUrl };
-  const release = { id: snapshot.release.id, tag: snapshot.release.tagName, name: snapshot.release.name, prerelease: snapshot.release.prerelease, channel };
+  const release = { id: snapshot.release.id, tag: snapshot.release.tagName, name: snapshot.release.name, prerelease: snapshot.release.prerelease, channel, ...(snapshot.release.body === undefined ? {} : { notes: snapshot.release.body }) };
   const providerEvidence = providedSourceEvidence(provider);
   const manifestEvidence = [
     evidenceAt('/source/repository', providerEvidence.source, providerEvidence.status, 'Preserved from the validated repository source'),
@@ -130,6 +130,7 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
     evidenceAt('/release/tag', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
     evidenceAt('/release/name', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
     evidenceAt('/release/prerelease', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source'),
+    ...(snapshot.release.body === undefined ? [] : [evidenceAt('/release/notes', providerEvidence.source, providerEvidence.status, 'Preserved from the validated release source')]),
     config.release?.channel === undefined
       ? { ...evidenceAt('/release/channel', 'derived', 'inferred', 'Derived only from the source prerelease flag'), derivedFrom: ['/release/prerelease'] }
       : { ...evidenceAt('/release/channel', 'project-config', 'explicit', 'Declared in repository configuration'), configPath: 'release.channel' },
@@ -139,7 +140,10 @@ export function resolveRelease(snapshotInput: RepositorySnapshot, options: Resol
   ];
   const manifest = ReleasePageManifestSchema.parse({
     schemaVersion: 1,
-    productName: snapshot.release.name,
+    productName: config.product?.name ?? snapshot.release.name,
+    product: { name: config.product?.name ?? snapshot.release.name, ...(config.product?.description === undefined ? {} : { description: config.product.description }) },
+    theme: { appearance: config.theme?.appearance ?? 'auto', accent: config.theme?.accent ?? '#5265d8' },
+    links: config.links ?? [],
     releaseTag: snapshot.release.tagName,
     assets: includedAssets,
     source,

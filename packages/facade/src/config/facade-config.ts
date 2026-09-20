@@ -3,6 +3,7 @@ import { ARCHITECTURES, ASSET_FORMATS, ASSET_KINDS, LIBC_FAMILIES, OPERATING_SYS
 import { isValidFullNameGlob } from './full-name-glob.js';
 
 const ReleaseChannelSchema = z.enum(['stable', 'prerelease', 'beta', 'nightly']);
+const SafeBrandUrlSchema = z.httpUrl().refine((value) => { const url = new URL(value); return !url.username && !url.password; }, { message: 'brand link must not contain credentials' });
 const ReleaseSelectionSchema = z.discriminatedUnion('strategy', [
   z.object({ strategy: z.literal('github-latest'), channel: ReleaseChannelSchema.optional() }).strict(),
   z.object({ strategy: z.literal('tag'), tag: z.string().min(1), channel: ReleaseChannelSchema.optional() }).strict(),
@@ -105,6 +106,9 @@ export type InstallMethodConfig = z.infer<typeof InstallMethodConfigSchema>;
 export type InstallationPreferenceConfig = z.infer<typeof InstallationPreferenceConfigSchema>;
 
 const AuthoringConfigShape = {
+  product: z.object({ name: z.string().min(1).optional(), description: z.string().min(1).optional(), icon: z.string().min(1).optional(), screenshot: z.object({ src: z.string().min(1), alt: z.string().min(1) }).strict().optional() }).strict().optional(),
+  theme: z.object({ name: z.literal('product').default('product'), appearance: z.enum(['light', 'dark', 'auto']).default('auto'), accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#5265d8') }).strict().optional(),
+  links: z.array(z.object({ label: z.string().min(1), url: SafeBrandUrlSchema }).strict()).optional(),
   downloads: DownloadsConfigSchema.optional(),
   install: z.array(InstallMethodConfigSchema).optional(),
   installationPreferences: z.array(InstallationPreferenceConfigSchema).optional(),

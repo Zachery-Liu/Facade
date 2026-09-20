@@ -65,6 +65,7 @@ export async function buildFreshGitHubRelease(options: FreshGitHubBuildOptions):
       outDir: options.outDir,
       ...(options.basePath === undefined ? {} : { basePath: options.basePath === '' ? '/' : options.basePath }),
       ...(config === undefined ? {} : { config }),
+      configPath: options.configPath,
       provider: 'github',
       ...(selection === undefined ? {} : { selection }),
     }),
