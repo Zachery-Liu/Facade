@@ -25,6 +25,25 @@ describe('product theme', () => {
     expect(html).toContain('<h3 id="changes">Changes</h3><p>Fixes</p>');
     expect(html).toContain('<pre><code>first\n\n&lt;script>second&lt;/script></code></pre><p>After</p>');
   });
+  it('keeps shorter backtick runs inside a longer fenced code block', () => {
+    const page = ReleasePageManifestSchema.parse({ ...manifest, release: { ...manifest.release, notes: '````txt\nbefore\n```\nafter\n````\nTail' } });
+    const html = render(<ReleasePage manifest={page} />);
+    expect(html).toContain('<pre><code>before\n```\nafter</code></pre><p>Tail</p>');
+  });
+  it('gives release-note headings unique IDs and preserves Unicode fragment links', () => {
+    const page = ReleasePageManifestSchema.parse({ ...manifest, release: { ...manifest.release, notes: '# Release notes\n# Downloads\n# Changes\n# Changes\n# 更新日志\n[跳转](#更新日志)\n# Cafe\u0301\n[Jump](#Cafe\u0301)\n# !!!\n# ???' } });
+    const html = render(<ReleasePage manifest={page} />);
+    expect(html).toContain('<section id="release-notes"');
+    expect(html).toContain('<h3 id="release-notes-2">Release notes</h3>');
+    expect(html).toContain('<h3 id="downloads-2">Downloads</h3>');
+    expect(html).toContain('<h3 id="changes">Changes</h3><h3 id="changes-2">Changes</h3>');
+    expect(html).toContain('<h3 id="更新日志">更新日志</h3>');
+    expect(html).toContain('<a href="#更新日志">跳转</a>');
+    expect(html).toContain('<h3 id="café">Café</h3>');
+    expect(html).toContain('<a href="#café">Jump</a>');
+    expect(html).toContain('<h3 id="section">!!!</h3><h3 id="section-2">???</h3>');
+    expect(html).not.toContain('id=""');
+  });
   it('does not describe a Linux asset without a libc dependency as requiring none', () => {
     const first = manifest.assets[0];
     if (!first) throw new Error('Expected the normalized fixture asset');

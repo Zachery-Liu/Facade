@@ -14,12 +14,14 @@ function contrast(first: string, second: string): number {
 }
 
 describe('Product Theme accent', () => {
-  it.each(['#ffffff', '#000000', '#ffff00', '#5265d8'])('keeps %s readable in both appearances', (accent) => {
+  it.each(['#ffffff', '#000000', '#777777', '#ffff00', '#5265d8'])('keeps %s readable in both appearances and on hover', (accent) => {
     const css = renderThemeStyle(accent);
     const textColors = [...css.matchAll(/--accent-text:(#[0-9a-f]{6})/g)].map((match) => match[1] ?? '');
     const buttonText = /--accent-on:(#[0-9a-f]{6})/.exec(css)?.[1] ?? '';
     expect(css).toContain(`--accent:${accent}`);
     expect(css).toContain('background:var(--accent);color:var(--accent-on)');
+    expect(css).toContain('.download-button:hover{text-decoration:underline}');
+    expect(css).not.toContain('filter:brightness');
     expect(css).toContain('outline:3px solid var(--accent-text)');
     expect(textColors).toHaveLength(3);
     expect(contrast(textColors[0] ?? '', '#f7f8fc')).toBeGreaterThanOrEqual(4.5);

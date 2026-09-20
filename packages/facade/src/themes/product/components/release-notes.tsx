@@ -3,15 +3,18 @@ import type { ComponentChildren } from 'preact';
 type NotesProps = { content: string; repositoryUrl: string; tag: string };
 type NotesBlock =
   | { type: 'heading'; level: number; text: string }
-  | { type: 'paragraph' | 'list' | 'code'; lines: string[] };
+  | { type: 'paragraph' | 'list'; lines: string[] }
+  | { type: 'code'; lines: string[]; fenceLength: number };
+const pageIds = ['top', 'appearance', 'recommend-title', 'recommendation-status', 'recommendation-result', 'environment-os', 'environment-arch', 'environment-libc', 'environment-version', 'downloads', 'downloads-title', 'install-methods', 'methods-title', 'release-notes', 'notes-title', 'facade-manifest'];
 
 // Only these Markdown constructs are rendered. Preact escapes every text node.
 export function ReleaseNotes({ content, repositoryUrl, tag }: NotesProps) {
   const blocks = parseBlocks(content);
+  const usedIds = new Set(pageIds);
   return <section id="release-notes" aria-labelledby="notes-title"><h2 id="notes-title">Release notes</h2>{blocks.map((block, index) => {
     if (block.type === 'heading') {
       const children = inline(block.text, repositoryUrl, tag);
-      const id = slug(block.text);
+      const id = headingId(block.text, usedIds);
       return block.level === 1 ? <h3 id={id} key={index}>{children}</h3> : <h4 id={id} key={index}>{children}</h4>;
     }
     if (block.type === 'list') return <ul key={index}>{block.lines.map((line, item) => <li key={item}>{inline(line.replace(/^[-*]\s+/, ''), repositoryUrl, tag)}</li>)}</ul>;
@@ -26,11 +29,13 @@ function parseBlocks(content: string): NotesBlock[] {
   const flush = () => { if (current) blocks.push(current); current = undefined; };
   for (const line of content.replace(/\r\n?/g, '\n').split('\n')) {
     if (current?.type === 'code') {
-      if (/^```\s*$/.test(line)) flush();
+      const closingFence = /^(`{3,})\s*$/.exec(line);
+      if (closingFence && (closingFence[1]?.length ?? 0) >= current.fenceLength) flush();
       else current.lines.push(line);
       continue;
     }
-    if (/^```/.test(line)) { flush(); current = { type: 'code', lines: [] }; continue; }
+    const openingFence = /^(`{3,})[^`]*$/.exec(line);
+    if (openingFence) { flush(); current = { type: 'code', lines: [], fenceLength: openingFence[1]?.length ?? 3 }; continue; }
     if (line.trim() === '') { flush(); continue; }
     const heading = /^(#{1,3})\s+(.+)$/.exec(line);
     if (heading) {
@@ -69,7 +74,7 @@ function inline(value: string, repositoryUrl: string, tag: string): ComponentChi
 }
 
 function safeHref(value: string, repositoryUrl: string, tag: string): string | undefined {
-  if (value.startsWith('#')) return /^#[A-Za-z0-9_-]+$/.test(value) ? value : undefined;
+  if (value.startsWith('#')) return /^#[\p{L}\p{M}\p{N}_-]+$/u.test(value) ? value.normalize('NFC').toLowerCase() : undefined;
   try {
     if (/^[A-Za-z][A-Za-z\d+.-]*:/.test(value)) {
       const url = new URL(value);
@@ -82,4 +87,11 @@ function safeHref(value: string, repositoryUrl: string, tag: string): string | u
   } catch { return undefined; }
 }
 
-function slug(value: string): string { return value.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim().replace(/\s+/g, '-'); }
+function headingId(value: string, usedIds: Set<string>): string {
+  const base = value.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}_ -]/gu, '').trim().replace(/[\s-]+/g, '-').replace(/^-|-$/g, '') || 'section';
+  let id = base;
+  let suffix = 2;
+  while (usedIds.has(id)) id = `${base}-${suffix++}`;
+  usedIds.add(id);
+  return id;
+}
