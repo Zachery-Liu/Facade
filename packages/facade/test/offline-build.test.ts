@@ -10,6 +10,31 @@ import { compileReleaseSnapshot } from '../src/compiler/release-compiler.js';
 const fixturePath = fileURLToPath(new URL('../../../fixtures/repositories/basic-release.source.json', import.meta.url));
 
 describe('offline build', () => {
+  it('publishes local brand imagery, escaped notes, and a browser selector from one manifest', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-product-theme-'));
+    const configDir = join(root, '.github');
+    await mkdir(configDir);
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64');
+    await writeFile(join(root, 'icon.png'), png);
+    const configPath = join(configDir, 'facade.yml');
+    await writeFile(configPath, 'schema: 1\nproduct:\n  name: Example\n  description: A safe release page\n  icon: ../icon.png\ntheme:\n  name: product\n  appearance: dark\n  accent: "#336699"\n');
+    const fixture = JSON.parse(await readFile(fixturePath, 'utf8')) as { release: { body?: string } };
+    fixture.release.body = '<script>alert(1)</script> [bad](javascript:alert)';
+    const customFixture = join(root, 'snapshot.json');
+    await writeFile(customFixture, JSON.stringify(fixture));
+    const outDir = join(root, 'site');
+    const result = await buildOfflineRelease({ fixturePath: customFixture, outDir, configPath, basePath: '/project/' });
+    const html = await readFile(join(outDir, 'index.html'), 'utf8');
+    const manifest = JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8')) as { product: { icon: string }; release: { notes: string } };
+    expect(result.files).toContain('branding/icon.png');
+    expect(manifest.product.icon).toBe('/project/branding/icon.png');
+    expect(manifest.release.notes).toContain('<script>');
+    expect(html).toContain('&lt;script>alert(1)&lt;/script>');
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain('id="facade-manifest"');
+    expect(html).toContain('id="environment-arch"');
+    await expect(readFile(join(outDir, 'branding', 'icon.png'))).resolves.toEqual(png);
+  });
   it('creates four consistent static outputs from a fixture', async () => {
     const outDir = join(await mkdtemp(join(tmpdir(), 'facade-build-test-')), 'site');
     await expect(buildOfflineRelease({ fixturePath, outDir, basePath: '/project/' })).resolves.toEqual({ basePath: '/project/', files: ['index.html', 'manifest.json', 'install.md', 'llms.txt'] });

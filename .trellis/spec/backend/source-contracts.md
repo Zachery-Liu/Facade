@@ -23,7 +23,7 @@ interface ReleaseSource {
 
 - `RepositorySnapshotSchema` strictly accepts `repository`, `release`, and `assets`.
 - `repository.fullName` is `owner/repository`; URLs must be HTTP(S).
-- A release has opaque `id`, exact `tagName`, display `name`, `draft`, and `prerelease`.
+- A release has opaque `id`, exact `tagName`, display `name`, `draft`, and `prerelease`. Optional `body` is plain source Markdown and becomes `manifest.release.notes` with `/release/notes` evidence; it must be rendered through the Product Theme's safe subset.
 - An asset has opaque `id`, `name`, HTTP(S) `downloadUrl`, and non-negative integer `size`.
 
 ### 4. Validation & Error Matrix

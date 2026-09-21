@@ -60,6 +60,21 @@ describe('Agent Interface', () => {
     }
   });
 
+  it('keeps Product Theme URL and image constraints in the exported JSON Schema', async () => {
+    const valid = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
+    const jsonSchemaValidator = z.fromJSONSchema(ReleasePageManifestJsonSchema);
+    for (const url of ['ftp://example.test/help', 'https://user:secret@example.test/help']) {
+      const input = { ...valid, links: [{ label: 'Help', url }] };
+      expect(jsonSchemaValidator.safeParse(input).success).toBe(false);
+      expect(validateReleasePageManifest(input).success).toBe(false);
+    }
+    for (const icon of ['//example.test/icon.png', '/branding/../icon.png']) {
+      const input = { ...valid, product: { name: 'Example', icon } };
+      expect(jsonSchemaValidator.safeParse(input).success).toBe(false);
+      expect(validateReleasePageManifest(input).success).toBe(false);
+    }
+  });
+
   it('requires complete field-level evidence', async () => {
     const input = JSON.parse(await readFile(fileURLToPath(new URL('../../../examples/manifests/valid-agent-manifest.json', import.meta.url)), 'utf8'));
     delete input.assets[0].evidence.os;

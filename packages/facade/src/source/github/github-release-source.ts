@@ -24,6 +24,7 @@ const ReleaseResponseSchema = z.object({
   name: z.string().nullable(),
   draft: z.boolean(),
   prerelease: z.boolean(),
+  body: z.string().nullable().optional(),
 }).passthrough();
 const AssetResponseSchema = z.object({
   id: z.number().int().nonnegative(),
@@ -115,6 +116,7 @@ export class GitHubReleaseSource implements ReleaseSource {
       name: parsed.name ?? parsed.tag_name,
       draft: parsed.draft,
       prerelease: parsed.prerelease,
+      ...(parsed.body == null ? {} : { body: parsed.body }),
     }, 'release');
   }
 

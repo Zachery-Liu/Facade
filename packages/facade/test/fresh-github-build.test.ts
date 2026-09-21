@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -97,6 +97,32 @@ describe('fresh release builds', () => {
     });
     const manifest = JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8')) as { assets: Array<{ label: string; priority: number }> };
     expect(manifest.assets[0]).toMatchObject({ label: 'Configured asset', priority: 42 });
+  });
+
+  it('rebuilds when a local brand image changes during staging', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'facade-brand-freshness-'));
+    const configDir = join(root, '.github');
+    await mkdir(configDir);
+    const configPath = join(configDir, 'facade.yml');
+    const iconPath = join(root, 'icon.png');
+    const original = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1]);
+    const changed = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 2]);
+    await writeFile(configPath, 'schema: 1\nrepository: owner/repository\nproduct:\n  icon: ../icon.png\n');
+    await writeFile(iconPath, original);
+    let captures = 0;
+    const onInputChanged = vi.fn();
+    const outDir = join(root, 'site');
+    const result = await buildFreshGitHubRelease({
+      configPath, outDir, environment: {}, onInputChanged,
+      sourceFactory: () => ({ getSnapshot: async () => {
+        captures += 1;
+        if (captures === 2) await writeFile(iconPath, changed);
+        return snapshot('v1');
+      } }),
+    });
+    expect(result.attempts).toBe(2);
+    expect(onInputChanged).toHaveBeenCalledOnce();
+    expect(await readFile(join(outDir, 'branding', 'icon.png'))).toEqual(changed);
   });
 
   it('publishes once when verification sees the same inputs', async () => {

@@ -112,6 +112,21 @@ For a live GitHub build, create `.github/facade.yml`:
 ```yaml
 schema: 1
 repository: owner/repository
+product:
+  name: Example App
+  description: A short description of the product
+  # Local PNG, JPEG, or WebP path relative to this config file.
+  # icon: ../assets/icon.png
+  # screenshot:
+  #   src: ../assets/screenshot.webp
+  #   alt: Example App main window
+theme:
+  name: product
+  appearance: auto # light, dark, or auto
+  accent: '#5265d8'
+links:
+  - label: Documentation
+    url: https://example.com/docs
 ```
 
 ```bash
@@ -123,6 +138,15 @@ an exact tag, `--repository owner/repository` to override the repository, and
 `--config path/to/facade.yml` for another configuration file. `GITHUB_TOKEN`
 supplies authentication when needed. In GitHub Actions, `schema: 1` alone can
 infer the repository from `GITHUB_REPOSITORY`.
+
+The Product Theme server renders every direct download link, installation
+command, and release note. Its optional browser controls call the same shared
+selection function used by read-only consumers. An unknown architecture or libc
+is never guessed; visitors can choose these values manually. Brand images must
+remain inside the repository after symbolic links are resolved. External links
+accept HTTP or HTTPS without embedded credentials. Release notes support a
+small Markdown subset and show raw HTML as text. Digest and signature details
+are references only; Facade does not verify files or run commands.
 
 For Pages, use the [manual release template](examples/workflows/facade-pages-release.yml)
 after all assets are uploaded, or merge the

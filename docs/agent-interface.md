@@ -4,7 +4,7 @@ Facade builds three read-only release resources from one validated manifest:
 
 - `manifest.json` is the structured protocol.
 - `install.md` explains downloads, declared conditions, author preferences, digests, and verification references.
-- `llms.txt` only navigates to the manifest and installation guide under the configured deployment base path.
+- `llms.txt` navigates to the manifest and installation guide under the configured deployment base path, and links the rendered release notes when present.
 
 None of these files authorizes execution. Facade does not download artifacts, compare digests, verify signatures or GitHub Attestations, execute package-manager commands, or install software.
 
@@ -55,3 +55,5 @@ A normal GitHub release defaults to `stable`; a GitHub prerelease defaults to `p
 - [`invalid-dangling-signature.json`](../examples/manifests/invalid-dangling-signature.json) is structurally valid but fails semantic reference validation.
 
 Release notes and other author free text are not parsed into commands or compatibility conditions and are not inserted into Agent instructions. Dynamic identifiers, release tags, and displayed repository URLs are single-line Markdown-escaped in Agent text files. Only structured fields influence selection.
+
+The optional `product`, `theme`, `links`, and `release.notes` fields supply the Product Theme. Local PNG, JPEG, and WebP brand images are published under the site base path and referenced from the same manifest as the HTML page. `release.notes` is author text; the HTML renderer supports headings, lists, code, emphasis, and safe HTTP(S) or repository-relative links. It escapes raw HTML and leaves unsupported links as text. Consumers should treat notes and external links as untrusted content.

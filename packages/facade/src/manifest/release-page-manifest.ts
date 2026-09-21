@@ -69,9 +69,13 @@ export const ManifestAssetSchema = z.object({
   signatureFor: z.string().min(1).optional(),
   evidence: z.record(z.string().min(1), EvidenceSchema),
 }).strict();
+const LocalImagePathSchema = z.string().regex(/^\/(?!\/)(?:(?!\.{1,2}\/)[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]+\.(?:png|jpg|jpeg|webp)$/);
 export const ReleasePageManifestV1Schema = z.object({
   schemaVersion: z.literal(1),
   productName: z.string().min(1), releaseTag: z.string().min(1), assets: z.array(ManifestAssetSchema),
+  product: z.object({ name: z.string().min(1), description: z.string().optional(), icon: LocalImagePathSchema.optional(), screenshot: z.object({ src: LocalImagePathSchema, alt: z.string().min(1) }).strict().optional() }).strict().optional(),
+  theme: z.object({ appearance: z.enum(['light', 'dark', 'auto']), accent: z.string().regex(/^#[0-9a-fA-F]{6}$/) }).strict().optional(),
+  links: z.array(z.object({ label: z.string().min(1), url: z.httpUrl().refine((value) => { const url = new URL(value); return !url.username && !url.password; }) }).strict()).optional(),
   source: z.object({
     provider: z.enum(['github', 'fixture', 'unknown']),
     repository: z.string().regex(/^[^/]+\/[^/]+$/),
@@ -83,6 +87,7 @@ export const ReleasePageManifestV1Schema = z.object({
     name: z.string().min(1),
     prerelease: z.boolean(),
     channel: z.enum(['stable', 'prerelease', 'beta', 'nightly']),
+    notes: z.string().optional(),
   }).strict(),
   evidence: z.array(EvidenceSchema),
   installMethods: z.array(InstallMethodSchema).optional(),

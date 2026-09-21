@@ -36,6 +36,9 @@ function alignPublicSchema<T extends object>(schema: T): T {
     if ((field === 'downloadUrl' || field === 'repositoryUrl') && record.format === 'uri' && record.type === 'string') {
       record.pattern = '^[Hh][Tt][Tt][Pp][Ss]?://';
     }
+    if (field === 'url' && record.format === 'uri' && record.type === 'string') {
+      record.pattern = '^[Hh][Tt][Tt][Pp][Ss]?://[^/@?#]+(?:[/?#]|$)';
+    }
     Object.entries(record).forEach(([key, child]) => visit(child, key));
   }
   visit(schema);
